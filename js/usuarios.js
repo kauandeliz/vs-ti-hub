@@ -58,6 +58,7 @@ async function handleCreateUser(e) {
 
     const nameEl  = document.getElementById('new-user-name');
     const emailEl = document.getElementById('new-user-email');
+    const passwordEl = document.getElementById('new-user-password');
     const errEl   = document.getElementById('new-user-error');
     const okEl    = document.getElementById('new-user-ok');
     const btn     = document.getElementById('new-user-btn');
@@ -65,16 +66,22 @@ async function handleCreateUser(e) {
     errEl.style.display = 'none';
     okEl.style.display  = 'none';
 
-    const name  = nameEl.value.trim();
-    const email = emailEl.value.trim();
+    const name     = nameEl.value.trim();
+    const email    = emailEl.value.trim();
+    const password = passwordEl.value;
 
-    if (!name || !email) {
-        showFormMsg(errEl, 'Preencha nome e e-mail.');
+    if (!name || !email || !password) {
+        showFormMsg(errEl, 'Preencha nome, e-mail e senha.');
+        return;
+    }
+
+    if (password.length < 8) {
+        showFormMsg(errEl, 'A senha deve ter no mínimo 8 caracteres.');
         return;
     }
 
     btn.disabled    = true;
-    btn.textContent = 'Enviando...';
+    btn.textContent = 'Criando...';
 
     const { data: { session } } = await _supabase.auth.getSession();
 
@@ -84,22 +91,23 @@ async function handleCreateUser(e) {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ action: 'invite', name, email }),
+        body: JSON.stringify({ action: 'invite', name, email, password }),
     });
 
     const json = await res.json();
     btn.disabled    = false;
-    btn.textContent = '✉ Enviar convite';
+    btn.textContent = 'Criar usuário';
 
     if (!res.ok) {
         showFormMsg(errEl, json.error ?? 'Erro ao criar usuário.');
         return;
     }
 
-    showFormMsg(okEl, `Convite enviado para ${email} ✓`);
-    nameEl.value  = '';
-    emailEl.value = '';
-    loadUsuarios(); // Refresh list
+    showFormMsg(okEl, `Usuário ${name} criado com sucesso ✓`);
+    nameEl.value     = '';
+    emailEl.value    = '';
+    passwordEl.value = '';
+    loadUsuarios(); // Refresh the list
 }
 
 // ─── DEACTIVATE / REACTIVATE USER ────────────────────

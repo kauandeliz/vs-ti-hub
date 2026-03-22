@@ -858,7 +858,7 @@
 
                     <div class="invite-notice">
                         <span></span>
-                        <span>O usuário receberá um e-mail com o link para definir a senha e acessar o sistema.</span>
+                        <span>Defina uma senha para o usuário acessar o sistema.</span>
                     </div>
 
                     <form id="new-user-form">
@@ -870,6 +870,10 @@
                             <label>E-mail corporativo</label>
                             <input type="email" id="new-user-email" placeholder="joao.silva@vinilsul.com.br" required>
                         </div>
+                        <div class="form-group">
+                            <label>Senha de acesso</label>
+                            <input type="password" id="new-user-password" placeholder="Mínimo 8 caracteres" required minlength="8">
+                        </div>
 
                         <div style="margin-bottom:14px">
                             <span style="font-size:0.7rem;font-weight:600;color:var(--text-soft);display:block;margin-bottom:6px">Perfil</span>
@@ -878,7 +882,7 @@
                             </div>
                         </div>
 
-                        <button type="submit" class="btn-primary" id="new-user-btn">Enviar convite</button>
+                        <button type="submit" class="btn-primary" id="new-user-btn">Criar usuário</button>
 
                         <div class="error-msg" id="new-user-error"></div>
                         <div class="inline-notify" id="new-user-ok"></div>
