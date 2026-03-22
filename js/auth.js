@@ -45,27 +45,6 @@ async function initAuth() {
     _supabase.auth.onAuthStateChange(async (event, session) => {
         console.log('Auth state change:', event, session?.user?.id, session?.user?.user_metadata);
         
-        const isInviteFlow = window.location.hash.includes('access_token') &&
-                             window.location.hash.includes('type=invite');
-        const isRecovery   = event === 'PASSWORD_RECOVERY';
-
-        if (isRecovery) {
-            showSetPasswordScreen();
-            return;
-        }
-        
-        if (event === 'SIGNED_IN' && isInviteFlow) {
-            console.log('Fluxo de convite detectado, usuário autenticado automaticamente');
-            // O Supabase já autenticou o usuário automaticamente
-            // Limpar a URL para evitar reprocessamento
-            history.replaceState(null, '', window.location.pathname);
-            
-            // Mostrar tela de senha diretamente
-            _currentUser = session.user;
-            showSetPasswordScreen();
-            return;
-        }
-        
         if (session?.user) {
             await onSignedIn(session.user);
         } else {
@@ -123,20 +102,6 @@ async function handleLogout() {
 // ─── SESSION HANDLERS ─────────────────────────────────
 
 async function onSignedIn(user) {
-    // If user has temporary password, force password change
-    if (user.user_metadata?.temp_password) {
-        console.log('Usuário com senha temporária detectado, forçando troca de senha');
-        _currentUser = user;
-        showSetPasswordScreen();
-        return;
-    }
-    
-    // If user hasn't set a password yet (legacy invite flow), show set password screen
-    if (!user.user_metadata?.password_set) {
-        showSetPasswordScreen();
-        return;
-    }
-
     _currentUser = user;
     hideLoginScreen();
     renderUserWidget(user);
@@ -214,102 +179,6 @@ function buildLoginScreen() {
 function showLoginError(msg) {
     const el = document.getElementById('login-error');
     if (el) { el.textContent = msg; el.classList.add('visible'); }
-}
-
-// ─── SET PASSWORD SCREEN (convite) ────────────────────
-
-function showSetPasswordScreen() {
-    let screen = document.getElementById('login-screen');
-    if (!screen) {
-        screen = document.createElement('div');
-        screen.id = 'login-screen';
-        document.body.appendChild(screen);
-    }
-    screen.style.display = 'flex';
-    hideApp();
-    screen.innerHTML = `
-        <div class="login-card">
-            <div class="login-logo">
-                <img src="https://yt3.googleusercontent.com/TY_CfaW7OV4aqGfiUZP56C_5GTpUcc10Rmyud2qkF9L1ojYiTADJmuQfXnUURvrKDx364quSbjU=s900-c-k-c0x00ffffff-no-rj" alt="VS">
-                <div class="login-logo-text">
-                    <strong>VS TI Hub</strong>
-                    <span>VinilSul Sistemas</span>
-                </div>
-            </div>
-            <div class="login-title">Defina sua senha</div>
-            <div class="login-subtitle">
-                ${(_currentUser?.user_metadata?.temp_password) 
-                    ? 'Você foi convidado para acessar o sistema. Defina uma nova senha para continuar.' 
-                    : 'Crie uma senha para acessar o sistema'}
-            </div>
-            <form id="set-password-form" onsubmit="handleSetPassword(event)">
-                <div class="login-field">
-                    <label>Nova senha</label>
-                    <input type="password" id="set-password-input" placeholder="Mínimo 8 caracteres" required minlength="8">
-                </div>
-                <div class="login-field">
-                    <label>Confirmar senha</label>
-                    <input type="password" id="set-password-confirm" placeholder="Repita a senha" required minlength="8">
-                </div>
-                <button type="submit" class="login-btn" id="set-password-btn">→ Definir senha</button>
-                <div class="login-error" id="set-password-error"></div>
-            </form>
-        </div>`;
-
-    // Add fadeOut keyframe if not present
-    if (!document.getElementById('auth-keyframes')) {
-        const style = document.createElement('style');
-        style.id = 'auth-keyframes';
-        style.textContent = `@keyframes fadeOut { to { opacity: 0; transform: scale(0.97); } }`;
-        document.head.appendChild(style);
-    }
-}
-
-async function handleSetPassword(e) {
-    e.preventDefault();
-    const pass    = document.getElementById('set-password-input').value;
-    const confirm = document.getElementById('set-password-confirm').value;
-    const errEl   = document.getElementById('set-password-error');
-    const btn     = document.getElementById('set-password-btn');
-
-    if (pass !== confirm) {
-        errEl.textContent = 'As senhas não coincidem.';
-        errEl.classList.add('visible');
-        return;
-    }
-
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner" style="width:14px;height:14px;border-width:2px"></span> Salvando...';
-
-    // Preserve existing metadata and add password_set, remove temp_password flag
-    const existingData = _currentUser?.user_metadata || {};
-    const { temp_password, ...cleanData } = existingData; // Remove temp_password
-    const updatedData = { ...cleanData, password_set: true };
-    console.log('Definindo senha para usuário:', _currentUser?.id, 'metadados existentes:', existingData);
-    
-    const { error } = await _supabase.auth.updateUser({
-        password: pass,
-        data: updatedData
-    });
-
-    if (error) {
-        console.error('Erro ao definir senha:', error);
-        errEl.textContent = error.message;
-        errEl.classList.add('visible');
-        btn.disabled = false;
-        btn.innerHTML = '→ Definir senha';
-        return;
-    }
-
-    console.log('Senha definida com sucesso, metadados atualizados:', updatedData);
-    // Update local user object with new metadata
-    _currentUser = { ..._currentUser, user_metadata: updatedData };
-
-    // Limpa o hash da URL para evitar redetecção do fluxo de convite
-    history.replaceState(null, '', window.location.pathname);
-
-    // Senha definida — mostrar o app
-    await onSignedIn(_currentUser);
 }
 
 // ─── APP VISIBILITY ───────────────────────────────────

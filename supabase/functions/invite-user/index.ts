@@ -72,20 +72,17 @@ Deno.serve(async (req: Request) => {
         }
 
         if (action === 'invite') {
-            const { name, email } = body;
-            if (!name || !email) return errorResponse('Nome e e-mail são obrigatórios.');
+            const { name, email, password } = body;
+            if (!name || !email || !password) return errorResponse('Nome, e-mail e senha são obrigatórios.');
+            if (password.length < 8) return errorResponse('A senha deve ter no mínimo 8 caracteres.');
 
-            // Gerar senha temporária
-            const tempPassword = Math.random().toString(36).slice(-12) + 'Temp!2024';
-            
-            // Criar usuário diretamente com senha temporária
+            // Criar usuário diretamente com a senha fornecida
             const { data, error } = await adminClient.auth.admin.createUser({
                 email: email,
-                password: tempPassword,
+                password: password,
                 user_metadata: { 
                     name, 
                     role: 'operador',
-                    temp_password: true,
                     invited_at: new Date().toISOString()
                 },
                 email_confirm: true // Marcar email como confirmado
@@ -93,14 +90,9 @@ Deno.serve(async (req: Request) => {
 
             if (error) return errorResponse(error.message);
             
-            // Enviar email personalizado com as credenciais
-            // Nota: Em produção, você pode integrar com um serviço de email
-            console.log(`Usuário ${name} (${email}) criado com senha temporária: ${tempPassword}`);
-            
             return okResponse({ 
                 user: data.user,
-                temp_password: tempPassword,
-                message: 'Usuário criado com sucesso. A senha temporária foi gerada.'
+                message: 'Usuário criado com sucesso.'
             });
         }
 
