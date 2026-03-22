@@ -1,0 +1,75 @@
+/* ─── RESET ─────────────────────────────────────────── */
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+/* ─── CSS CUSTOM PROPERTIES ─────────────────────────── */
+:root {
+    /* Colors */
+    --bg:           #0a0b0e;
+    --surface:      #111318;
+    --surface2:     #181c23;
+    --border:       #1f2430;
+    --border-hover: #2e3650;
+    --accent:       #4f8ef7;
+    --accent2:      #38d9a9;
+    --accent3:      #f5a623;
+    --text:         #dce3f0;
+    --text-muted:   #5a6478;
+    --text-soft:    #8a95a8;
+    --danger:       #f05252;
+
+    /* Layout */
+    --sidebar-width: 220px;
+    --radius:        10px;
+
+    /* Typography */
+    --font: 'DM Sans', sans-serif;
+    --mono: 'DM Mono', monospace;
+}
+
+/* ─── BASE ───────────────────────────────────────────── */
+body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+/* Subtle grid background */
+body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+        linear-gradient(rgba(79,142,247,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(79,142,247,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* Glow blob — matches the login screen ambience */
+body::after {
+    content: '';
+    position: fixed;
+    top: 30%;
+    left: 55%;
+    transform: translate(-50%, -50%);
+    width: 800px;
+    height: 500px;
+    background: radial-gradient(ellipse, rgba(79,142,247,0.06) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* ─── SCROLLBAR ─────────────────────────────────────── */
+::-webkit-scrollbar       { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-hover); border-radius: 3px; }
+
+/* ─── UTILITIES ─────────────────────────────────────── */
+.hidden { display: none !important; }

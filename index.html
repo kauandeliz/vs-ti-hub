@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VS TI Hub</title>
+    <link rel="icon" href="https://yt3.googleusercontent.com/TY_CfaW7OV4aqGfiUZP56C_5GTpUcc10Rmyud2qkF9L1ojYiTADJmuQfXnUURvrKDx364quSbjU=s900-c-k-c0x00ffffff-no-rj" type="image/jpeg">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.0/css/all.min.css">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="css/variables.css">
+    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/gerador.css">
+    <link rel="stylesheet" href="css/historico.css">
+    <link rel="stylesheet" href="css/auth.css">
+
+    <!-- Supabase JS SDK v2 -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+</head>
+<body>
+
+<button class="mobile-toggle" onclick="toggleSidebar()"></button>
+
+<!-- ─── SIDEBAR ──────────────────────────────────────── -->
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+        <img
+            src="https://yt3.googleusercontent.com/TY_CfaW7OV4aqGfiUZP56C_5GTpUcc10Rmyud2qkF9L1ojYiTADJmuQfXnUURvrKDx364quSbjU=s900-c-k-c0x00ffffff-no-rj"
+            alt="VS">
+        <div class="sidebar-logo-text">
+            <strong>VS TI Hub</strong>
+            <span>VinilSul Sistemas</span>
+        </div>
+    </div>
+
+    <button class="nav-item active" onclick="navTo('home', this)">
+        <i class="nav-icon fas fa-home"></i> Home
+    </button>
+
+    <button class="nav-item" onclick="navTo('gerador', this)">
+        <i class="nav-icon fas fa-wrench"></i> Gerador de Acessos VS
+    </button>
+
+    <hr class="nav-separator">
+
+    <button class="nav-item" onclick="navTo('helpdesk', this)">
+        <i class="nav-icon fas fa-ticket"></i> Helpdesk
+    </button>
+    <button class="nav-item" onclick="navTo('corporativo', this)">
+        <i class="nav-icon fas fa-building"></i> Corporativo
+    </button>
+    <button class="nav-item" onclick="navTo('telecom', this)">
+        <i class="nav-icon fas fa-phone"></i> Telecom
+    </button>
+
+    <hr class="nav-separator">
+
+    <button class="nav-item" id="nav-usuarios" onclick="navTo('usuarios', this)" style="display:none">
+        <i class="nav-icon fas fa-users"></i> Usuários
+    </button>
+    <button class="nav-item" onclick="navTo('historico', this)">
+        <i class="nav-icon fas fa-history"></i> Histórico de Acessos
+    </button>
+    <button class="nav-item" onclick="navTo('unidades', this)">
+        <i class="nav-icon fas fa-city"></i> Unidades &amp; Filiais
+    </button>
+    <button class="nav-item" onclick="navTo('etiquetas', this)">
+        <i class="nav-icon fas fa-tags"></i> Etiquetas de Remessa
+    </button>
+
+    <div class="sidebar-footer">
+        <span class="status-dot"></span> Sistema operacional
+    </div>
+</aside>
+
+<!-- ─── MAIN ─────────────────────────────────────────── -->
+<main class="main">
+    <div class="topbar">
+        <div class="search-wrap">
+            <span class="search-icon"></span>
+            <input
+                type="text"
+                id="searchInput"
+                placeholder="Buscar recursos, sistemas, cidades..."
+                oninput="globalSearch(this.value)">
+        </div>
+        <div class="topbar-right">
+            <span class="badge green">● Online</span>
+            <span class="badge" id="currentPageBadge">Dashboard</span>
+        </div>
+    </div>
+
+    <!-- Page content injected here -->
+    <div id="pages-container">
+
+        <!-- @include pages/home.html -->
+        <div class="page active" id="page-home">
+            <style>
+                .home-greeting {
+                    margin-bottom: 32px;
+                }
+                .home-greeting h1 {
+                    font-size: 1.8rem;
+                    font-weight: 700;
+                    color: #fff;
+                    margin-bottom: 6px;
+                    letter-spacing: -0.02em;
+                }
+                .home-greeting p {
+                    color: var(--text-soft);
+                    font-size: 0.9rem;
+                }
+                .shortcuts-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+                    gap: 16px;
+                    margin-bottom: 48px;
+                }
+                .shortcut-card {
+                    background: var(--surface);
+                    border: 1px solid var(--border);
+                    border-radius: 12px;
+                    padding: 20px;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                    text-decoration: none;
+                    color: inherit;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: flex-start;
+                    gap: 12px;
+                }
+                .shortcut-card:hover {
+                    border-color: var(--accent);
+                    background: rgba(79, 142, 247, 0.04);
+                    transform: translateY(-2px);
+                }
+                .shortcut-icon {
+                    font-size: 2rem;
+                    width: 48px;
+                    height: 48px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    background: rgba(79, 142, 247, 0.1);
+                    border-radius: 8px;
+                }
+                .shortcut-title {
+                    font-size: 0.95rem;
+                    font-weight: 600;
+                    color: #fff;
+                }
+                .shortcut-desc {
+                    font-size: 0.75rem;
+                    color: var(--text-muted);
+                    line-height: 1.4;
+                }
+                .home-section {
+                    margin-bottom: 40px;
+                }
+                .home-section-title {
+                    font-size: 0.9rem;
+                    font-weight: 700;
+                    text-transform: uppercase;
+                    letter-spacing: 0.1em;
+                    color: var(--text-muted);
+                    margin-bottom: 16px;
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                }
+                .home-section-title::after {
+                    content: '';
+                    flex: 1;
+                    height: 1px;
+                    background: rgba(255, 255, 255, 0.08);
+                }
+                .external-cards {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+                    gap: 12px;
+                }
+                .external-card {
+                    background: var(--surface2);
+                    border: 1px solid var(--border);
+                    border-radius: 8px;
+                    overflow: hidden;
+                    text-decoration: none;
+                    color: inherit;
+                    transition: all 0.2s;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: stretch;
+                    gap: 0;
+                }
+                .external-card:hover {
+                    border-color: var(--accent);
+                    background: rgba(79, 142, 247, 0.05);
+                }
+                .external-card-image {
+                    width: 100%;
+                    height: 140px;
+                    background: #fff;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 12px;
+                    overflow: hidden;
+                }
+                .external-card-image img {
+                    max-width: 90%;
+                    max-height: 90%;
+                    object-fit: contain;
+                }
+                .external-card-content {
+                    padding: 12px;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    gap: 4px;
+                    flex: 1;
+                }
+                .external-card-title {
+                    font-size: 0.8rem;
+                    font-weight: 600;
+                    color: var(--text);
+                }
+                .external-card-desc {
+                    font-size: 0.65rem;
+                    color: var(--text-muted);
+                }
+                .home-footer {
+                    margin-top: 60px;
+                    padding-top: 20px;
+                    border-top: 1px solid rgba(255, 255, 255, 0.08);
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    flex-wrap: wrap;
+                    gap: 12px;
+                    font-size: 0.75rem;
+                    color: var(--text-muted);
+                }
+                .status-indicator {
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                }
+                .status-dot-home {
+                    width: 6px;
+                    height: 6px;
+                    border-radius: 50%;
+                    background: var(--accent2);
+                    animation: pulse 2s ease-in-out infinite;
+                }
+                @keyframes pulse {
+                    0%, 100% { opacity: 1; }
+                    50% { opacity: 0.5; }
+                }
+            </style>
+
+            <div class="home-greeting">
+                <h1 id="greetingText">Bom dia</h1>
+                <p>Aqui está um resumo do sistema</p>
+            </div>
+
+            <div class="home-section">
+                <div class="home-section-title">Atalhos Rápidos</div>
+                <div class="shortcuts-grid">
+                    <a href="#" onclick="navTo('etiquetas', document.querySelector('[onclick*=etiquetas]')); return false;" class="shortcut-card">
+                        <div class="shortcut-icon">🏷️</div>
+                        <div class="shortcut-title">Etiquetas de Remessa</div>
+                        <div class="shortcut-desc">Crie rótulos de envio</div>
+                    </a>
+                    <a href="#" onclick="navTo('gerador', document.querySelector('[onclick*=gerador]')); return false;" class="shortcut-card">
+                        <div class="shortcut-icon">🔧</div>
+                        <div class="shortcut-title">Gerador de Acessos VS</div>
+                        <div class="shortcut-desc">Provisione novos colaboradores</div>
+                    </a>
+                    <a href="#" onclick="navTo('historico', document.querySelector('[onclick*=historico]')); return false;" class="shortcut-card">
+                        <div class="shortcut-icon">📋</div>
+                        <div class="shortcut-title">Histórico de Acessos</div>
+                        <div class="shortcut-desc">Consulte acessos criados</div>
+                    </a>
+                    <a href="#" onclick="navTo('unidades', document.querySelector('[onclick*=unidades]')); return false;" class="shortcut-card">
+                        <div class="shortcut-icon">🏙️</div>
+                        <div class="shortcut-title">Unidades & Filiais</div>
+                        <div class="shortcut-desc">Veja estrutura organizacional</div>
+                    </a>
+                    <div id="usuariosShortcut" class="shortcut-card" style="display:none; cursor: pointer;" onclick="navTo('usuarios', document.querySelector('#nav-usuarios')); return false;">
+                        <div class="shortcut-icon">👥</div>
+                        <div class="shortcut-title">Usuários</div>
+                        <div class="shortcut-desc">Gerencie permissões</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="home-section">
+                <div class="home-section-title">Helpdesk</div>
+                <div class="external-cards">
+                    <a href="https://mastertech.soft4.com.br/login" target="_blank" class="external-card">
+                        <div class="external-card-image"><img src="https://mastertechsistemas.com.br/wp-content/uploads/logotipo_mastertech.png" alt="MasterTech"></div>
+                        <div class="external-card-content">
+                            <div class="external-card-title">MasterTech</div>
+                            <div class="external-card-desc">GLPI Parceiro</div>
+                        </div>
+                    </a>
+                    <a href="https://helpdesk.sekurtecnologia.com.br/" target="_blank" class="external-card">
+                        <div class="external-card-image"><img src="https://media.licdn.com/dms/image/v2/C4E0BAQEWdvhrQhtZXw/company-logo_200_200/company-logo_200_200/0/1631367297504/sekur_tecnologia_logo?e=2147483647&v=beta&t=YFzbClhb-amHgkBNp_LZDdC0Z3st-WM-4W1m7MDVeIU" alt="Sekur"></div>
+                        <div class="external-card-content">
+                            <div class="external-card-title">Sekur</div>
+                            <div class="external-card-desc">GLPI Parceiro</div>
+                        </div>
+                    </a>
+                    <a href="https://helpdesk.vinilsul.com.br/" target="_blank" class="external-card">
+                        <div class="external-card-image"><img src="https://raichu-uploads.s3.amazonaws.com/logo_vinilsul_hNmJQ9.png" alt="VinilSul"></div>
+                        <div class="external-card-content">
+                            <div class="external-card-title">VinilSul</div>
+                            <div class="external-card-desc">GLPI Interno</div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
+            <div class="home-section">
+                <div class="home-section-title">Corporativo</div>
+                <div class="external-cards">
+                    <a href="https://mailadmin.elhnld.hospedagemweb.net/iredadmin/" target="_blank" class="external-card">
+                        <div class="external-card-image"><img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTfxcMZCGSQUbU2Act-QbKDT9pK3X_pTkKlBg&s" alt="iRedAdmin"></div>
+                        <div class="external-card-content">
+                            <div class="external-card-title">iRedAdmin</div>
+                            <div class="external-card-desc">Admin E-mails</div>
+                        </div>
+                    </a>
+                    <a href="https://entra.microsoft.com/" target="_blank" class="external-card">
+                        <div class="external-card-image"><img src="https://www.lighthouseit.co.uk/wp-content/uploads/2025/03/MSFT_Entra_Blog-thumb_16-9_v1-771x434.png" alt="Microsoft Entra"></div>
+                        <div class="external-card-content">
+                            <div class="external-card-title">Microsoft Entra</div>
+                            <div class="external-card-desc">AD & Licenças</div>
+                        </div>
+                    </a>
+                    <a href="https://login.salesforce.com/" target="_blank" class="external-card">
+                        <div class="external-card-image"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/f9/Salesforce.com_logo.svg/500px-Salesforce.com_logo.svg.png" alt="Salesforce"></div>
+                        <div class="external-card-content">
+                            <div class="external-card-title">Salesforce CRM</div>
+                            <div class="external-card-desc">Gestão Comercial</div>
+                        </div>
+                    </a>
+                    <a href="https://platform.senior.com.br/login/" target="_blank" class="external-card">
+                        <div class="external-card-image"><img src="https://s3.amazonaws.com//beta-img.b2bstack.net/uploads/production/provider/image/9/senior-sistemas-logo.png" alt="Senior"></div>
+                        <div class="external-card-content">
+                            <div class="external-card-title">Senior X</div>
+                            <div class="external-card-desc">ERP & RH</div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
+            <div class="home-section">
+                <div class="home-section-title">Telecom</div>
+                <div class="external-cards">
+                    <a href="https://customeridentity.algar.com.br/auth?client_id=0d86fb2f-6a6c-47e2-9ad7-6b35521f475f&state=1965756151&nonce&redirect_uri=https%3A%2F%2Floja.algar.com.br%2Fon%2Fdemandware.store%2FSites-algartelecom-BR-Site%2Fpt_BR%2FLogin-OAuthReentryAlgarLoginProvider" target="_blank" class="external-card">
+                        <div class="external-card-image"><img src="https://yt3.googleusercontent.com/UiGmCyeAqY_fu8wExnd9XAsjwGIqwLTKiCy-m7fUY_YeLXd6xf_G3QVQb6r_OcwEw4qdmaXlqQ=s900-c-k-c0x00ffffff-no-rj" alt="Algar"></div>
+                        <div class="external-card-content">
+                            <div class="external-card-title">Algar Telecom</div>
+                            <div class="external-card-desc">Portal do Cliente</div>
+                        </div>
+                    </a>
+                    <a href="https://webebt01.embratel.com.br/embratelonline/index.asp" target="_blank" class="external-card">
+                        <div class="external-card-image"><img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRLAHujXLaco-9GRUgrtH12xSPaLB1kMip6qA&s" alt="Claro"></div>
+                        <div class="external-card-content">
+                            <div class="external-card-title">Claro / Embratel</div>
+                            <div class="external-card-desc">Embratel Online</div>
+                        </div>
+                    </a>
+                    <a href="https://meutim.tim.com.br/" target="_blank" class="external-card">
+                        <div class="external-card-image"><img src="https://play-lh.googleusercontent.com/U_NE4YtUoSzUU-wa7spbP0vB9VqrVxSrcjodyvGo-EsMDo4Pr-hLmutRuVXNz4V_eg" alt="TIM"></div>
+                        <div class="external-card-content">
+                            <div class="external-card-title">Meu TIM</div>
+                            <div class="external-card-desc">Gestão Corporativa</div>
+                        </div>
+                    </a>
+                    <a href="https://mve.vivo.com.br/" target="_blank" class="external-card">
+                        <div class="external-card-image"><img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQF6N3dTfE9QmQdpXFiBxVgrTAn_7NV05JSpQ&s" alt="Vivo"></div>
+                        <div class="external-card-content">
+                            <div class="external-card-title">Vivo Empresas</div>
+                            <div class="external-card-desc">Móvel Corporativa</div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
+            <div class="home-footer">
+                <div class="status-indicator">
+                    <span class="status-dot-home"></span>
+                    <span>Sistema operacional</span>
+                </div>
+                <div id="currentTime">—</div>
+            </div>
+
+            <script>
+                // Update greeting based on time of day
+                function updateGreeting() {
+                    const hour = new Date().getHours();
+                    
+                    let greeting = 'Bom dia';
+                    if (hour >= 12 && hour < 18) greeting = 'Boa tarde';
+                    if (hour >= 18) greeting = 'Boa noite';
+                    
+                    document.getElementById('greetingText').textContent = greeting;
+                }
+                
+                // Update time and date in footer
+                function updateCurrentTime() {
+                    const now = new Date();
+                    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+                    const formatted = now.toLocaleDateString('pt-BR', options);
+                    document.getElementById('currentTime').textContent = formatted;
+                }
+                
+                // Show/hide Usuários based on admin status
+                function updateUsuariosVisibility() {
+                    const el = document.getElementById('usuariosShortcut');
+                    if (isAdmin()) {
+                        el.style.display = 'flex';
+                    } else {
+                        el.style.display = 'none';
+                    }
+                }
+                
+                // Initialize home page - bind to page activation
+                function initHomeOnActivate() {
+                    updateGreeting();
+                    updateCurrentTime();
+                    updateUsuariosVisibility();
+                }
+                
+                // Initialize on first load
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', initHomeOnActivate);
+                } else {
+                    initHomeOnActivate();
+                }
+                
+                // Update time every minute
+                setInterval(updateCurrentTime, 60000);
+            </script>
+        </div>
+        <!-- end page-home -->
+
+        <!-- @include pages/gerador.html -->
+        <div class="page" id="page-gerador">
+            <div class="page-header">
+                <h1>Gerador de Acessos VS</h1>
+                <p>Onboarding de TI — preencha os dados do novo colaborador</p>
+            </div>
+
+            <div class="gen-layout">
+                <!-- Form -->
+                <div class="gen-card">
+                    <h2>Dados do Colaborador</h2>
+                    <form id="admission-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Nome Completo</label>
+                                <input type="text" id="nome" placeholder="João da Silva" required>
+                            </div>
+                            <div class="form-group">
+                                <label>CPF</label>
+                                <input type="text" id="cpf" placeholder="000.000.000-00" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Data de Admissão</label>
+                            <input type="text" id="dataAdmissao" placeholder="dd/mm/aaaa" required>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Setor</label>
+                                <select id="setor" required>
+                                    <option value="" disabled selected>Selecione...</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Cargo</label>
+                                <select id="cargo" required disabled>
+                                    <option value="" disabled selected>Setor primeiro</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>UF</label>
+                                <select id="uf" required>
+                                    <option value="" disabled selected>Selecione...</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Cidade</label>
+                                <select id="local" required disabled>
+                                    <option value="" disabled selected>UF primeiro</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Bairro</label>
+                            <select id="bairro" required disabled>
+                                <option value="" disabled selected>Cidade primeiro</option>
+                            </select>
+                        </div>
+
+                        <div style="margin-bottom: 14px;">
+                            <span class="checkboxes-label">Acessos a Criar</span>
+                            <div class="checkbox-grid">
+                                <label class="checkbox-item checked" onclick="toggleCheck(this)">
+                                    <input type="checkbox" id="criarEmail" checked>
+                                    <div class="checkbox-dot"></div>
+                                    <span>E-mail</span>
+                                </label>
+                                <label class="checkbox-item checked" onclick="toggleCheck(this)">
+                                    <input type="checkbox" id="criarWts" checked>
+                                    <div class="checkbox-dot"></div>
+                                    <span>Usuário WTS</span>
+                                </label>
+                                <label class="checkbox-item checked" onclick="toggleCheck(this)">
+                                    <input type="checkbox" id="criarHelpdesk" checked>
+                                    <div class="checkbox-dot"></div>
+                                    <span>Helpdesk</span>
+                                </label>
+                                <label class="checkbox-item checked" onclick="toggleCheck(this)">
+                                    <input type="checkbox" id="criarNyxos" checked>
+                                    <div class="checkbox-dot"></div>
+                                    <span>Nyxos</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn-primary">Gerar Acessos</button>
+                        <div class="error-msg" id="error-message">Preencha todos os campos obrigatórios.</div>
+                    </form>
+                </div>
+
+                <!-- Results -->
+                <div class="gen-card" id="results-card">
+                    <h2>Acessos Gerados</h2>
+                    <div id="results-inner">
+                        <div class="results-placeholder">
+                            <div class="icon"></div>
+                            <div>Preencha o formulário e clique em <strong>Gerar Acessos</strong><br>para ver as credenciais aqui.</div>
+                        </div>
+                    </div>
+                    <button class="btn-success" id="save-button" style="display:none" onclick="saveCSV()">
+                        Baixar CSV com os dados
+                    </button>
+                </div>
+            </div>
+        </div>
+        <!-- end page-gerador -->
+
+        <!-- @include pages/helpdesk.html -->
+        <div class="page" id="page-helpdesk">
+            <div class="page-header"><h1>Helpdesk</h1><p>Sistemas de service desk e suporte</p></div>
+            <div class="external-cards">
+                <a href="https://mastertech.soft4.com.br/login" target="_blank" class="external-card">
+                    <div class="external-card-image"><img src="https://mastertechsistemas.com.br/wp-content/uploads/logotipo_mastertech.png" alt="MasterTech"></div>
+                    <div class="external-card-content">
+                        <div class="external-card-title">Helpdesk MasterTech</div>
+                        <div class="external-card-desc">GLPI Service Desk — parceiro</div>
+                    </div>
+                </a>
+                <a href="https://helpdesk.sekurtecnologia.com.br/" target="_blank" class="external-card">
+                    <div class="external-card-image"><img src="https://media.licdn.com/dms/image/v2/C4E0BAQEWdvhrQhtZXw/company-logo_200_200/company-logo_200_200/0/1631367297504/sekur_tecnologia_logo?e=2147483647&v=beta&t=YFzbClhb-amHgkBNp_LZDdC0Z3st-WM-4W1m7MDVeIU" alt="Sekur"></div>
+                    <div class="external-card-content">
+                        <div class="external-card-title">Helpdesk Sekur</div>
+                        <div class="external-card-desc">GLPI Service Desk — parceiro</div>
+                    </div>
+                </a>
+                <a href="https://helpdesk.vinilsul.com.br/" target="_blank" class="external-card">
+                    <div class="external-card-image"><img src="https://raichu-uploads.s3.amazonaws.com/logo_vinilsul_hNmJQ9.png" alt="Helpdesk VS"></div>
+                    <div class="external-card-content">
+                        <div class="external-card-title">Helpdesk VinilSul</div>
+                        <div class="external-card-desc">GLPI Service Desk — interno</div>
+                    </div>
+                </a>
+            </div>
+        </div>
+
+        <!-- @include pages/corporativo.html -->
+        <div class="page" id="page-corporativo">
+            <div class="page-header"><h1>Sistemas Corporativos</h1><p>Plataformas e sistemas core da organização</p></div>
+            <div class="external-cards">
+                <a href="https://mailadmin.elhnld.hospedagemweb.net/iredadmin/" target="_blank" class="external-card">
+                    <div class="external-card-image"><img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTfxcMZCGSQUbU2Act-QbKDT9pK3X_pTkKlBg&s" alt="iRedAdmin"></div>
+                    <div class="external-card-content">
+                        <div class="external-card-title">Admin E-mails</div>
+                        <div class="external-card-desc">Console de contas</div>
+                    </div>
+                </a>
+                <a href="https://admin.goto.com/" target="_blank" class="external-card">
+                    <div class="external-card-image"><img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRmPzJYV6y5WOXMrfOge75QBfskhUaKi6WdCg&s" alt="GoTo"></div>
+                    <div class="external-card-content">
+                        <div class="external-card-title">Admin GoTo</div>
+                        <div class="external-card-desc">Telefonia IP</div>
+                    </div>
+                </a>
+                <a href="https://entra.microsoft.com/" target="_blank" class="external-card">
+                    <div class="external-card-image"><img src="https://www.lighthouseit.co.uk/wp-content/uploads/2025/03/MSFT_Entra_Blog-thumb_16-9_v1-771x434.png" alt="Entra ID"></div>
+                    <div class="external-card-content">
+                        <div class="external-card-title">Microsoft Entra</div>
+                        <div class="external-card-desc">Active Directory</div>
+                    </div>
+                </a>
+                <a href="https://login.salesforce.com/" target="_blank" class="external-card">
+                    <div class="external-card-image"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/f9/Salesforce.com_logo.svg/500px-Salesforce.com_logo.svg.png" alt="Salesforce"></div>
+                    <div class="external-card-content">
+                        <div class="external-card-title">Salesforce CRM</div>
+                        <div class="external-card-desc">Gestão Comercial</div>
+                    </div>
+                </a>
+                <a href="https://platform.senior.com.br/login/" target="_blank" class="external-card">
+                    <div class="external-card-image"><img src="https://s3.amazonaws.com//beta-img.b2bstack.net/uploads/production/provider/image/9/senior-sistemas-logo.png" alt="Senior"></div>
+                    <div class="external-card-content">
+                        <div class="external-card-title">Senior X</div>
+                        <div class="external-card-desc">ERP & RH</div>
+                    </div>
+                </a>
+                <a href="http://192.168.200.31:9070/relatorios/Pages/Folder.aspx" target="_blank" class="external-card">
+                    <div class="external-card-image"><img src="https://files.tecnoblog.net/wp-content/uploads/2019/09/windows-folder-700x394.jpg" alt="SQL Relatórios"></div>
+                    <div class="external-card-content">
+                        <div class="external-card-title">SQL — Relatórios</div>
+                        <div class="external-card-desc">Gerenciador</div>
+                    </div>
+                </a>
+                <a href="https://webmail.vinilsul.com.br/mail/" target="_blank" class="external-card">
+                    <div class="external-card-image"><img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTfxcMZCGSQUbU2Act-QbKDT9pK3X_pTkKlBg&s" alt="Webmail"></div>
+                    <div class="external-card-content">
+                        <div class="external-card-title">Webmail</div>
+                        <div class="external-card-desc">E-mail corporativo</div>
+                    </div>
+                </a>
+            </div>
+        </div>
+
+        <!-- @include pages/telecom.html -->
+        <div class="page" id="page-telecom">
+            <div class="page-header"><h1>Telecom &amp; Utilities</h1><p>Portais de operadoras e gestão de energia</p></div>
+            <div class="external-cards">
+                <a href="https://customeridentity.algar.com.br/auth?client_id=0d86fb2f-6a6c-47e2-9ad7-6b35521f475f&state=1965756151&nonce&redirect_uri=https%3A%2F%2Floja.algar.com.br%2Fon%2Fdemandware.store%2FSites-algartelecom-BR-Site%2Fpt_BR%2FLogin-OAuthReentryAlgarLoginProvider" target="_blank" class="external-card">
+                    <div class="external-card-image"><img src="https://yt3.googleusercontent.com/UiGmCyeAqY_fu8wExnd9XAsjwGIqwLTKiCy-m7fUY_YeLXd6xf_G3QVQb6r_OcwEw4qdmaXlqQ=s900-c-k-c0x00ffffff-no-rj" alt="Algar"></div>
+                    <div class="external-card-content">
+                        <div class="external-card-title">Algar Telecom</div>
+                        <div class="external-card-desc">Portal do cliente</div>
+                    </div>
+                </a>
+                <a href="https://webebt01.embratel.com.br/embratelonline/index.asp" target="_blank" class="external-card">
+                    <div class="external-card-image"><img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRLAHujXLaco-9GRUgrtH12xSPaLB1kMip6qA&s" alt="Claro"></div>
+                    <div class="external-card-content">
+                        <div class="external-card-title">Claro / Embratel</div>
+                        <div class="external-card-desc">Embratel Online</div>
+                    </div>
+                </a>
+                <a href="https://cliente.alexandriaenergia.com/" target="_blank" class="external-card">
+                    <div class="external-card-image"><img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQAOeYw50WCigUiyHlqGDoDX64u9LB1ngSR5Q&s" alt="Alexandria"></div>
+                    <div class="external-card-content">
+                        <div class="external-card-title">LEX Alexandria</div>
+                        <div class="external-card-desc">Gestão de energia</div>
+                    </div>
+                </a>
+                <a href="https://www.liggatelecom.com.br/autoatendimento/pub/login.jsf" target="_blank" class="external-card">
+                    <div class="external-card-image"><img src="https://carreira.inhire.com.br/wp-content/uploads/2025/10/LOGO_LIGGA_TELECOM_1-1-1.png" alt="Ligga"></div>
+                    <div class="external-card-content">
+                        <div class="external-card-title">Ligga Telecom</div>
+                        <div class="external-card-desc">Autoatendimento</div>
+                    </div>
+                </a>
+                <a href="https://meutim.tim.com.br/" target="_blank" class="external-card">
+                    <div class="external-card-image"><img src="https://play-lh.googleusercontent.com/U_NE4YtUoSzUU-wa7spbP0vB9VqrVxSrcjodyvGo-EsMDo4Pr-hLmutRuVXNz4V_eg" alt="TIM"></div>
+                    <div class="external-card-content">
+                        <div class="external-card-title">Meu TIM</div>
+                        <div class="external-card-desc">Gestão corporativa</div>
+                    </div>
+                </a>
+                <a href="https://pap.onitel.com.br/central-do-assinante/novacia/" target="_blank" class="external-card">
+                    <div class="external-card-image"><img src="https://media.licdn.com/dms/image/v2/C560BAQHGD7niTowhMw/company-logo_200_200/company-logo_200_200/0/1644847527143/grupo_novacia_logo?e=2147483647&v=beta&t=HI4DQhTCq3vWkoAxJW2Wjffj2Fhqka396GIiAbYY3Zw" alt="Novacia"></div>
+                    <div class="external-card-content">
+                        <div class="external-card-title">Novacia</div>
+                        <div class="external-card-desc">Autoatendimento</div>
+                    </div>
+                </a>
+                <a href="https://mve.vivo.com.br/" target="_blank" class="external-card">
+                    <div class="external-card-image"><img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQF6N3dTfE9QmQdpXFiBxVgrTAn_7NV05JSpQ&s" alt="Vivo"></div>
+                    <div class="external-card-content">
+                        <div class="external-card-title">Vivo Empresas</div>
+                        <div class="external-card-desc">Móvel corporativa</div>
+                    </div>
+                </a>
+            </div>
+        </div>
+
+        <!-- @include pages/unidades.html -->
+        <div class="page" id="page-unidades">
+            <div class="page-header"><h1>Unidades &amp; Filiais</h1><p>Endereços e códigos de todas as unidades VinilSul</p></div>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Cód.</th><th>UF</th><th>Cidade</th><th>Bairro</th>
+                            <th>Endereço</th><th>Nº</th><th>CNPJ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>11</td><td><span class="uf-badge">PR</span></td><td>Curitiba</td><td>Jardim Botânico</td><td>Rua São Joaquim</td><td>185</td><td>04.187.580/0001-29</td></tr>
+                        <tr><td>21</td><td><span class="uf-badge">SP</span></td><td>São Paulo</td><td>Vila Monumento</td><td>Av. Teresa Cristina</td><td>210</td><td>04.187.580/0003-90</td></tr>
+                        <tr><td>31</td><td><span class="uf-badge">RS</span></td><td>Porto Alegre</td><td>Navegantes</td><td>Rua Padre Diogo Feijó</td><td>183</td><td>04.187.580/0002-00</td></tr>
+                        <tr><td>41</td><td><span class="uf-badge">RJ</span></td><td>Rio de Janeiro</td><td>Bonsucesso</td><td>Av. Teixeira de Castro</td><td>250</td><td>04.771.035/0001-85</td></tr>
+                        <tr><td>61</td><td><span class="uf-badge">SC</span></td><td>São José</td><td>Serraria</td><td>Rua N. Sra. de Guadalupe</td><td>477</td><td>04.187.580/0004-71</td></tr>
+                        <tr><td>100</td><td><span class="uf-badge">PR</span></td><td>Curitiba</td><td>Rebouças</td><td>Rua Brigadeiro Franco</td><td>3519</td><td>04.187.580/0010-10</td></tr>
+                        <tr><td>111</td><td><span class="uf-badge">PR</span></td><td>Curitiba</td><td>Cidade Industrial</td><td>Rua Cyro Correia Pereira</td><td>2100-B</td><td>04.187.580/0007-14</td></tr>
+                        <tr><td>141</td><td><span class="uf-badge">RJ</span></td><td>Rio de Janeiro</td><td>Bonsucesso</td><td>Av. Teixeira de Castro</td><td>250</td><td>04.187.580/0008-03</td></tr>
+                        <tr><td>151</td><td><span class="uf-badge">GO</span></td><td>Aparecida de Goiânia</td><td>Vila Maria</td><td>Av. Juscelino Kubitschek</td><td>SN</td><td>04.187.580/0009-86</td></tr>
+                        <tr><td>152</td><td><span class="uf-badge">GO</span></td><td>Goiânia</td><td>Setor Bueno</td><td>Rua T 30</td><td>SN</td><td>04.187.580/0014-43</td></tr>
+                        <tr><td>171</td><td><span class="uf-badge">MG</span></td><td>Uberlândia</td><td>Brasil</td><td>Rua Padre Américo Ceppi</td><td>481</td><td>04.187.580/0012-81</td></tr>
+                        <tr><td>191</td><td><span class="uf-badge">DF</span></td><td>Brasília</td><td>Guará</td><td>ST SCIA Quadra-13 Conj-03</td><td>SN</td><td>04.187.580/0011-09</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- @include pages/etiquetas.html -->
+        <div class="page" id="page-etiquetas">
+            <div class="page-header"><h1>Etiquetas de Remessa</h1><p>Endereços prontos para copiar e colar</p></div>
+            <div class="labels-grid" id="labelGrid"></div>
+        </div>
+
+        <!-- @include pages/historico.html -->
+        <div class="page" id="page-historico">
+            <div class="page-header">
+                <h1>Histórico de Acessos</h1>
+                <p>Todos os acessos gerados — consulte, filtre, revogue ou reative</p>
+            </div>
+
+            <!-- Stats strip -->
+            <div class="stats-strip">
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-total">—</div>
+                    <div class="stat-label">Total</div>
+                </div>
+                <div class="stat-card success">
+                    <div class="stat-value" id="stat-ativos">—</div>
+                    <div class="stat-label">Ativos</div>
+                </div>
+                <div class="stat-card danger">
+                    <div class="stat-value" id="stat-revogados">—</div>
+                    <div class="stat-label">Revogados</div>
+                </div>
+            </div>
+
+            <!-- Toolbar -->
+            <div class="historico-toolbar">
+                <div class="search-wrap">
+                    <span class="search-icon"></span>
+                    <input type="text" id="hist-search" placeholder="Buscar por nome, CPF, cargo..." style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px 8px 32px;color:var(--text);font-family:var(--font);font-size:0.8rem;outline:none;">
+                </div>
+                <select class="filter-select" id="hist-filter-status">
+                    <option value="">Todos os status</option>
+                    <option value="ativo">Ativos</option>
+                    <option value="revogado">Revogados</option>
+                </select>
+                <select class="filter-select" id="hist-filter-uf">
+                    <option value="">Todos os estados</option>
+                    <option value="PR">PR</option>
+                    <option value="SP">SP</option>
+                    <option value="RS">RS</option>
+                    <option value="RJ">RJ</option>
+                    <option value="SC">SC</option>
+                    <option value="GO">GO</option>
+                    <option value="MG">MG</option>
+                    <option value="DF">DF</option>
+                </select>
+                <div class="toolbar-spacer"></div>
+                <button class="btn-icon" id="hist-refresh-btn">↻ Atualizar</button>
+            </div>
+
+            <!-- Table -->
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>UF</th>
+                            <th>Cargo</th>
+                            <th>Login E-mail</th>
+                            <th>Status</th>
+                            <th>Criado em</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="hist-tbody">
+                        <tr><td colspan="7">
+                            <div class="table-state">
+                                <div class="icon"></div>
+                                <div>Navegue até esta página para carregar os registros.</div>
+                            </div>
+                        </td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="hist-pagination" class="pagination"></div>
+        </div>
+
+        <!-- @include pages/usuarios.html -->
+        <div class="page" id="page-usuarios">
+            <div class="page-header">
+                <h1>Usuários</h1>
+                <p>Gerencie os acessos à plataforma VS TI Hub</p>
+            </div>
+
+            <div class="usuarios-grid">
+                <!-- Users table -->
+                <div class="usuarios-table-card">
+                    <div class="usuarios-table-header">
+                        <h3>Usuários cadastrados</h3>
+                        <button class="btn-icon" onclick="loadUsuarios()">↻ Atualizar</button>
+                    </div>
+                    <div class="table-wrap" style="border:none;border-radius:0">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Usuário</th>
+                                    <th>Perfil</th>
+                                    <th>Status</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="usuarios-tbody">
+                                <tr><td colspan="4">
+                                    <div class="table-state">
+                                        <div class="icon"></div>
+                                        <div>Navegue até esta página para carregar.</div>
+                                    </div>
+                                </td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- New user form -->
+                <div class="new-user-card">
+                    <h3>Convidar usuário</h3>
+
+                    <div class="invite-notice">
+                        <span></span>
+                        <span>O usuário receberá um e-mail com o link para definir a senha e acessar o sistema.</span>
+                    </div>
+
+                    <form id="new-user-form">
+                        <div class="form-group">
+                            <label>Nome completo</label>
+                            <input type="text" id="new-user-name" placeholder="João da Silva" required>
+                        </div>
+                        <div class="form-group">
+                            <label>E-mail corporativo</label>
+                            <input type="email" id="new-user-email" placeholder="joao.silva@vinilsul.com.br" required>
+                        </div>
+
+                        <div style="margin-bottom:14px">
+                            <span style="font-size:0.7rem;font-weight:600;color:var(--text-soft);display:block;margin-bottom:6px">Perfil</span>
+                            <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 13px;font-size:0.75rem;color:var(--text-soft)">
+                                Todos os convidados entram como <span class="role-badge operador">operador</span> — acesso ao sistema completo, sem gerenciar usuários.
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn-primary" id="new-user-btn">Enviar convite</button>
+
+                        <div class="error-msg" id="new-user-error"></div>
+                        <div class="inline-notify" id="new-user-ok"></div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+    </div><!-- #pages-container -->
+</main>
+
+<!-- Scripts (order matters: supabase → auth → rest) -->
+<script src="js/nav.js"></script>
+<script src="js/supabase.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/gerador-data.js"></script>
+<script src="js/gerador-ui.js"></script>
+<script src="js/etiquetas.js"></script>
+<script src="js/historico.js"></script>
+<script src="js/usuarios.js"></script>
+
+</body>
+</html>

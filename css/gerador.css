@@ -1,0 +1,292 @@
+/* ─── GENERATOR LAYOUT ────────────────────────────── */
+.gen-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    align-items: flex-start;
+}
+
+.gen-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+}
+
+.gen-card h2 {
+    font-size: 0.88rem;
+    font-weight: 700;
+    margin-bottom: 18px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* ─── FORM ELEMENTS ───────────────────────────────── */
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+.form-group { margin-bottom: 14px; }
+
+.form-group label {
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-soft);
+    margin-bottom: 5px;
+    letter-spacing: 0.02em;
+}
+
+.form-group input,
+.form-group select {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 9px 11px;
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 0.78rem;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    -webkit-appearance: none;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(79, 142, 247, 0.12);
+}
+
+.form-group select:disabled { opacity: 0.45; cursor: not-allowed; }
+.form-group input::placeholder { color: var(--text-muted); }
+
+/* ─── CHECKBOXES ──────────────────────────────────── */
+.checkboxes-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-soft);
+    margin-bottom: 10px;
+    display: block;
+    letter-spacing: 0.02em;
+}
+
+.checkbox-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 8px 11px;
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+}
+
+.checkbox-item:hover { border-color: var(--border-hover); }
+
+.checkbox-item.checked {
+    border-color: rgba(79, 142, 247, 0.4);
+    background: rgba(79, 142, 247, 0.06);
+}
+
+.checkbox-item input[type="checkbox"] { display: none; }
+
+.checkbox-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 4px;
+    border: 1.5px solid var(--border-hover);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.15s;
+    font-size: 0.6rem;
+}
+
+.checkbox-item.checked .checkbox-dot {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+}
+
+.checkbox-item span { font-size: 0.72rem; font-weight: 500; color: var(--text-soft); }
+.checkbox-item.checked span { color: var(--text); }
+
+/* ─── BUTTONS ─────────────────────────────────────── */
+.btn-primary {
+    width: 100%;
+    padding: 10px 16px;
+    background: var(--accent);
+    border: none;
+    border-radius: 8px;
+    color: #fff;
+    font-family: var(--font);
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
+    margin-top: 4px;
+}
+
+.btn-primary:hover {
+    background: #3b7de0;
+    box-shadow: 0 4px 14px rgba(79, 142, 247, 0.3);
+}
+
+.btn-primary:active { transform: scale(0.98); }
+
+.btn-success {
+    width: 100%;
+    padding: 10px 16px;
+    background: transparent;
+    border: 1px solid var(--accent2);
+    border-radius: 8px;
+    color: var(--accent2);
+    font-family: var(--font);
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.btn-success:hover { background: rgba(56, 217, 169, 0.08); }
+
+/* ─── ERROR MESSAGE ───────────────────────────────── */
+.error-msg {
+    color: var(--danger);
+    font-size: 0.72rem;
+    margin-top: 10px;
+    text-align: center;
+    display: none;
+    padding: 8px;
+    background: rgba(240, 82, 82, 0.08);
+    border-radius: 6px;
+    border: 1px solid rgba(240, 82, 82, 0.2);
+}
+
+/* ─── RESULTS PANEL ───────────────────────────────── */
+.results-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 300px;
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    text-align: center;
+    gap: 10px;
+}
+
+.results-placeholder .icon { font-size: 2.5rem; opacity: 0.3; }
+
+.credentials-list { display: flex; flex-direction: column; gap: 10px; }
+
+.credential-block {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.credential-header {
+    padding: 7px 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border-bottom: 1px solid var(--border);
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.credential-header.wts  { color: var(--accent3); }
+.credential-header.help { color: #c084fc; }
+.credential-header.nyxos { color: var(--accent2); }
+
+.credential-fields {
+    padding: 10px 12px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+}
+
+.cred-field-label {
+    font-size: 0.58rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 2px;
+}
+
+.cred-field-value {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    color: var(--text);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 5px 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px;
+    cursor: pointer;
+    transition: border-color 0.15s;
+}
+
+.cred-field-value:hover { border-color: var(--accent); }
+.cred-copy-icon { opacity: 0.4; font-size: 0.7rem; }
+.cred-field-value:hover .cred-copy-icon { opacity: 1; }
+
+/* ─── PERSON INFO ─────────────────────────────────── */
+.person-info {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-bottom: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.person-info-name {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: -0.01em;
+}
+
+.person-info-meta {
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+/* ─── RESPONSIVE ──────────────────────────────────── */
+@media (max-width: 900px) {
+    .gen-layout { grid-template-columns: 1fr; }
+    .form-row   { grid-template-columns: 1fr; }
+}

@@ -1,0 +1,232 @@
+/* ─── PAGE TRANSITIONS ────────────────────────────── */
+.page { display: none; padding: 28px; animation: fadeIn 0.2s ease; }
+.page.active { display: block; }
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── PAGE HEADER ─────────────────────────────────── */
+.page-header { margin-bottom: 24px; }
+
+.page-header h1 {
+    font-size: 1.4rem;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    color: #fff;
+}
+
+.page-header p {
+    color: var(--text-soft);
+    font-size: 0.8rem;
+    margin-top: 3px;
+}
+
+/* ─── SECTION LABEL ───────────────────────────────── */
+.section-label {
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+    margin-top: 28px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+}
+
+/* ─── CARDS GRID ──────────────────────────────────── */
+.cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(209px, 1fr));
+    gap: 11px;
+}
+
+.cards-grid.wide {
+    grid-template-columns: repeat(auto-fill, minmax(264px, 1fr));
+}
+
+/* ─── TOOL CARD ───────────────────────────────────── */
+.tool-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    text-decoration: none;
+    color: inherit;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+    position: relative;
+}
+
+.tool-card:hover {
+    border-color: var(--border-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.tool-card.internal { border-left: 2px solid var(--accent2); }
+.tool-card.internal:hover { border-color: var(--accent2); }
+
+.card-banner {
+    height: 57px;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 9px;
+}
+
+.card-banner img { max-width: 70%; max-height: 70%; object-fit: contain; }
+
+.card-icon-banner {
+    height: 57px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+    background: var(--surface2);
+}
+
+.card-body { padding: 12px 14px; flex: 1; }
+
+.card-body h3 {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #f0f3f9;
+    margin-bottom: 3px;
+}
+
+.card-body p {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    line-height: 1.4;
+}
+
+.card-footer {
+    padding: 8px 14px;
+    font-size: 0.55rem;
+    font-weight: 700;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    border-top: 1px solid var(--border);
+}
+
+.internal .card-footer { color: var(--accent2); }
+
+/* ─── TABLE ───────────────────────────────────────── */
+.table-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    overflow-x: auto;
+    margin-bottom: 8px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.72rem;
+    min-width: 640px;
+}
+
+thead th {
+    background: var(--surface2);
+    color: var(--text-muted);
+    padding: 9px 14px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.62rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+}
+
+tbody td {
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-soft);
+    transition: background 0.1s;
+}
+
+tbody tr:last-child td { border-bottom: none; }
+
+tbody tr:hover td {
+    background: rgba(255, 255, 255, 0.025);
+    color: var(--text);
+}
+
+.uf-badge {
+    background: rgba(79, 142, 247, 0.12);
+    color: var(--accent);
+    font-size: 0.6rem;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: var(--mono);
+}
+
+/* ─── ETIQUETAS ───────────────────────────────────── */
+.labels-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(308px, 1fr));
+    gap: 11px;
+}
+
+.label-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 15px;
+    position: relative;
+    transition: border-color 0.2s;
+}
+
+.label-card:hover { border-color: var(--border-hover); }
+
+.label-title {
+    font-size: 0.62rem;
+    font-weight: 700;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 8px;
+}
+
+.label-body {
+    font-size: 0.68rem;
+    line-height: 1.6;
+    color: var(--text-soft);
+    font-family: var(--mono);
+}
+
+.copy-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    padding: 3px 8px;
+    border-radius: 5px;
+    font-size: 0.55rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: var(--font);
+}
+
+.copy-btn:hover         { border-color: var(--accent2); color: var(--accent2); }
+.copy-btn.copied        { border-color: var(--accent2); color: var(--accent2); background: rgba(56, 217, 169, 0.08); }

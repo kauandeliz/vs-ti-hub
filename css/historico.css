@@ -1,0 +1,348 @@
+/* ─── HISTORICO PAGE ──────────────────────────────── */
+
+/* Toolbar above the table */
+.historico-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+
+.historico-toolbar .search-wrap {
+    flex: 1;
+    min-width: 200px;
+    max-width: 340px;
+}
+
+.filter-select {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 11px;
+    color: var(--text-soft);
+    font-family: var(--font);
+    font-size: 0.78rem;
+    outline: none;
+    cursor: pointer;
+    transition: border-color 0.2s;
+    -webkit-appearance: none;
+}
+
+.filter-select:focus { border-color: var(--accent); }
+
+.toolbar-spacer { flex: 1; }
+
+.btn-icon {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-soft);
+    padding: 8px 13px;
+    font-size: 0.78rem;
+    font-family: var(--font);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+}
+
+.btn-icon:hover { border-color: var(--border-hover); color: var(--text); }
+
+/* Stats strip */
+.stats-strip {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 110px;
+}
+
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: -0.03em;
+    line-height: 1;
+}
+
+.stat-label {
+    font-size: 0.6rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+}
+
+.stat-card.accent  .stat-value { color: var(--accent); }
+.stat-card.success .stat-value { color: var(--accent2); }
+.stat-card.danger  .stat-value { color: var(--danger); }
+
+/* Status pill */
+.status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.62rem;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 20px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.status-pill.ativo {
+    background: rgba(56, 217, 169, 0.1);
+    color: var(--accent2);
+    border: 1px solid rgba(56, 217, 169, 0.2);
+}
+
+.status-pill.revogado {
+    background: rgba(240, 82, 82, 0.1);
+    color: var(--danger);
+    border: 1px solid rgba(240, 82, 82, 0.2);
+}
+
+/* Credential chips in table cells */
+.cred-chip {
+    font-family: var(--mono);
+    font-size: 0.62rem;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 2px 6px;
+    color: var(--text-soft);
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+    white-space: nowrap;
+    display: inline-block;
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: middle;
+}
+
+.cred-chip:hover { border-color: var(--accent); color: var(--text); }
+
+/* Action buttons inside table rows */
+.row-actions { display: flex; gap: 5px; align-items: center; }
+
+.btn-row {
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    color: var(--text-muted);
+    padding: 3px 8px;
+    font-size: 0.6rem;
+    font-weight: 600;
+    font-family: var(--font);
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+
+.btn-row:hover { border-color: var(--border-hover); color: var(--text); }
+.btn-row.danger:hover  { border-color: var(--danger); color: var(--danger); background: rgba(240,82,82,0.06); }
+.btn-row.success:hover { border-color: var(--accent2); color: var(--accent2); background: rgba(56,217,169,0.06); }
+.btn-row.primary:hover { border-color: var(--accent); color: var(--accent); background: rgba(79,142,247,0.06); }
+
+/* Empty / loading states */
+.table-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 24px;
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    gap: 10px;
+    text-align: center;
+}
+
+.table-state .icon { font-size: 2rem; opacity: 0.3; }
+
+.spinner {
+    width: 20px; height: 20px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    display: inline-block;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ─── MODAL ───────────────────────────────────────── */
+.modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    z-index: 300;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    animation: fadeIn 0.15s ease;
+}
+
+.modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    width: 100%;
+    max-width: 560px;
+    max-height: 90vh;
+    overflow-y: auto;
+    animation: modalSlideIn 0.2s cubic-bezier(.4,0,.2,1);
+}
+
+@keyframes modalSlideIn {
+    from { opacity: 0; transform: translateY(12px) scale(0.98); }
+    to   { opacity: 1; transform: translateY(0)  scale(1); }
+}
+
+.modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 22px 14px;
+    border-bottom: 1px solid var(--border);
+}
+
+.modal-header h3 {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: #fff;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 5px;
+    transition: color 0.15s;
+}
+
+.modal-close:hover { color: var(--text); }
+
+.modal-body { padding: 20px 22px; }
+
+.modal-footer {
+    padding: 14px 22px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+/* Detail grid inside modal */
+.detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.detail-field-label {
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    margin-bottom: 3px;
+}
+
+.detail-field-value {
+    font-size: 0.78rem;
+    color: var(--text);
+}
+
+/* Revoke textarea */
+.modal-textarea {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 9px 11px;
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 0.78rem;
+    resize: vertical;
+    min-height: 80px;
+    outline: none;
+    transition: border-color 0.2s;
+    margin-top: 5px;
+}
+
+.modal-textarea:focus { border-color: var(--accent); }
+
+/* Inline notification */
+.inline-notify {
+    font-size: 0.7rem;
+    padding: 8px 12px;
+    border-radius: 7px;
+    margin-bottom: 10px;
+    display: none;
+}
+
+.inline-notify.success {
+    background: rgba(56,217,169,0.1);
+    border: 1px solid rgba(56,217,169,0.2);
+    color: var(--accent2);
+    display: block;
+}
+
+.inline-notify.error {
+    background: rgba(240,82,82,0.08);
+    border: 1px solid rgba(240,82,82,0.2);
+    color: var(--danger);
+    display: block;
+}
+
+/* Pagination */
+.pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 14px;
+}
+
+.page-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-soft);
+    padding: 5px 10px;
+    font-size: 0.72rem;
+    font-family: var(--font);
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.page-btn:hover       { border-color: var(--border-hover); color: var(--text); }
+.page-btn.active      { border-color: var(--accent); color: var(--accent); background: rgba(79,142,247,0.08); }
+.page-btn:disabled    { opacity: 0.35; cursor: not-allowed; }
+
+@media (max-width: 900px) {
+    .detail-grid { grid-template-columns: 1fr; }
+    .historico-toolbar { flex-direction: column; align-items: stretch; }
+    .historico-toolbar .search-wrap { max-width: 100%; }
+}
