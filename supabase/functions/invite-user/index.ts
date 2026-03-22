@@ -84,12 +84,25 @@ Deno.serve(async (req: Request) => {
                     name, 
                     role: 'operador',
                     invited_at: new Date().toISOString()
-                },
-                email_confirm: true // Marcar email como confirmado
+                }
             });
 
-            if (error) return errorResponse(error.message);
-            
+            if (error) {
+                console.error('Erro ao criar usuário:', error);
+                return errorResponse(error.message);
+            }
+
+            // Confirmar o email do usuário
+            const { error: confirmError } = await adminClient.auth.admin.updateUserById(data.user.id, {
+                email_confirm: true
+            });
+
+            if (confirmError) {
+                console.error('Erro ao confirmar email:', confirmError);
+                return errorResponse('Usuário criado mas erro ao confirmar email: ' + confirmError.message);
+            }
+
+            console.log('Usuário criado e email confirmado com sucesso:', data.user.id);
             return okResponse({ 
                 user: data.user,
                 message: 'Usuário criado com sucesso.'
