@@ -15,6 +15,7 @@
 
 // ─── STATE ───────────────────────────────────────────
 let _currentUser = null;
+const LOGIN_MIN_PASSWORD_LENGTH = 8;
 
 /** Returns the currently authenticated user object, or null. */
 function getCurrentUser() { return _currentUser; }
@@ -31,29 +32,53 @@ function isAdmin() {
  * Checks for an existing session; shows login screen if none.
  */
 async function initAuth() {
-    // Show the login screen immediately (hidden via CSS when app loads)
     showLoginScreen();
 
-    // Check for existing session (e.g. user refreshed the page)
-    const { data: { session } } = await _supabase.auth.getSession();
+    try {
+        const { data: { session }, error } = await _supabase.auth.getSession();
 
-    if (session?.user) {
-        await onSignedIn(session.user);
+        if (error) {
+            console.warn('Supabase getSession error:', error);
+            showLoginError('Não foi possível verificar sessão. Atualize a página e tente novamente.');
+            return;
+        }
+
+        if (session?.user) {
+            await onSignedIn(session.user);
+        }
+    } catch (err) {
+        console.error('Erro ao obter sessão:', err);
+        showLoginError('Erro de conexão. Verifique sua internet e tente novamente.');
     }
 
-    // Listen for auth state changes (sign in / sign out)
-    _supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription }, error: subError } = _supabase.auth.onAuthStateChange(async (event, session) => {
         console.log('Auth state change:', event, session?.user?.id, session?.user?.user_metadata);
-        
+
         if (session?.user) {
             await onSignedIn(session.user);
         } else {
             onSignedOut();
         }
     });
+
+    if (subError) {
+        console.warn('Supabase onAuthStateChange error:', subError);
+    }
+
+    // keep a reference so the listener can be unsubscribed if needed
+    initAuth.subscription = subscription;
 }
 
 // ─── SIGN IN ──────────────────────────────────────────
+
+function setLoginFieldsEnabled(enabled) {
+    const loginElements = [
+        document.getElementById('login-email'),
+        document.getElementById('login-password'),
+        document.getElementById('login-submit'),
+    ];
+    loginElements.forEach(el => { if (el) el.disabled = !enabled; });
+}
 
 async function handleLogin(e) {
     e?.preventDefault();
@@ -63,7 +88,7 @@ async function handleLogin(e) {
     const errEl   = document.getElementById('login-error');
     const btn     = document.getElementById('login-submit');
 
-    const email    = emailEl?.value.trim() ?? '';
+    const email = emailEl?.value.trim().toLowerCase() ?? '';
     const password = passEl?.value ?? '';
 
     errEl?.classList.remove('visible');
@@ -73,30 +98,63 @@ async function handleLogin(e) {
         return;
     }
 
-    // Loading state
-    btn.disabled = true;
+    if (password.length < LOGIN_MIN_PASSWORD_LENGTH) {
+        showLoginError(`A senha deve ter pelo menos ${LOGIN_MIN_PASSWORD_LENGTH} caracteres.`);
+        return;
+    }
+
+    setLoginFieldsEnabled(false);
     btn.innerHTML = '<span class="spinner" style="width:14px;height:14px;border-width:2px"></span> Entrando...';
 
-    const { error } = await _supabase.auth.signInWithPassword({ email, password });
+    try {
+        const { data, error } = await _supabase.auth.signInWithPassword({ email, password });
 
-    btn.disabled = false;
-    btn.innerHTML = '→ Entrar';
+        if (error) {
+            const lowerMsg = (error.message || '').toLowerCase();
+            if (lowerMsg.includes('invalid login') || lowerMsg.includes('invalid email') || lowerMsg.includes('invalid password') || lowerMsg.includes('unauthorized')) {
+                showLoginError('E-mail ou senha incorretos.');
+            } else if (lowerMsg.includes('invalid input value') || lowerMsg.includes('invalid credentials')) {
+                showLoginError('E-mail ou senha incorretos. Verifique e tente novamente.');
+            } else if (lowerMsg.includes('email not confirmed') || lowerMsg.includes('unverified')) {
+                showLoginError('E-mail não verificado. Confira seu e-mail para confirmação.');
+            } else if (lowerMsg.includes('user is disabled') || lowerMsg.includes('account is blocked') || lowerMsg.includes('user is blocked') || lowerMsg.includes('banned')) {
+                showLoginError('Conta inativa ou bloqueada. Contate o administrador.');
+            } else if (lowerMsg.includes('password should be at least')) {
+                showLoginError(`A senha deve ter pelo menos ${LOGIN_MIN_PASSWORD_LENGTH} caracteres.`);
+            } else {
+                showLoginError('Erro ao efetuar login. Verifique credenciais e tente novamente.');
+            }
+            console.warn('SignIn error:', error);
+            return;
+        }
 
-    if (error) {
-        showLoginError(
-            error.message.includes('Invalid login')
-                ? 'E-mail ou senha incorretos.'
-                : error.message
-        );
+        if (data?.user) {
+            await onSignedIn(data.user);
+            return;
+        }
+
+        showLoginError('Login efetuado, mas não foi possível obter dados do usuário. Recarregue a página.');
+    } catch (err) {
+        console.error('Erro no signInWithPassword:', err);
+        showLoginError('Erro de conexão ao tentar fazer login. Tente novamente.');
+    } finally {
+        setLoginFieldsEnabled(true);
+        if (btn) btn.innerHTML = '→ Entrar';
     }
-    // Success is handled by onAuthStateChange → onSignedIn
 }
 
 // ─── SIGN OUT ─────────────────────────────────────────
 
 async function handleLogout() {
-    await _supabase.auth.signOut();
-    // onAuthStateChange will call onSignedOut()
+    try {
+        const { error } = await _supabase.auth.signOut();
+        if (error) {
+            console.warn('Erro no signOut:', error);
+        }
+    } catch (err) {
+        console.error('Falha ao efetuar logout:', err);
+    }
+    onSignedOut();
 }
 
 // ─── SESSION HANDLERS ─────────────────────────────────
