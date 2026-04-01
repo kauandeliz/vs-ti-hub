@@ -77,3 +77,32 @@ function globalSearch(q) {
         r.classList.toggle('hidden', !r.innerText.toLowerCase().includes(term));
     });
 }
+
+// ─── MONITOR DE INATIVIDADE (30 MINUTOS) ─────────────
+
+let inactivityTimer;
+
+/**
+ * Reinicia o temporizador de inatividade. 
+ * Se o usuário ficar 30 minutos sem interagir, a sessão é derrubada.
+ */
+function resetInactivityTimer() {
+    clearTimeout(inactivityTimer);
+    inactivityTimer = setTimeout(() => {
+        console.warn('Sessão encerrada por inatividade (30 min).');
+        // Tenta chamar a função logout() definida no js/auth.js
+        if (typeof logout === 'function') {
+            logout();
+        } else {
+            window.location.reload();
+        }
+    }, 30 * 60 * 1000); // 30 minutos em milissegundos
+}
+
+// Monitora eventos de interação para resetar o timer
+['mousedown', 'keydown', 'scroll', 'touchstart'].forEach(event => {
+    document.addEventListener(event, resetInactivityTimer, true);
+});
+
+// Inicia a contagem assim que o script é carregado
+resetInactivityTimer();
