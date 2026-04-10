@@ -17,14 +17,19 @@ vs-ti-hub/
 │   ├── layout.css          # Sidebar, navigation, topbar, main, badges, responsive
 │   ├── components.css      # Cards, tables, label cards, section labels, page transitions
 │   ├── gerador.css         # Generator page: form, checkboxes, buttons, results panel
-│   └── historico.css       # Histórico page: toolbar, stats, table, modals, pagination
+│   ├── historico.css       # Histórico page: toolbar, stats, table, modals, pagination
+│   └── cadastros.css       # CRUD admin page layout (setores, cargos, filiais)
 │
 ├── js/
-│   ├── nav.js              # Page navigation, mobile sidebar toggle, global search
-│   ├── supabase.js         # Supabase client + all DB operations (CRUD)
-│   ├── gerador-data.js     # Data constants (sectors, roles, locations) + credential logic
-│   ├── gerador-ui.js       # Form events, results rendering, clipboard, CSV export
-│   ├── etiquetas.js        # Label card data + DOM rendering + clipboard
+│   ├── nav.js              # SPA navigation, page lifecycle hooks, global search
+│   ├── supabase.js         # App data layer: Supabase client + DB/Admin APIs + error handling
+│   ├── auth.js             # Session guard, login/logout, user widget
+│   ├── gerador-data.js     # Catálogo dinâmico (setor/cargo/localidade) + credential logic
+│   ├── gerador-ui.js       # Form validation, generation flow, persistence, CSV export
+│   ├── usuarios.js         # Admin user management (invite, activate, deactivate, password)
+│   ├── unidades.js         # Unidades/filiais page (dados dinâmicos do catálogo)
+│   ├── etiquetas.js        # Etiquetas dinâmicas com base em filiais
+│   ├── cadastros.js        # CRUD admin de setores, cargos e filiais
 │   └── historico.js        # Histórico page: list, search, revoke, detail modal, pagination
 │
 └── supabase/
@@ -41,10 +46,10 @@ vs-ti-hub/
 | `gerador`        | IT onboarding credential generator  |
 | `helpdesk`       | Helpdesk system links               |
 | `corporativo`    | Core corporate systems              |
-| `infraestrutura` | Infrastructure tools                |
 | `telecom`        | Telecom operator portals            |
 | `unidades`       | Branches / units table              |
 | `etiquetas`      | Shipping label copy-paste cards     |
+| `cadastros`      | Admin CRUD for dynamic catalog      |
 
 Navigation is client-side SPA-style (show/hide `.page` elements). No build step required — open `index.html` directly.
 
@@ -79,13 +84,24 @@ npx serve .
    ```
 
 3. **Configure as credenciais** em `js/supabase.js`:
-   ```js
-   const SUPABASE_URL  = 'https://seu-projeto.supabase.co'; // Project Settings → API → Project URL
-   const SUPABASE_ANON = 'sua-anon-key';                   // Project Settings → API → anon public
-   ```
+   - Ajuste o bloco `DEFAULT_CONFIG` com `supabaseUrl` e `supabaseAnonKey`
+   - Opcionalmente, sobrescreva com `window.VSTI_CONFIG` antes de carregar os scripts
 
-4. **Deploy no Netlify**: arraste a pasta `vs-ti-hub/` para o painel do Netlify ou conecte ao repositório Git.  
+4. **Deploy no Cloudflare Pages**: publique via GitHub (Cloudflare Pages) ou use upload de site estático.  
    Não há variáveis de ambiente server-side — as chaves ficam no JS do cliente (a `anon key` do Supabase é segura para exposição; as RLS policies controlam o acesso).
+
+## Cloudflare Pages (produção)
+
+Configuração recomendada no Cloudflare Pages:
+- **Production branch**: `main`
+- **Framework preset**: `None`
+- **Build command**: *(vazio)*
+- **Build output directory**: `.`
+
+Depois do primeiro deploy, atualize no Supabase:
+- `Authentication → URL Configuration → Site URL`: `https://SEU-PROJETO.pages.dev`
+- `Authentication → URL Configuration → Redirect URLs`: `https://SEU-PROJETO.pages.dev/**`
+- Se usar domínio próprio no Cloudflare, adicione também o domínio em `Site URL`/`Redirect URLs`
 
 ### Segurança em produção
 
@@ -100,7 +116,7 @@ Para ambientes com dados sensíveis, adicione autenticação antes de ir a produ
 
 1. Add a nav button in `index.html` inside `<aside class="sidebar">`:
    ```html
-   <button class="nav-item" onclick="navTo('minha-pagina', this)">
+   <button class="nav-item" data-nav="minha-pagina">
        <span class="nav-icon">🆕</span> Minha Página
    </button>
    ```
@@ -140,22 +156,14 @@ For internal tools (green left border), add the `internal` class to `.tool-card`
 
 ---
 
-## Extending Gerador Data
+## Catálogo Dinâmico (CRUD)
 
-All data lives in `js/gerador-data.js`. To add a new sector, role, or location:
+Os dados de setor/cargo/localidade/filiais não ficam mais hardcoded no JS.
 
-```js
-// New sector
-SETOR_MAP['ABC'] = 'Novo Setor';
-
-// Roles for that sector
-CARGOS_POR_SETOR['Novo Setor'] = ['Cargo A', 'Cargo B'];
-
-// New city/state
-LOCALIDADE_DATA['MT'] = {
-    'Cuiabá': ['Centro', 'Jardim das Américas']
-};
-```
+Para manter esses campos:
+1. Acesse a página **Cadastros** (somente admin)
+2. Faça CRUD de **Setores**, **Cargos** e **Filiais**
+3. O Gerador, Histórico (UF), Unidades e Etiquetas serão atualizados com essa base
 
 ---
 
@@ -163,5 +171,5 @@ LOCALIDADE_DATA['MT'] = {
 
 - No frameworks, no build tools — pure HTML, CSS, and vanilla JS.
 - All navigation is handled by `navTo()` in `js/nav.js`.
-- Credential generation logic is isolated in `gerarDados()` in `js/gerador-data.js` for easy unit testing.
+- Credential generation logic remains isolated in `gerarDados()` in `js/gerador-data.js`.
 - Clipboard operations use the async `navigator.clipboard` API (requires HTTPS or localhost in production).

@@ -1,174 +1,353 @@
 /**
  * supabase/functions/invite-user/index.ts
  *
- * Supabase Edge Function — runs server-side with the Service Role key.
- * Handles three actions:
- *   - list:       return all users (admin only)
- *   - invite:     create user and send invite e-mail (admin only)
- *   - deactivate: ban a user so they cannot log in (admin only)
- *
- * DEPLOY:
- *   1. Install Supabase CLI:  npm install -g supabase
- *   2. Login:                 supabase login
- *   3. Link project:          supabase link --project-ref SEU-PROJECT-REF
- *   4. Deploy function:       supabase functions deploy invite-user --no-verify-jwt
- *
- * The --no-verify-jwt flag is NOT used here — we verify the JWT manually
- * to ensure only authenticated admins can call this function.
+ * Administração de usuários (somente admin):
+ * - list
+ * - invite
+ * - deactivate
+ * - reactivate
+ * - change-password
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const corsHeaders = {
-    'Access-Control-Allow-Origin':  '*',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+type Body = Record<string, unknown>;
+type UserType = 'adm' | 'comum';
+
+const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') || '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
+function getCorsHeaders(req: Request) {
+    const requestOrigin = req.headers.get('origin') || '';
+    const allowOrigin = ALLOWED_ORIGINS.length === 0
+        ? '*'
+        : (ALLOWED_ORIGINS.includes(requestOrigin) ? requestOrigin : ALLOWED_ORIGINS[0]);
+
+    return {
+        'Access-Control-Allow-Origin': allowOrigin,
+        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        Vary: 'Origin',
+    };
+}
+
+function jsonResponse(req: Request, status: number, payload: Record<string, unknown>) {
+    return new Response(JSON.stringify(payload), {
+        status,
+        headers: {
+            ...getCorsHeaders(req),
+            'Content-Type': 'application/json',
+        },
+    });
+}
+
+function sanitizeText(value: unknown) {
+    return String(value || '').trim();
+}
+
+function normalizeEmail(value: unknown) {
+    return sanitizeText(value).toLowerCase();
+}
+
+function normalizeUserType(value: unknown): UserType | null {
+    const raw = sanitizeText(value).toLowerCase();
+
+    if (!raw) return null;
+    if (['adm', 'admin', 'administrador'].includes(raw)) return 'adm';
+    if (['comum', 'operador', 'usuario', 'usuário', 'user'].includes(raw)) return 'comum';
+
+    return null;
+}
+
+function userTypeToRole(type: UserType) {
+    return type === 'adm' ? 'admin' : 'operador';
+}
+
+function inferTypeFromMetadata(metadata: Record<string, unknown> | undefined): UserType {
+    const typeFromMetadata = normalizeUserType(metadata?.type);
+    if (typeFromMetadata) return typeFromMetadata;
+
+    const role = sanitizeText(metadata?.role).toLowerCase();
+    if (role === 'admin') return 'adm';
+
+    return 'comum';
+}
+
+function isValidEmail(value: string) {
+    return /^\S+@\S+\.\S+$/.test(value);
+}
+
+function parseJsonBody(raw: unknown): Body {
+    if (!raw || typeof raw !== 'object') return {};
+    return raw as Body;
+}
+
+function parseInvitePayload(body: Body) {
+    const name = sanitizeText(body.name);
+    const email = normalizeEmail(body.email);
+    const password = sanitizeText(body.password);
+    const type = normalizeUserType(body.type);
+    const setor = sanitizeText(body.setor);
+    const cargo = sanitizeText(body.cargo);
+
+    if (!name || name.split(/\s+/).length < 2) {
+        return { data: null, error: 'Informe nome e sobrenome.' };
+    }
+
+    if (!isValidEmail(email)) {
+        return { data: null, error: 'E-mail inválido.' };
+    }
+
+    if (password.length < 8) {
+        return { data: null, error: 'A senha deve ter no mínimo 8 caracteres.' };
+    }
+
+    if (!type) {
+        return { data: null, error: 'Tipo inválido. Use adm ou comum.' };
+    }
+
+    if (!setor) {
+        return { data: null, error: 'Setor é obrigatório.' };
+    }
+
+    if (!cargo) {
+        return { data: null, error: 'Cargo é obrigatório.' };
+    }
+
+    return {
+        data: {
+            name,
+            email,
+            password,
+            type,
+            setor,
+            cargo,
+        },
+        error: null,
+    };
+}
+
+async function handleListUsers(req: Request, adminClient: ReturnType<typeof createClient>, body: Body) {
+    const page = Number(body.page) > 0 ? Number(body.page) : 1;
+    const perPageRaw = Number(body.perPage);
+    const perPage = Number.isFinite(perPageRaw) && perPageRaw > 0
+        ? Math.min(perPageRaw, 500)
+        : 200;
+
+    const { data, error } = await adminClient.auth.admin.listUsers({ page, perPage });
+    if (error) {
+        return jsonResponse(req, 400, { error: error.message });
+    }
+
+    const users = (data?.users || []).map((user) => {
+        const metadata = (user.user_metadata || {}) as Record<string, unknown>;
+        return {
+            id: user.id,
+            email: user.email,
+            user_metadata: {
+                ...metadata,
+                type: inferTypeFromMetadata(metadata),
+            },
+            confirmed_at: user.confirmed_at,
+            banned_until: user.banned_until,
+            created_at: user.created_at,
+            last_sign_in_at: user.last_sign_in_at,
+        };
+    });
+
+    return jsonResponse(req, 200, { users });
+}
+
+async function handleInviteUser(
+    req: Request,
+    adminClient: ReturnType<typeof createClient>,
+    body: Body,
+    callerId: string,
+) {
+    const { data, error: payloadError } = parseInvitePayload(body);
+    if (payloadError || !data) {
+        return jsonResponse(req, 400, { error: payloadError || 'Payload inválido.' });
+    }
+
+    const role = userTypeToRole(data.type);
+
+    const { data: created, error } = await adminClient.auth.admin.createUser({
+        email: data.email,
+        password: data.password,
+        email_confirm: true,
+        user_metadata: {
+            name: data.name,
+            role,
+            type: data.type,
+            setor: data.setor,
+            cargo: data.cargo,
+            invited_by: callerId,
+            invited_at: new Date().toISOString(),
+        },
+    });
+
+    if (error) {
+        const normalized = error.message.toLowerCase();
+        if (normalized.includes('already been registered') || normalized.includes('already exists')) {
+            return jsonResponse(req, 409, { error: 'Este e-mail já está cadastrado.' });
+        }
+        return jsonResponse(req, 400, { error: error.message });
+    }
+
+    return jsonResponse(req, 200, {
+        user: {
+            id: created.user?.id,
+            email: created.user?.email,
+            user_metadata: created.user?.user_metadata,
+        },
+    });
+}
+
+async function handleDeactivateUser(
+    req: Request,
+    adminClient: ReturnType<typeof createClient>,
+    body: Body,
+    callerId: string,
+) {
+    const userId = sanitizeText(body.userId);
+    if (!userId) {
+        return jsonResponse(req, 400, { error: 'userId é obrigatório.' });
+    }
+
+    if (userId === callerId) {
+        return jsonResponse(req, 400, { error: 'Você não pode desativar seu próprio usuário.' });
+    }
+
+    const { error } = await adminClient.auth.admin.updateUserById(userId, {
+        ban_duration: '876000h',
+    });
+
+    if (error) {
+        return jsonResponse(req, 400, { error: error.message });
+    }
+
+    return jsonResponse(req, 200, { success: true });
+}
+
+async function handleReactivateUser(req: Request, adminClient: ReturnType<typeof createClient>, body: Body) {
+    const userId = sanitizeText(body.userId);
+    if (!userId) {
+        return jsonResponse(req, 400, { error: 'userId é obrigatório.' });
+    }
+
+    const { error } = await adminClient.auth.admin.updateUserById(userId, {
+        ban_duration: 'none',
+    });
+
+    if (error) {
+        return jsonResponse(req, 400, { error: error.message });
+    }
+
+    return jsonResponse(req, 200, { success: true });
+}
+
+async function handleChangePassword(req: Request, adminClient: ReturnType<typeof createClient>, body: Body) {
+    const targetUserId = sanitizeText(body.targetUserId);
+    const newPassword = sanitizeText(body.newPassword);
+
+    if (!targetUserId || !newPassword) {
+        return jsonResponse(req, 400, { error: 'targetUserId e newPassword são obrigatórios.' });
+    }
+
+    if (newPassword.length < 8) {
+        return jsonResponse(req, 400, { error: 'A senha deve ter no mínimo 8 caracteres.' });
+    }
+
+    const { error } = await adminClient.auth.admin.updateUserById(targetUserId, {
+        password: newPassword,
+    });
+
+    if (error) {
+        return jsonResponse(req, 400, { error: error.message });
+    }
+
+    return jsonResponse(req, 200, { success: true });
+}
 
 Deno.serve(async (req: Request) => {
-    // Handle CORS preflight
     if (req.method === 'OPTIONS') {
-        return new Response('ok', { headers: corsHeaders });
+        return new Response('ok', { headers: getCorsHeaders(req) });
+    }
+
+    if (req.method !== 'POST') {
+        return jsonResponse(req, 405, { error: 'Método não permitido.' });
+    }
+
+    const authHeader = req.headers.get('authorization');
+    if (!authHeader) {
+        return jsonResponse(req, 401, { error: 'Não autorizado.' });
     }
 
     try {
-        // ── Verify caller is authenticated ──────────────────
-        const authHeader = req.headers.get('Authorization');
-        if (!authHeader) {
-            return errorResponse('Não autorizado.', 401);
-        }
-
-        // Admin client (service role) — used for privileged operations
         const adminClient = createClient(
             Deno.env.get('SUPABASE_URL')!,
             Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-            { auth: { autoRefreshToken: false, persistSession: false } }
+            {
+                auth: {
+                    autoRefreshToken: false,
+                    persistSession: false,
+                },
+            },
         );
 
-        // User client — used to verify the caller's JWT
         const userClient = createClient(
             Deno.env.get('SUPABASE_URL')!,
             Deno.env.get('SUPABASE_ANON_KEY')!,
-            { global: { headers: { Authorization: authHeader } } }
+            {
+                global: {
+                    headers: { Authorization: authHeader },
+                },
+            },
         );
 
-        const { data: { user }, error: userError } = await userClient.auth.getUser();
-        if (userError || !user) {
-            return errorResponse('Sessão inválida.', 401);
+        const { data: authData, error: authError } = await userClient.auth.getUser();
+        if (authError || !authData.user) {
+            return jsonResponse(req, 401, { error: 'Sessão inválida.' });
         }
 
-        // ── Verify caller is admin ───────────────────────────
-        if (user.user_metadata?.role !== 'admin') {
-            return errorResponse('Acesso restrito a administradores.', 403);
+        const caller = authData.user;
+        const isCallerAdmin = caller.user_metadata?.role === 'admin';
+        if (!isCallerAdmin) {
+            return jsonResponse(req, 403, { error: 'Acesso restrito a administradores.' });
         }
 
-        // ── Route by action ─────────────────────────────────
-        const body = await req.json();
-        const { action } = body;
+        const body = parseJsonBody(await req.json());
+        const action = sanitizeText(body.action);
+
+        if (!action) {
+            return jsonResponse(req, 400, { error: 'Ação não informada.' });
+        }
 
         if (action === 'list') {
-            const { data, error } = await adminClient.auth.admin.listUsers();
-            if (error) return errorResponse(error.message);
-            return okResponse({ users: data.users });
+            return handleListUsers(req, adminClient, body);
         }
 
         if (action === 'invite') {
-            const { name, email, password } = body;
-            if (!name || !email || !password) return errorResponse('Nome, e-mail e senha são obrigatórios.');
-            if (password.length < 8) return errorResponse('A senha deve ter no mínimo 8 caracteres.');
-
-            // Criar usuário diretamente com a senha fornecida
-            const { data, error } = await adminClient.auth.admin.createUser({
-                email: email,
-                password: password,
-                user_metadata: { 
-                    name, 
-                    role: 'operador',
-                    invited_at: new Date().toISOString()
-                }
-            });
-
-            if (error) {
-                console.error('Erro ao criar usuário:', error);
-                return errorResponse(error.message);
-            }
-
-            // Confirmar o email do usuário
-            const { error: confirmError } = await adminClient.auth.admin.updateUserById(data.user.id, {
-                email_confirm: true
-            });
-
-            if (confirmError) {
-                console.error('Erro ao confirmar email:', confirmError);
-                return errorResponse('Usuário criado mas erro ao confirmar email: ' + confirmError.message);
-            }
-
-            console.log('Usuário criado e email confirmado com sucesso:', data.user.id);
-            return okResponse({ 
-                user: data.user,
-                message: 'Usuário criado com sucesso.'
-            });
+            return handleInviteUser(req, adminClient, body, caller.id);
         }
 
         if (action === 'deactivate') {
-            const { userId } = body;
-            if (!userId) return errorResponse('userId é obrigatório.');
-
-            // Ban user for 100 years (effectively deactivating)
-            const { error } = await adminClient.auth.admin.updateUserById(userId, {
-                ban_duration: '876000h',
-            });
-
-            if (error) return errorResponse(error.message);
-            return okResponse({ success: true });
+            return handleDeactivateUser(req, adminClient, body, caller.id);
         }
 
         if (action === 'reactivate') {
-            const { userId } = body;
-            if (!userId) return errorResponse('userId é obrigatório.');
-
-            const { error } = await adminClient.auth.admin.updateUserById(userId, {
-                ban_duration: 'none',
-            });
-
-            if (error) return errorResponse(error.message);
-            return okResponse({ success: true });
+            return handleReactivateUser(req, adminClient, body);
         }
 
-        /**
-         * change-password (admin altering another user's password)
-         * The admin supplies targetUserId + newPassword.
-         * Validation: min 8 chars, enforced server-side.
-         */
         if (action === 'change-password') {
-            const { targetUserId, newPassword } = body;
-            if (!targetUserId || !newPassword) return errorResponse('targetUserId e newPassword são obrigatórios.');
-            if (newPassword.length < 8) return errorResponse('A senha deve ter no mínimo 8 caracteres.');
-
-            const { error } = await adminClient.auth.admin.updateUserById(targetUserId, {
-                password: newPassword,
-            });
-
-            if (error) return errorResponse(error.message);
-            return okResponse({ success: true });
+            return handleChangePassword(req, adminClient, body);
         }
 
-        return errorResponse('Ação desconhecida.');
-
-    } catch (err) {
-        return errorResponse(err instanceof Error ? err.message : 'Erro interno.');
+        return jsonResponse(req, 400, { error: 'Ação desconhecida.' });
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Erro interno.';
+        return jsonResponse(req, 500, { error: message });
     }
 });
-
-function okResponse(data: object) {
-    return new Response(JSON.stringify(data), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
-    });
-}
-
-function errorResponse(message: string, status = 400) {
-    return new Response(JSON.stringify({ error: message }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status,
-    });
-}

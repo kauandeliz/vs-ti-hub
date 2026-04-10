@@ -1,315 +1,396 @@
 /**
  * auth.js
- * Authentication layer for VS TI Hub.
  *
- * Responsibilities:
- *  - Show login screen before the app loads
- *  - Handle sign-in / sign-out
- *  - Maintain session state and expose the current user
- *  - Inject user widget into the sidebar
- *  - Guard: hide the app until a valid session exists
- *  - Handle invite flow: show set-password screen for new users
- *
- * Depends on: supabase.js (must load first)
+ * Camada de autenticação do frontend.
+ * Responsabilidades:
+ * - Guard de sessão
+ * - Login/logout
+ * - Exposição do usuário atual para os demais módulos
+ * - Renderização do widget do usuário na sidebar
  */
 
-// ─── STATE ───────────────────────────────────────────
-let _currentUser = null;
-const LOGIN_MIN_PASSWORD_LENGTH = 8;
+(function bootstrapAuthLayer() {
+    'use strict';
 
-/** Returns the currently authenticated user object, or null. */
-function getCurrentUser() { return _currentUser; }
+    const MIN_PASSWORD_LENGTH = 8;
+    let currentUser = null;
+    let authSubscription = null;
 
-/** Returns true if the logged-in user is an admin. */
-function isAdmin() {
-    return _currentUser?.user_metadata?.role === 'admin';
-}
-
-// ─── BOOTSTRAP ───────────────────────────────────────
-
-/**
- * Called once on DOMContentLoaded.
- * Checks for an existing session; shows login screen if none.
- */
-async function initAuth() {
-    showLoginScreen();
-
-    try {
-        const { data: { session }, error } = await _supabase.auth.getSession();
-
-        if (error) {
-            console.warn('Supabase getSession error:', error);
-            showLoginError('Não foi possível verificar sessão. Atualize a página e tente novamente.');
-            return;
-        }
-
-        if (session?.user) {
-            await onSignedIn(session.user);
-        }
-    } catch (err) {
-        console.error('Erro ao obter sessão:', err);
-        showLoginError('Erro de conexão. Verifique sua internet e tente novamente.');
+    function getCurrentUser() {
+        return currentUser;
     }
 
-    const { data: { subscription }, error: subError } = _supabase.auth.onAuthStateChange(async (event, session) => {
-        console.log('Auth state change:', event, session?.user?.id, session?.user?.user_metadata);
-
-        if (session?.user) {
-            await onSignedIn(session.user);
-        } else {
-            onSignedOut();
-        }
-    });
-
-    if (subError) {
-        console.warn('Supabase onAuthStateChange error:', subError);
+    function isAdmin() {
+        return currentUser?.user_metadata?.role === 'admin';
     }
 
-    // keep a reference so the listener can be unsubscribed if needed
-    initAuth.subscription = subscription;
-}
-
-// ─── SIGN IN ──────────────────────────────────────────
-
-function setLoginFieldsEnabled(enabled) {
-    const loginElements = [
-        document.getElementById('login-email'),
-        document.getElementById('login-password'),
-        document.getElementById('login-submit'),
-    ];
-    loginElements.forEach(el => { if (el) el.disabled = !enabled; });
-}
-
-async function handleLogin(e) {
-    e?.preventDefault();
-
-    const emailEl = document.getElementById('login-email');
-    const passEl  = document.getElementById('login-password');
-    const errEl   = document.getElementById('login-error');
-    const btn     = document.getElementById('login-submit');
-
-    const email = emailEl?.value.trim().toLowerCase() ?? '';
-    const password = passEl?.value ?? '';
-
-    errEl?.classList.remove('visible');
-
-    if (!email || !password) {
-        showLoginError('Preencha e-mail e senha.');
-        return;
+    function dispatchAuthChanged() {
+        document.dispatchEvent(new CustomEvent('app:auth-changed', {
+            detail: {
+                user: currentUser,
+                isAdmin: isAdmin(),
+            },
+        }));
     }
 
-    if (password.length < LOGIN_MIN_PASSWORD_LENGTH) {
-        showLoginError(`A senha deve ter pelo menos ${LOGIN_MIN_PASSWORD_LENGTH} caracteres.`);
-        return;
-    }
+    async function initAuth() {
+        showLoginScreen();
 
-    setLoginFieldsEnabled(false);
-    btn.innerHTML = '<span class="spinner" style="width:14px;height:14px;border-width:2px"></span> Entrando...';
-
-    try {
-        const { data, error } = await _supabase.auth.signInWithPassword({ email, password });
-
-        if (error) {
-            const lowerMsg = (error.message || '').toLowerCase();
-            if (lowerMsg.includes('invalid login') || lowerMsg.includes('invalid email') || lowerMsg.includes('invalid password') || lowerMsg.includes('unauthorized')) {
-                showLoginError('E-mail ou senha incorretos.');
-            } else if (lowerMsg.includes('invalid input value') || lowerMsg.includes('invalid credentials')) {
-                showLoginError('E-mail ou senha incorretos. Verifique e tente novamente.');
-            } else if (lowerMsg.includes('email not confirmed') || lowerMsg.includes('unverified')) {
-                showLoginError('E-mail não verificado. Confira seu e-mail para confirmação.');
-            } else if (lowerMsg.includes('user is disabled') || lowerMsg.includes('account is blocked') || lowerMsg.includes('user is blocked') || lowerMsg.includes('banned')) {
-                showLoginError('Conta inativa ou bloqueada. Contate o administrador.');
-            } else if (lowerMsg.includes('password should be at least')) {
-                showLoginError(`A senha deve ter pelo menos ${LOGIN_MIN_PASSWORD_LENGTH} caracteres.`);
-            } else {
-                showLoginError('Erro ao efetuar login. Verifique credenciais e tente novamente.');
+        try {
+            const { data, error } = await _supabase.auth.getSession();
+            if (error) {
+                showLoginError('Não foi possível validar sua sessão. Faça login novamente.');
+            } else if (data?.session?.user) {
+                await onSignedIn(data.session.user);
             }
-            console.warn('SignIn error:', error);
+        } catch {
+            showLoginError('Falha de conexão ao validar sessão.');
+        }
+
+        const { data, error } = _supabase.auth.onAuthStateChange(async (_event, session) => {
+            if (session?.user) {
+                await onSignedIn(session.user);
+            } else {
+                onSignedOut();
+            }
+        });
+
+        if (!error) {
+            authSubscription = data?.subscription || null;
+        }
+    }
+
+    function setLoginBusy(isBusy) {
+        const fields = [
+            document.getElementById('login-email'),
+            document.getElementById('login-password'),
+            document.getElementById('login-submit'),
+        ];
+
+        fields.forEach((field) => {
+            if (field) field.disabled = isBusy;
+        });
+
+        const submit = document.getElementById('login-submit');
+        if (submit) {
+            submit.innerHTML = isBusy
+                ? '<span class="spinner" style="width:14px;height:14px;border-width:2px"></span> Entrando...'
+                : 'Entrar';
+        }
+    }
+
+    function normalizeLoginError(message) {
+        const lower = String(message || '').toLowerCase();
+
+        if (lower.includes('invalid login') || lower.includes('invalid credentials') || lower.includes('invalid email') || lower.includes('invalid password')) {
+            return 'E-mail ou senha incorretos.';
+        }
+
+        if (lower.includes('email not confirmed') || lower.includes('unverified')) {
+            return 'E-mail ainda não verificado.';
+        }
+
+        if (lower.includes('user is disabled') || lower.includes('account is blocked') || lower.includes('banned')) {
+            return 'Conta inativa ou bloqueada. Contate o administrador.';
+        }
+
+        return 'Não foi possível concluir o login. Tente novamente.';
+    }
+
+    async function handleLogin(event) {
+        event?.preventDefault();
+
+        const emailInput = document.getElementById('login-email');
+        const passwordInput = document.getElementById('login-password');
+        const email = emailInput?.value?.trim().toLowerCase() || '';
+        const password = passwordInput?.value || '';
+
+        hideLoginError();
+
+        if (!email || !password) {
+            showLoginError('Preencha e-mail e senha.');
             return;
         }
 
-        if (data?.user) {
+        if (!/^\S+@\S+\.\S+$/.test(email)) {
+            showLoginError('Informe um e-mail válido.');
+            return;
+        }
+
+        if (password.length < MIN_PASSWORD_LENGTH) {
+            showLoginError(`A senha deve ter no mínimo ${MIN_PASSWORD_LENGTH} caracteres.`);
+            return;
+        }
+
+        setLoginBusy(true);
+
+        try {
+            const { data, error } = await _supabase.auth.signInWithPassword({ email, password });
+
+            if (error) {
+                showLoginError(normalizeLoginError(error.message));
+                return;
+            }
+
+            if (!data?.user) {
+                showLoginError('Sessão criada sem dados de usuário. Recarregue a página.');
+                return;
+            }
+
             await onSignedIn(data.user);
-            return;
+        } catch {
+            showLoginError('Erro de rede durante o login.');
+        } finally {
+            setLoginBusy(false);
+        }
+    }
+
+    async function handleLogout() {
+        try {
+            await _supabase.auth.signOut();
+        } catch {
+            // no-op: o fluxo abaixo garante reset local
         }
 
-        showLoginError('Login efetuado, mas não foi possível obter dados do usuário. Recarregue a página.');
-    } catch (err) {
-        console.error('Erro no signInWithPassword:', err);
-        showLoginError('Erro de conexão ao tentar fazer login. Tente novamente.');
-    } finally {
-        setLoginFieldsEnabled(true);
-        if (btn) btn.innerHTML = '→ Entrar';
+        onSignedOut();
     }
-}
 
-// ─── SIGN OUT ─────────────────────────────────────────
+    async function onSignedIn(user) {
+        currentUser = user;
+        hideLoginScreen();
+        showApp();
+        renderUserWidget(user);
+        showAdminNav(isAdmin());
+        dispatchAuthChanged();
+    }
 
-async function handleLogout() {
-    try {
-        const { error } = await _supabase.auth.signOut();
-        if (error) {
-            console.warn('Erro no signOut:', error);
+    function onSignedOut() {
+        currentUser = null;
+        hideApp();
+        clearUserWidget();
+        showAdminNav(false);
+        showLoginScreen();
+        dispatchAuthChanged();
+    }
+
+    function showLoginScreen() {
+        let screen = document.getElementById('login-screen');
+
+        if (!screen) {
+            screen = buildLoginScreen();
+            document.body.appendChild(screen);
         }
-    } catch (err) {
-        console.error('Falha ao efetuar logout:', err);
+
+        screen.style.display = 'flex';
+        hideApp();
     }
-    onSignedOut();
-}
 
-// ─── SESSION HANDLERS ─────────────────────────────────
+    function hideLoginScreen() {
+        const screen = document.getElementById('login-screen');
+        if (!screen) return;
 
-async function onSignedIn(user) {
-    _currentUser = user;
-    hideLoginScreen();
-    renderUserWidget(user);
-    showAdminNav(isAdmin());
-}
-
-function onSignedOut() {
-    _currentUser = null;
-    hideApp();
-    showLoginScreen();
-    clearUserWidget();
-    showAdminNav(false);
-}
-
-// ─── LOGIN SCREEN DOM ─────────────────────────────────
-
-function showLoginScreen() {
-    let screen = document.getElementById('login-screen');
-    if (!screen) {
-        screen = buildLoginScreen();
-        document.body.appendChild(screen);
+        screen.style.animation = 'fadeOutAuth 0.18s ease forwards';
+        setTimeout(() => {
+            screen.remove();
+        }, 180);
     }
-    screen.style.display = 'flex';
-    hideApp();
-}
 
-function hideLoginScreen() {
-    const screen = document.getElementById('login-screen');
-    if (screen) {
-        screen.style.animation = 'fadeOut 0.2s ease forwards';
-        setTimeout(() => screen.remove(), 200);
+    function getLandingGreeting() {
+        const hour = new Date().getHours();
+        if (hour >= 18) return 'Boa noite';
+        if (hour >= 12) return 'Boa tarde';
+        return 'Bom dia';
     }
-    showApp();
-}
 
-function buildLoginScreen() {
-    const div = document.createElement('div');
-    div.id = 'login-screen';
-    div.innerHTML = `
-        <div class="login-card">
-            <div class="login-logo">
-                <img src="https://yt3.googleusercontent.com/TY_CfaW7OV4aqGfiUZP56C_5GTpUcc10Rmyud2qkF9L1ojYiTADJmuQfXnUURvrKDx364quSbjU=s900-c-k-c0x00ffffff-no-rj" alt="VS">
-                <div class="login-logo-text">
-                    <strong>VS TI Hub</strong>
-                    <span>VinilSul Sistemas</span>
+    function buildLoginScreen() {
+        const root = document.createElement('div');
+        root.id = 'login-screen';
+        const greeting = getLandingGreeting();
+
+        root.innerHTML = `
+            <div class="public-landing-grid">
+                <section class="public-hero">
+                    <span class="public-hero-pill">${escapeHtml(greeting)} • Plataforma pública</span>
+                    <h1 class="public-hero-title">VS TI Hub</h1>
+                    <p class="public-hero-subtitle">
+                        Hub central para gestão de acessos, catálogo organizacional e operação diária de TI da VinilSul.
+                    </p>
+
+                    <div class="public-hero-actions">
+                        <button type="button" class="public-hero-btn primary" id="public-focus-login">Entrar na plataforma</button>
+                        <span class="public-hero-note">Acesso restrito por autenticação.</span>
+                    </div>
+
+                    <div class="public-feature-grid">
+                        <article class="public-feature-card">
+                            <strong>Onboarding completo</strong>
+                            <span>Gerador de acessos padronizado e auditável.</span>
+                        </article>
+                        <article class="public-feature-card">
+                            <strong>Controle de usuários</strong>
+                            <span>Perfis ADM e comum com setor e cargo.</span>
+                        </article>
+                        <article class="public-feature-card">
+                            <strong>Catálogo dinâmico</strong>
+                            <span>Setores, cargos e filiais mantidos por CRUD.</span>
+                        </article>
+                    </div>
+                </section>
+
+                <div class="login-card public-login-card">
+                    <div class="login-logo">
+                        <img src="https://yt3.googleusercontent.com/TY_CfaW7OV4aqGfiUZP56C_5GTpUcc10Rmyud2qkF9L1ojYiTADJmuQfXnUURvrKDx364quSbjU=s900-c-k-c0x00ffffff-no-rj" alt="VS">
+                        <div class="login-logo-text">
+                            <strong>VS TI Hub</strong>
+                            <span>VinilSul Sistemas</span>
+                        </div>
+                    </div>
+
+                    <div class="login-title">Acesso ao sistema</div>
+                    <div class="login-subtitle">Entre com sua conta corporativa</div>
+
+                    <form id="login-form" novalidate>
+                        <div class="login-field">
+                            <label for="login-email">E-mail</label>
+                            <input type="email" id="login-email" placeholder="nome@vinilsul.com.br" autocomplete="email" required>
+                        </div>
+
+                        <div class="login-field">
+                            <label for="login-password">Senha</label>
+                            <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password" required>
+                        </div>
+
+                        <button type="submit" class="login-btn" id="login-submit">Entrar</button>
+                        <div class="login-error" id="login-error"></div>
+                    </form>
                 </div>
             </div>
-            <div class="login-title">Bem-vindo de volta</div>
-            <div class="login-subtitle">Faça login para acessar o sistema</div>
-            <form id="login-form" onsubmit="handleLogin(event)">
-                <div class="login-field">
-                    <label>E-mail</label>
-                    <input type="email" id="login-email" placeholder="seu@email.com" autocomplete="email" required>
-                </div>
-                <div class="login-field">
-                    <label>Senha</label>
-                    <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password" required>
-                </div>
-                <button type="submit" class="login-btn" id="login-submit">→ Entrar</button>
-                <div class="login-error" id="login-error"></div>
-            </form>
-        </div>`;
+        `;
 
-    // Add fadeOut keyframe if not present
-    if (!document.getElementById('auth-keyframes')) {
+        root.querySelector('#login-form')?.addEventListener('submit', handleLogin);
+        root.querySelector('#public-focus-login')?.addEventListener('click', () => {
+            root.querySelector('#login-email')?.focus();
+        });
+        ensureAuthAnimation();
+
+        return root;
+    }
+
+    function ensureAuthAnimation() {
+        if (document.getElementById('auth-keyframes')) return;
+
         const style = document.createElement('style');
         style.id = 'auth-keyframes';
-        style.textContent = `@keyframes fadeOut { to { opacity: 0; transform: scale(0.97); } }`;
+        style.textContent = '@keyframes fadeOutAuth { to { opacity: 0; transform: translateY(6px) scale(0.98); } }';
         document.head.appendChild(style);
     }
 
-    return div;
-}
+    function showLoginError(message) {
+        const errorEl = document.getElementById('login-error');
+        if (!errorEl) return;
 
-function showLoginError(msg) {
-    const el = document.getElementById('login-error');
-    if (el) { el.textContent = msg; el.classList.add('visible'); }
-}
-
-// ─── APP VISIBILITY ───────────────────────────────────
-
-function showApp() {
-    document.querySelector('.sidebar')?.removeAttribute('style');
-    document.querySelector('.main')?.removeAttribute('style');
-    document.querySelector('.mobile-toggle')?.removeAttribute('style');
-}
-
-function hideApp() {
-    const hide = el => el && (el.style.display = 'none');
-    hide(document.querySelector('.sidebar'));
-    hide(document.querySelector('.main'));
-    hide(document.querySelector('.mobile-toggle'));
-}
-
-// ─── USER WIDGET ──────────────────────────────────────
-
-function renderUserWidget(user) {
-    clearUserWidget();
-
-    const name     = user.user_metadata?.name || user.email.split('@')[0];
-    const initials = name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
-    const role     = user.user_metadata?.role ?? 'operador';
-
-    const widget = document.createElement('div');
-    widget.id = 'sidebar-user-widget';
-    widget.className = 'sidebar-user';
-    widget.innerHTML = `
-        <div class="user-avatar">${initials}</div>
-        <div class="user-info">
-            <div class="user-name">${escapeHtmlAuth(name)}</div>
-            <div class="user-role">${role}</div>
-        </div>
-        <button class="logout-btn" onclick="abrirTrocaSenhaPropria()" title="Alterar senha" style="margin-right:2px">🔑</button>
-        <button class="logout-btn" onclick="handleLogout()" title="Sair">⏻</button>`;
-
-    // Insert after logo
-    const logo = document.querySelector('.sidebar-logo');
-    logo?.insertAdjacentElement('afterend', widget);
-}
-
-function clearUserWidget() {
-    document.getElementById('sidebar-user-widget')?.remove();
-}
-
-// ─── ADMIN NAV VISIBILITY ─────────────────────────────
-
-function showAdminNav(show) {
-    const item = document.getElementById('nav-usuarios');
-    if (item) item.style.display = show ? '' : 'none';
-}
-
-// ─── HELPERS ──────────────────────────────────────────
-
-/** Shortcut called from the sidebar 🔑 button — opens the change-password modal for self. */
-function abrirTrocaSenhaPropria() {
-    const user = getCurrentUser();
-    if (!user) return;
-    const name = user.user_metadata?.name || user.email.split('@')[0];
-    // abrirTrocaSenha is defined in usuarios.js
-    if (typeof abrirTrocaSenha === 'function') {
-        abrirTrocaSenha(user.id, name, true);
+        errorEl.textContent = message;
+        errorEl.classList.add('visible');
     }
-}
 
-function escapeHtmlAuth(str) {
-    return String(str ?? '')
-        .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-        .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
+    function hideLoginError() {
+        const errorEl = document.getElementById('login-error');
+        if (!errorEl) return;
 
-// ─── INIT ─────────────────────────────────────────────
+        errorEl.textContent = '';
+        errorEl.classList.remove('visible');
+    }
 
-document.addEventListener('DOMContentLoaded', initAuth);
+    function showApp() {
+        document.querySelector('.sidebar')?.removeAttribute('style');
+        document.querySelector('.main')?.removeAttribute('style');
+        document.querySelector('.mobile-toggle')?.removeAttribute('style');
+    }
+
+    function hideApp() {
+        const hide = (element) => {
+            if (element) element.style.display = 'none';
+        };
+
+        hide(document.querySelector('.sidebar'));
+        hide(document.querySelector('.main'));
+        hide(document.querySelector('.mobile-toggle'));
+    }
+
+    function renderUserWidget(user) {
+        clearUserWidget();
+
+        const displayName = user.user_metadata?.name || user.email?.split('@')[0] || 'Usuário';
+        const initials = displayName
+            .split(' ')
+            .filter(Boolean)
+            .map((word) => word[0])
+            .join('')
+            .toUpperCase()
+            .slice(0, 2);
+        const rawType = String(user.user_metadata?.type || user.user_metadata?.role || '').toLowerCase();
+        const roleLabel = ['adm', 'admin', 'administrador'].includes(rawType) ? 'ADM' : 'Usuário comum';
+        const setor = user.user_metadata?.setor ? ` • ${user.user_metadata.setor}` : '';
+
+        const widget = document.createElement('div');
+        widget.id = 'sidebar-user-widget';
+        widget.className = 'sidebar-user';
+        widget.innerHTML = `
+            <div class="user-avatar">${escapeHtml(initials)}</div>
+            <div class="user-info">
+                <div class="user-name">${escapeHtml(displayName)}</div>
+                <div class="user-role">${escapeHtml(roleLabel + setor)}</div>
+            </div>
+            <button class="logout-btn" id="sidebar-change-password" title="Alterar senha">🔑</button>
+            <button class="logout-btn" id="sidebar-logout" title="Sair">⏻</button>
+        `;
+
+        widget.querySelector('#sidebar-change-password')?.addEventListener('click', abrirTrocaSenhaPropria);
+        widget.querySelector('#sidebar-logout')?.addEventListener('click', handleLogout);
+
+        document.querySelector('.sidebar-logo')?.insertAdjacentElement('afterend', widget);
+    }
+
+    function clearUserWidget() {
+        document.getElementById('sidebar-user-widget')?.remove();
+    }
+
+    function showAdminNav(visible) {
+        ['nav-usuarios', 'nav-cadastros'].forEach((id) => {
+            const adminNav = document.getElementById(id);
+            if (adminNav) {
+                adminNav.style.display = visible ? '' : 'none';
+            }
+        });
+    }
+
+    function abrirTrocaSenhaPropria() {
+        const user = getCurrentUser();
+        if (!user) return;
+
+        const name = user.user_metadata?.name || user.email?.split('@')[0] || 'Usuário';
+        if (typeof window.abrirTrocaSenha === 'function') {
+            window.abrirTrocaSenha(user.id, name, true);
+        }
+    }
+
+    function escapeHtml(value) {
+        return String(value || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    window.getCurrentUser = getCurrentUser;
+    window.isAdmin = isAdmin;
+    window.handleLogin = handleLogin;
+    window.handleLogout = handleLogout;
+    window.abrirTrocaSenhaPropria = abrirTrocaSenhaPropria;
+
+    document.addEventListener('DOMContentLoaded', initAuth);
+    window.addEventListener('beforeunload', () => {
+        authSubscription?.unsubscribe?.();
+    });
+})();

@@ -1,0 +1,431 @@
+/**
+ * auth-advanced.js (EXEMPLO)
+ * 
+ * Integração com servidor avançado (session rotation, dupla expiração, fingerprinting)
+ * 
+ * Substitua auth.js por este arquivo para poder usar:
+ *  - Session rotation e privilege changes
+ *  - Dupla expiração (idle + absolute timeouts)
+ *  - Gerenciamento de múltiplas sessões
+ *  - Audit log
+ *  - Fingerprinting warnings
+ */
+
+let _currentUser = null;
+let _sessionInfo = null;
+const LOGIN_MIN_PASSWORD_LENGTH = 8;
+
+// ─── PUBLIC API ──────────────────────────────────────
+
+function getCurrentUser() {
+    return _currentUser;
+}
+
+function isAdmin() {
+    return _currentUser?.userMetadata?.role === 'admin';
+}
+
+function getSessionInfo() {
+    return _sessionInfo;
+}
+
+// ─── INIT ────────────────────────────────────────────
+
+/**
+ * Called once on DOMContentLoaded.
+ * 
+ * Utiliza SessionClient.initSession() que:
+ *  - Verifica sessão em Redis
+ *  - Inicia auto-refresh (a cada 10 min)
+ *  - Inicia detection de timeouts
+ *  - Registra callbacks de expiração
+ */
+async function initAuth() {
+    showLoginScreen();
+
+    try {
+        // ✅ Usar novo SessionClient avançado
+        const hasSession = await SessionClient.initSession();
+
+        if (hasSession) {
+            const user = SessionClient.getCurrentUser();
+            const info = SessionClient.getSessionInfo();
+            
+            _currentUser = user;
+            _sessionInfo = info;
+            
+            await onSignedIn(user);
+        } else {
+            onSignedOut();
+        }
+    } catch (err) {
+        console.error('Auth init error:', err);
+        showLoginError('Erro de conexão. Verifique sua internet e tente novamente.');
+    }
+
+    // 🔔 Registrar callback para timeouts
+    SessionClient.onSessionExpired(async (reason, details) => {
+        console.log('Session event:', reason, details);
+
+        if (reason === 'idle_warning') {
+            _showIdleWarning(details.remainingMs);
+        } else if (reason === 'absolute_warning') {
+            _showAbsoluteWarning(details.remainingMs);
+        } else if (reason === 'idle_approaching') {
+            console.warn('⚠️  Inactividade detectada');
+        } else if (reason === 'expired' || reason === 'refresh_failed') {
+            // Session expirou ou erro de refresh
+            await onSignedOut();
+            showLoginError('Sua sessão expirou. Por favor, faça login novamente.');
+        }
+    });
+}
+
+// ─── SIGN IN ──────────────────────────────────────────
+
+function setLoginFieldsEnabled(enabled) {
+    const loginElements = [
+        document.getElementById('login-email'),
+        document.getElementById('login-password'),
+        document.getElementById('login-submit'),
+    ];
+    loginElements.forEach(el => {
+        if (el) el.disabled = !enabled;
+    });
+}
+
+async function handleLogin(e) {
+    e?.preventDefault();
+
+    const emailEl = document.getElementById('login-email');
+    const passEl = document.getElementById('login-password');
+    const errEl = document.getElementById('login-error');
+    const btn = document.getElementById('login-submit');
+
+    const email = emailEl?.value.trim().toLowerCase() ?? '';
+    const password = passEl?.value ?? '';
+
+    errEl?.classList.remove('visible');
+
+    if (!email || !password) {
+        showLoginError('Preencha e-mail e senha.');
+        return;
+    }
+
+    if (password.length < LOGIN_MIN_PASSWORD_LENGTH) {
+        showLoginError(`Senha deve ter no mínimo ${LOGIN_MIN_PASSWORD_LENGTH} caracteres.`);
+        return;
+    }
+
+    setLoginFieldsEnabled(false);
+
+    try {
+        // ✅ Nova função login com session rotation
+        const result = await SessionClient.login(email, password);
+
+        if (result.success) {
+            _currentUser = result.user;
+            
+            // Obter info da sessão
+            const info = SessionClient.getSessionInfo();
+            _sessionInfo = info;
+            
+            // Mostrar quando a sessão expira
+            console.log(`Session expires: ${new Date(_sessionInfo.createdAt).toLocaleTimeString()}`);
+            
+            await onSignedIn(result.user);
+        } else {
+            showLoginError(result.error || 'Credenciais inválidas.');
+        }
+    } catch (err) {
+        console.error('Login error:', err);
+        showLoginError('Erro ao conectar. Tente novamente.');
+    } finally {
+        setLoginFieldsEnabled(true);
+    }
+}
+
+// ─── SIGN OUT ─────────────────────────────────────────
+
+async function handleLogout() {
+    try {
+        const success = await SessionClient.logout();
+
+        if (success) {
+            onSignedOut();
+        } else {
+            console.error('Logout falhou');
+        }
+    } catch (err) {
+        console.error('Logout error:', err);
+    }
+}
+
+/**
+ * Logout of all other devices.
+ * Mantém sessão atual mas desconecta todos os outros.
+ */
+async function logoutAllOtherDevices() {
+    try {
+        const sessions = await SessionClient.getActiveSessions();
+        let count = 0;
+
+        for (const session of sessions) {
+            if (!session.isCurrentSession) {
+                const success = await SessionClient.logoutSession(session.sessionId);
+                if (success) count++;
+            }
+        }
+
+        showSuccess(`${count} outra sessão(ões) foi(foram) desconectada(s)`);
+    } catch (err) {
+        console.error('Logout all error:', err);
+        showError('Erro ao desconectar outros dispositivos');
+    }
+}
+
+/**
+ * Rotate current session (logout da atual, precisa re-login).
+ * Usado após mudanças críticas: password reset, privilege change, etc.
+ */
+async function forceSessionRotation(reason = 'manual') {
+    try {
+        const success = await SessionClient.rotateSession(reason);
+
+        if (success) {
+            _currentUser = null;
+            _sessionInfo = null;
+            onSignedOut();
+            showLoginScreen();
+            showMessage(`Sessão foi rotacionada (${reason}) - por favor, faça login novamente`);
+        }
+    } catch (err) {
+        console.error('Rotation error:', err);
+        showError('Erro ao rotar sessão');
+    }
+}
+
+/**
+ * Visualizar audit log (para user revisar segurança).
+ */
+async function showAuditLog() {
+    try {
+        const entries = await SessionClient.getAuditLog();
+
+        console.log('📋 Audit Log:');
+        entries.forEach((entry, idx) => {
+            console.log(`  ${idx + 1}. ${entry.action} - ${entry.timestamp}`);
+            if (entry.ip) console.log(`     IP: ${entry.ip}`);
+            if (entry.oldIp) console.log(`     IP Changed: ${entry.oldIp} → ${entry.newIp}`);
+        });
+
+        // Ou mostrar em UI modal
+        _displayAuditModal(entries);
+    } catch (err) {
+        console.error('Audit log error:', err);
+        showError('Erro ao carregar audit log');
+    }
+}
+
+// ─── SIGNED IN / SIGNED OUT ──────────────────────────
+
+async function onSignedIn(user) {
+    _currentUser = user;
+    hideLoginScreen();
+    showMainApp();
+    injectUserWidget(user);
+    
+    // Iniciar background tasks
+    _initSessionMonitoring();
+}
+
+function onSignedOut() {
+    _currentUser = null;
+    _sessionInfo = null;
+    showLoginScreen();
+    hideMainApp();
+    _stopSessionMonitoring();
+}
+
+// ─── UI HELPERS ──────────────────────────────────────
+
+function showLoginScreen() {
+    const screen = document.getElementById('login-screen');
+    if (screen) screen.classList.add('visible');
+}
+
+function hideLoginScreen() {
+    const screen = document.getElementById('login-screen');
+    if (screen) screen.classList.remove('visible');
+}
+
+function showMainApp() {
+    const app = document.getElementById('app');
+    if (app) app.style.display = 'flex';
+}
+
+function hideMainApp() {
+    const app = document.getElementById('app');
+    if (app) app.style.display = 'none';
+}
+
+function showLoginError(message) {
+    const errEl = document.getElementById('login-error');
+    if (errEl) {
+        errEl.textContent = message;
+        errEl.classList.add('visible');
+    }
+}
+
+function showSuccess(message) {
+    console.log('✅', message);
+    // Adicione toast/notification UI aqui
+}
+
+function showError(message) {
+    console.error('❌', message);
+    // Adicione toast/notification UI aqui
+}
+
+function showMessage(message) {
+    console.log('ℹ️', message);
+    // Adicione toast/notification UI aqui
+}
+
+function injectUserWidget(user) {
+    const userWidget = document.getElementById('user-widget');
+    if (userWidget) {
+        const adminBadge = user.userMetadata?.role === 'admin' 
+            ? '<span class="badge badge-admin">Admin</span>' 
+            : '';
+        
+        userWidget.innerHTML = `
+            <div class="user-info">
+                <div class="user-email">${user.email}</div>
+                ${adminBadge}
+            </div>
+            <button onclick="showAuditLog()" class="btn-secondary" title="Ver atividades">
+                📋 Audit
+            </button>
+            <button onclick="logoutAllOtherDevices()" class="btn-secondary" title="Logout todos os outros dispositivos">
+                🔐 Outros
+            </button>
+            <button onclick="handleLogout()" class="btn-logout">Sair</button>
+        `;
+    }
+}
+
+// ─── IDLE & ABSOLUTE WARNINGS ────────────────────────
+
+function _showIdleWarning(remainingMs) {
+    const minRemaining = Math.round(remainingMs / 60000);
+    const message = `⏱️  Sua sessão expirará em ${minRemaining} minuto(s) de inatividade`;
+    
+    console.warn(message);
+    
+    // Mostrar toast/modal se necessário
+    if (remainingMs < 120000) { // Menos de 2 min
+        showMessage(`${message} - clique para renovar`);
+    }
+}
+
+function _showAbsoluteWarning(remainingMs) {
+    const hoursRemaining = Math.round(remainingMs / 3600000);
+    const message = `⚠️  Sua sessão expirará em ${hoursRemaining} horas (por segurança)`;
+    
+    console.warn(message);
+    showMessage(message);
+}
+
+// ─── SESSION MONITORING ──────────────────────────────
+
+let _monitoringInterval = null;
+
+/**
+ * Inicia monitoring de sessão (atualizar info, detectar expiração).
+ */
+function _initSessionMonitoring() {
+    _stopSessionMonitoring();
+
+    _monitoringInterval = setInterval(async () => {
+        if (!_currentUser) return;
+
+        try {
+            const info = SessionClient.getSessionInfo();
+            _sessionInfo = info;
+
+            // Você pode atualizar UI aqui (mostrar tempo restante, etc)
+            // updateSessionDisplay(info);
+        } catch (err) {
+            console.error('Session monitoring error:', err);
+        }
+    }, 30000); // A cada 30 segundos
+}
+
+function _stopSessionMonitoring() {
+    if (_monitoringInterval) {
+        clearInterval(_monitoringInterval);
+        _monitoringInterval = null;
+    }
+}
+
+// ─── AUDIT LOG MODAL ─────────────────────────────────
+
+function _displayAuditModal(entries) {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <h2>📋 Seu Histórico de Segurança</h2>
+            <table class="audit-table">
+                <thead>
+                    <tr>
+                        <th>Ação</th>
+                        <th>Data/Hora</th>
+                        <th>Detalhes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${entries.map(e => `
+                        <tr>
+                            <td><strong>${e.action}</strong></td>
+                            <td>${new Date(e.timestamp).toLocaleString()}</td>
+                            <td>
+                                ${e.ip ? `IP: ${e.ip}` : ''}
+                                ${e.oldIp ? `${e.oldIp} → ${e.newIp}` : ''}
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+            <button onclick="this.closest('.modal').remove()" class="btn-primary">Fechar</button>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+}
+
+// ─── DOM READY ───────────────────────────────────────
+
+document.addEventListener('DOMContentLoaded', () => {
+    const loginForm = document.getElementById('login-form');
+    if (loginForm) {
+        loginForm.addEventListener('submit', handleLogin);
+    }
+
+    initAuth();
+});
+
+// ─── EXPORTS ────────────────────────────────────────
+
+// Para uso global
+window.Auth = {
+    getCurrentUser,
+    isAdmin,
+    getSessionInfo,
+    handleLogin,
+    handleLogout,
+    logoutAllOtherDevices,
+    forceSessionRotation,
+    showAuditLog,
+};

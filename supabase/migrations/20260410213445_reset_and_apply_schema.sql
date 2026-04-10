@@ -1,8 +1,19 @@
 -- =====================================================
+-- RESET TOTAL DO SCHEMA PUBLIC (DESTRUTIVO)
+-- Esta migration remove todo o schema public e reaplica o schema.sql
+-- =====================================================
+
+DROP SCHEMA IF EXISTS public CASCADE;
+CREATE SCHEMA public;
+GRANT ALL ON SCHEMA public TO postgres;
+GRANT ALL ON SCHEMA public TO service_role;
+GRANT USAGE ON SCHEMA public TO anon;
+GRANT USAGE ON SCHEMA public TO authenticated;
+
+-- =====================================================
 -- VS TI Hub - Database Schema (Production-ready)
 -- =====================================================
 
-BEGIN;
 
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
@@ -482,4 +493,3 @@ COMMENT ON TABLE public.catalog_setores IS 'Cadastro de setores para o Gerador d
 COMMENT ON TABLE public.catalog_cargos IS 'Cadastro de cargos vinculados a setores (CRUD)';
 COMMENT ON TABLE public.filiais IS 'Cadastro de filiais/unidades e base para cidades/bairros e etiquetas';
 
-COMMIT;

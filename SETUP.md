@@ -14,8 +14,8 @@
 1. Vá em **Authentication → Email Templates**
 2. Edite o template **Invite user** com a identidade visual da VinilSul
 3. Em **Authentication → URL Configuration**, defina a **Site URL** como:
-   - Em dev:  `http://localhost:8080`
-   - Em prod: `https://seu-site.netlify.app`
+   - Em dev:  `http://localhost:3000`
+   - Em prod: `https://seu-site.pages.dev`
 
 ---
 
@@ -60,6 +60,7 @@ supabase link --project-ref SEU-PROJECT-REF
 
 ### Deploy das funções
 ```bash
+supabase secrets set ALLOWED_ORIGINS=https://seu-site.pages.dev,https://seu-dominio.com
 supabase functions deploy invite-user
 supabase functions deploy save-acesso
 ```
@@ -69,19 +70,30 @@ Após o deploy, a função estará disponível em:
 
 ---
 
-## Passo 5 — Deploy no Netlify
+## Passo 5 — Deploy no Cloudflare Pages
 
 ### Opção A: arrastar e soltar (mais simples)
-1. Acesse https://app.netlify.com
-2. Arraste a pasta `vs-ti-hub/` para a área de deploy
-3. Pronto — a URL será gerada automaticamente
+1. Acesse https://dash.cloudflare.com
+2. No menu, vá em **Pages** e crie um projeto novo
+3. Escolha **Direct Upload** e envie os arquivos do projeto
+4. Pronto — a URL será gerada automaticamente
 
 ### Opção B: via Git (recomendado para atualizações)
 1. Suba o projeto para um repositório GitHub
-2. No Netlify: **Add new site → Import an existing project**
+2. No Cloudflare Pages: **Add new project → Connect GitHub**
 3. Conecte o repositório
 4. Build settings: deixe em branco (site estático)
-5. Publish directory: `vs-ti-hub` (ou `/` se já estiver na raiz)
+5. Build output directory: `.`
+
+### Atualizar URL do Supabase após publicar no Cloudflare
+1. Copie a URL gerada no Cloudflare (ex.: `https://seu-site.pages.dev`)
+2. No Supabase, vá em **Authentication → URL Configuration**
+3. Atualize:
+   - **Site URL**: `https://seu-site.pages.dev`
+   - **Redirect URLs**: `https://seu-site.pages.dev/**`
+4. Se usar domínio próprio no Cloudflare, adicione também:
+   - `https://seu-dominio.com`
+   - `https://seu-dominio.com/**`
 
 ---
 

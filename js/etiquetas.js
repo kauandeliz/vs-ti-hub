@@ -1,107 +1,163 @@
 /**
  * etiquetas.js
- * Data definitions and rendering logic for the Etiquetas de Remessa page.
+ *
+ * Página de etiquetas com base no cadastro dinâmico de filiais.
  */
 
-const FILIAIS = [
-    {
-        cidade: 'CURITIBA (Matriz)',
-        endereco: `VS Suprimentos para Comunicação Visual Ltda
-Rua São Joaquim, nº 185
-Jardim Botânico, Curitiba-PR
-CEP: 80210-220`,
-    },
-    {
-        cidade: 'SÃO PAULO',
-        endereco: `VS Suprimentos para Comunicação Visual Ltda
-Avenida Teresa Cristina, nº 210
-Vila Monumento, São Paulo-SP
-CEP: 01553-000`,
-    },
-    {
-        cidade: 'PORTO ALEGRE',
-        endereco: `VS Suprimentos para Comunicação Visual Ltda
-Rua Padre Diogo Feijó, nº 183
-Navegantes, Porto Alegre-RS
-CEP: 90240-421`,
-    },
-    {
-        cidade: 'RIO DE JANEIRO',
-        endereco: `VS Suprimentos para Comunicação Visual Ltda
-Avenida Teixeira de Castro, nº 250
-Bonsucesso, Rio de Janeiro-RJ
-CEP: 21040-112`,
-    },
-    {
-        cidade: 'SÃO JOSÉ (SC)',
-        endereco: `VS Suprimentos para Comunicação Visual Ltda
-Rua Nossa Senhora de Guadalupe, nº 477
-Serraria, São José-SC
-CEP: 88113-130`,
-    },
-    {
-        cidade: 'BRASÍLIA',
-        endereco: `VS Suprimentos para Comunicação Visual Ltda
-ST SCIA Quadra-13 Conj-03, SN - Lote-03
-Guará, Brasília-DF
-CEP: 71250-715`,
-    },
-    {
-        cidade: 'UBERLÂNDIA',
-        endereco: `VS Suprimentos para Comunicação Visual Ltda
-Rua Padre Américo Ceppi, nº 481
-Brasil, Uberlândia-MG
-CEP: 38400-606`,
-    },
-    {
-        cidade: 'CURITIBA (CIC)',
-        endereco: `VS Suprimentos para Comunicação Visual Ltda
-Rua Cyro Correia Pereira, nº 2100 - B
-Cidade Industrial, Curitiba-PR
-CEP: 81460-050`,
-    },
-];
+(function bootstrapEtiquetas() {
+    'use strict';
 
-/**
- * Render label cards into the #labelGrid element.
- * Escapes the address for use in a data attribute, then applies it at runtime.
- */
-function renderEtiquetas() {
-    const grid = document.getElementById('labelGrid');
-    if (!grid) return;
+    const state = {
+        initialized: false,
+        filiais: [],
+    };
 
-    grid.innerHTML = FILIAIS.map(f => {
-        const enderecoHtml = f.endereco.replace(/\n/g, '<br>');
-        // Store raw (newline) text in data attribute for clipboard
-        const enderecoRaw  = f.endereco.replace(/"/g, '&quot;');
+    function initEtiquetas() {
+        if (state.initialized) return;
 
-        return `
-        <div class="label-card">
-            <button class="copy-btn" data-label-text="${enderecoRaw}">Copiar</button>
-            <div class="label-title">${f.cidade}</div>
-            <div class="label-body">PARA:<br>A/c: TI VinilSul<br>${enderecoHtml}</div>
-        </div>`;
-    }).join('');
+        document.getElementById('labelGrid')?.addEventListener('click', handleLabelCopy);
 
-    // Delegate copy events
-    grid.addEventListener('click', handleLabelCopy);
-}
+        document.addEventListener('app:catalog-updated', () => {
+            if (isEtiquetasActive()) {
+                loadEtiquetas();
+            }
+        });
 
-function handleLabelCopy(e) {
-    const btn = e.target.closest('.copy-btn');
-    if (!btn) return;
+        state.initialized = true;
+    }
 
-    const rawText = btn.dataset.labelText ?? '';
-    const fullText = 'PARA:\nA/c: TI VinilSul\n' + rawText.replace(/&quot;/g, '"');
+    function isEtiquetasActive() {
+        return document.getElementById('page-etiquetas')?.classList.contains('active');
+    }
 
-    navigator.clipboard.writeText(fullText).then(() => {
-        btn.textContent = '✓ Copiado';
-        btn.classList.add('copied');
-        setTimeout(() => {
-            btn.textContent = 'Copiar';
-            btn.classList.remove('copied');
-        }, 2000);
-    });
-}
+    async function onEtiquetasActivate() {
+        if (!getCurrentUser()) return;
+        await loadEtiquetas();
+    }
 
-document.addEventListener('DOMContentLoaded', renderEtiquetas);
+    async function loadEtiquetas() {
+        const grid = document.getElementById('labelGrid');
+        if (!grid) return;
+
+        const listFn = window.App?.api?.catalog?.listarFiliais;
+        if (typeof listFn !== 'function') {
+            renderError('API de filiais indisponível.');
+            return;
+        }
+
+        renderLoading();
+
+        const { data, error } = await listFn({ apenasAtivos: true, apenasEtiqueta: true });
+        if (error) {
+            renderError(error.message);
+            return;
+        }
+
+        state.filiais = data || [];
+        renderEtiquetas();
+    }
+
+    function renderLoading() {
+        const grid = document.getElementById('labelGrid');
+        if (!grid) return;
+
+        grid.innerHTML = `
+            <div class="table-state" style="grid-column:1/-1;min-height:180px">
+                <div class="spinner"></div>
+                <div>Carregando etiquetas...</div>
+            </div>
+        `;
+    }
+
+    function renderError(message) {
+        const grid = document.getElementById('labelGrid');
+        if (!grid) return;
+
+        grid.innerHTML = `
+            <div class="table-state" style="grid-column:1/-1;min-height:180px">
+                <div class="icon">⚠️</div>
+                <div>Erro ao carregar etiquetas.<br><small style="color:var(--danger)">${escapeHtml(message)}</small></div>
+            </div>
+        `;
+    }
+
+    function buildEtiquetaText(filial) {
+        const linhas = [
+            'VS Suprimentos para Comunicação Visual Ltda',
+            `${filial.endereco}, nº ${filial.numero}`,
+            `${filial.bairro}, ${filial.cidade}-${filial.uf}`,
+        ];
+
+        if (filial.cep) {
+            linhas.push(`CEP: ${filial.cep}`);
+        }
+
+        return linhas.join('\n');
+    }
+
+    function renderEtiquetas() {
+        const grid = document.getElementById('labelGrid');
+        if (!grid) return;
+
+        if (!state.filiais.length) {
+            grid.innerHTML = `
+                <div class="table-state" style="grid-column:1/-1;min-height:180px">
+                    <div class="icon">🏷️</div>
+                    <div>Nenhuma filial marcada para etiqueta.</div>
+                </div>
+            `;
+            return;
+        }
+
+        grid.innerHTML = state.filiais.map((filial) => {
+            const titulo = filial.nome || `${filial.cidade}-${filial.uf}`;
+            const enderecoRaw = buildEtiquetaText(filial);
+            const enderecoHtml = escapeHtml(enderecoRaw).replace(/\n/g, '<br>');
+
+            return `
+                <div class="label-card">
+                    <button class="copy-btn" data-label-text="${escapeHtmlAttribute(enderecoRaw)}">Copiar</button>
+                    <div class="label-title">${escapeHtml(titulo)}</div>
+                    <div class="label-body">PARA:<br>A/c: TI VinilSul<br>${enderecoHtml}</div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function handleLabelCopy(event) {
+        const btn = event.target.closest('.copy-btn');
+        if (!btn) return;
+
+        const rawText = btn.dataset.labelText || '';
+        const fullText = `PARA:\nA/c: TI VinilSul\n${rawText}`;
+
+        navigator.clipboard.writeText(fullText).then(() => {
+            btn.textContent = '✓ Copiado';
+            btn.classList.add('copied');
+
+            setTimeout(() => {
+                btn.textContent = 'Copiar';
+                btn.classList.remove('copied');
+            }, 2000);
+        });
+    }
+
+    function escapeHtml(value) {
+        return String(value || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    function escapeHtmlAttribute(value) {
+        return escapeHtml(value)
+            .replace(/\n/g, '&#10;');
+    }
+
+    window.onEtiquetasActivate = onEtiquetasActivate;
+    window.loadEtiquetas = loadEtiquetas;
+
+    document.addEventListener('DOMContentLoaded', initEtiquetas);
+})();

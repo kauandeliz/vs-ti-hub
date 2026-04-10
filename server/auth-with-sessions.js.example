@@ -1,0 +1,252 @@
+/**
+ * auth-with-sessions.js (EXEMPLO)
+ * 
+ * Este é um exemplo de como adaptar o auth.js original para usar
+ * o novo sistema de sessões Redis em vez de Supabase Auth.
+ * 
+ * Passos para implementar:
+ * 1. Fazer backup do auth.js original
+ * 2. Substituir as chamadas de Supabase Auth por SessionClient
+ * 3. Testar login, logout, e verificação de sessão
+ */
+
+// ─── CONFIG ──────────────────────────────────────────
+
+let _currentUser = null;
+const LOGIN_MIN_PASSWORD_LENGTH = 8;
+
+// ─── PUBLIC API ──────────────────────────────────────
+
+function getCurrentUser() {
+    return _currentUser;
+}
+
+function isAdmin() {
+    return _currentUser?.userMetadata?.role === 'admin';
+}
+
+// ─── INIT (BOOTSTRAP) ──────────────────────────────
+
+/**
+ * Called once on DOMContentLoaded.
+ * 
+ * Em vez de usar Supabase.auth.getSession(),
+ * usamos SessionClient.initSession() para verificar a sessão Redis.
+ */
+async function initAuth() {
+    showLoginScreen();
+
+    try {
+        // ✅ NOVO: Use SessionClient em vez de Supabase
+        const hasSession = await SessionClient.initSession();
+
+        if (hasSession) {
+            const user = SessionClient.getCurrentUser();
+            await onSignedIn(user);
+        } else {
+            // Sem sessão válida
+            onSignedOut();
+        }
+    } catch (err) {
+        console.error('Erro ao verificar sessão:', err);
+        showLoginError('Erro de conexão. Verifique sua internet e tente novamente.');
+    }
+
+    // ❌ REMOVIDO: Supabase auth listener não é mais necessário
+    // Ao invés disso, você pode implementar um listener de estado da sessão:
+    
+    // Reload de tempos em tempos para verificar se sessão expirou
+    setInterval(async () => {
+        const user = SessionClient.getCurrentUser();
+        if (!user) {
+            onSignedOut();
+        }
+    }, 300000); // A cada 5 minutos
+}
+
+// ─── SIGN IN ──────────────────────────────────────────
+
+function setLoginFieldsEnabled(enabled) {
+    const loginElements = [
+        document.getElementById('login-email'),
+        document.getElementById('login-password'),
+        document.getElementById('login-submit'),
+    ];
+    loginElements.forEach(el => {
+        if (el) el.disabled = !enabled;
+    });
+}
+
+/**
+ * Handle form submission de login.
+ * 
+ * Antes: chamava _supabase.auth.signInWithPassword()
+ * Agora: chama SessionClient.login()
+ */
+async function handleLogin(e) {
+    e?.preventDefault();
+
+    const emailEl = document.getElementById('login-email');
+    const passEl = document.getElementById('login-password');
+    const errEl = document.getElementById('login-error');
+
+    const email = emailEl?.value.trim().toLowerCase() ?? '';
+    const password = passEl?.value ?? '';
+
+    errEl?.classList.remove('visible');
+
+    if (!email || !password) {
+        showLoginError('Preencha e-mail e senha.');
+        return;
+    }
+
+    if (password.length < LOGIN_MIN_PASSWORD_LENGTH) {
+        showLoginError(`Senha deve ter no mínimo ${LOGIN_MIN_PASSWORD_LENGTH} caracteres.`);
+        return;
+    }
+
+    setLoginFieldsEnabled(false);
+
+    try {
+        // ✅ NOVO: Use SessionClient.login()
+        const result = await SessionClient.login(email, password);
+
+        if (result.success) {
+            // Login bem-sucedido
+            await onSignedIn(result.user);
+        } else {
+            // Falha na autenticação
+            showLoginError(result.error || 'Credenciais inválidas.');
+        }
+    } catch (err) {
+        console.error('Login error:', err);
+        showLoginError('Erro ao conectar. Tente novamente.');
+    } finally {
+        setLoginFieldsEnabled(true);
+    }
+}
+
+// ─── SIGN OUT ──────────────────────────────────────────
+
+/**
+ * Logout current user.
+ * 
+ * Antes: _supabase.auth.signOut()
+ * Agora: SessionClient.logout()
+ */
+async function handleLogout() {
+    try {
+        // ✅ NOVO: Use SessionClient.logout()
+        const success = await SessionClient.logout();
+
+        if (success) {
+            onSignedOut();
+        } else {
+            console.error('Logout falhou');
+        }
+    } catch (err) {
+        console.error('Logout error:', err);
+    }
+}
+
+// ─── SIGNED IN / SIGNED OUT ───────────────────────
+
+async function onSignedIn(user) {
+    _currentUser = user;
+    hideLoginScreen();
+    showMainApp();
+    injectUserWidget(user);
+    // ... rest da lógica
+}
+
+function onSignedOut() {
+    _currentUser = null;
+    showLoginScreen();
+    hideMainApp();
+}
+
+// ─── UI HELPERS ──────────────────────────────────────
+
+function showLoginScreen() {
+    const screen = document.getElementById('login-screen');
+    if (screen) screen.classList.add('visible');
+}
+
+function hideLoginScreen() {
+    const screen = document.getElementById('login-screen');
+    if (screen) screen.classList.remove('visible');
+}
+
+function showMainApp() {
+    const app = document.getElementById('app');
+    if (app) app.style.display = 'flex';
+}
+
+function hideMainApp() {
+    const app = document.getElementById('app');
+    if (app) app.style.display = 'none';
+}
+
+function showLoginError(message) {
+    const errEl = document.getElementById('login-error');
+    if (errEl) {
+        errEl.textContent = message;
+        errEl.classList.add('visible');
+    }
+}
+
+function injectUserWidget(user) {
+    // Mostrar nome do usuário na sidebar
+    const userWidget = document.getElementById('user-widget');
+    if (userWidget) {
+        userWidget.innerHTML = `
+            <div class="user-info">
+                <div class="user-email">${user.email}</div>
+                ${user.userMetadata?.role === 'admin' ? '<span class="badge">Admin</span>' : ''}
+            </div>
+            <button onclick="handleLogout()" class="logout-btn">Logout</button>
+        `;
+    }
+}
+
+// ─── DOM READY ───────────────────────────────────────
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Adicione listener ao botão de login
+    const loginForm = document.getElementById('login-form');
+    if (loginForm) {
+        loginForm.addEventListener('submit', handleLogin);
+    }
+
+    // Inicializar autenticação
+    initAuth();
+});
+
+// ─── ALTERAÇÕES RESUMIDAS ───────────────────────────
+
+/**
+ * ANTES:
+ *   const { data: { session }, error } = await _supabase.auth.getSession();
+ * 
+ * DEPOIS:
+ *   const hasSession = await SessionClient.initSession();
+ * 
+ * ───────────────────────────────────────────────────
+ * 
+ * ANTES:
+ *   const { data, error } = await _supabase.auth.signInWithPassword({
+ *       email, password
+ *   });
+ * 
+ * DEPOIS:
+ *   const result = await SessionClient.login(email, password);
+ *   if (result.success) { ... }
+ * 
+ * ───────────────────────────────────────────────────
+ * 
+ * ANTES:
+ *   await _supabase.auth.signOut();
+ * 
+ * DEPOIS:
+ *   await SessionClient.logout();
+ */

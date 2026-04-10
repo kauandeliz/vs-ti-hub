@@ -1,98 +1,113 @@
-/**
+﻿/**
  * supabase/functions/set-password/index.ts
  *
- * Supabase Edge Function — runs server-side with the Service Role key.
- * Handles setting password for invited users while preserving existing metadata.
- *
- * DEPLOY:
- *   1. Install Supabase CLI:  npm install -g supabase
- *   2. Login:                 supabase login
- *   3. Link project:          supabase link --project-ref SEU-PROJECT-REF
- *   4. Deploy function:       supabase functions deploy set-password --no-verify-jwt
- *
- * The --no-verify-jwt flag is used here since we handle auth inside the function.
+ * Atualiza a senha do usuário autenticado preservando metadata.
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const corsHeaders = {
-    'Access-Control-Allow-Origin':  '*',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') || '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
+function getCorsHeaders(req: Request) {
+    const requestOrigin = req.headers.get('origin') || '';
+    const allowOrigin = ALLOWED_ORIGINS.length === 0
+        ? '*'
+        : (ALLOWED_ORIGINS.includes(requestOrigin) ? requestOrigin : ALLOWED_ORIGINS[0]);
+
+    return {
+        'Access-Control-Allow-Origin': allowOrigin,
+        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        Vary: 'Origin',
+    };
+}
+
+function jsonResponse(req: Request, status: number, payload: Record<string, unknown>) {
+    return new Response(JSON.stringify(payload), {
+        status,
+        headers: {
+            ...getCorsHeaders(req),
+            'Content-Type': 'application/json',
+        },
+    });
+}
+
+function sanitizeText(value: unknown) {
+    return String(value || '').trim();
+}
 
 Deno.serve(async (req: Request) => {
-    // Handle CORS preflight
     if (req.method === 'OPTIONS') {
-        return new Response('ok', { headers: corsHeaders });
+        return new Response('ok', { headers: getCorsHeaders(req) });
+    }
+
+    if (req.method !== 'POST') {
+        return jsonResponse(req, 405, { error: 'Método não permitido.' });
+    }
+
+    const authHeader = req.headers.get('authorization');
+    if (!authHeader) {
+        return jsonResponse(req, 401, { error: 'Não autorizado.' });
     }
 
     try {
-        // ── Verify caller is authenticated ──────────────────
-        const authHeader = req.headers.get('Authorization');
-        if (!authHeader) {
-            return errorResponse('Não autorizado.', 401);
-        }
-
-        // Admin client (service role) — used for privileged operations
-        const adminClient = createClient(
-            Deno.env.get('SUPABASE_URL')!,
-            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-            { auth: { autoRefreshToken: false, persistSession: false } }
-        );
-
-        // User client — used to verify the caller's JWT
         const userClient = createClient(
             Deno.env.get('SUPABASE_URL')!,
             Deno.env.get('SUPABASE_ANON_KEY')!,
-            { global: { headers: { Authorization: authHeader } } }
+            {
+                global: {
+                    headers: { Authorization: authHeader },
+                },
+            },
         );
 
-        const { data: { user }, error: userError } = await userClient.auth.getUser();
-        if (userError || !user) {
-            return errorResponse('Sessão inválida.', 401);
+        const { data: userData, error: userError } = await userClient.auth.getUser();
+        if (userError || !userData.user) {
+            return jsonResponse(req, 401, { error: 'Sessão inválida.' });
         }
 
-        // ── Get password from request ───────────────────────
-        const body = await req.json();
-        const { password } = body;
-        if (!password || password.length < 8) {
-            return errorResponse('Senha deve ter no mínimo 8 caracteres.', 400);
+        const body = (await req.json()) as { password?: unknown };
+        const password = sanitizeText(body.password);
+
+        if (password.length < 8) {
+            return jsonResponse(req, 400, { error: 'Senha deve ter no mínimo 8 caracteres.' });
         }
 
-        // ── Preserve existing metadata and add password_set ──
-        const existingData = user.user_metadata || {};
-        const updatedData = {
-            ...existingData,
-            password_set: true
-        };
+        if (password.length > 128) {
+            return jsonResponse(req, 400, { error: 'Senha excede o tamanho máximo permitido.' });
+        }
 
-        // ── Update user with new password and preserved metadata ──
-        const { error } = await adminClient.auth.admin.updateUserById(user.id, {
-            password: password,
-            user_metadata: updatedData
+        const adminClient = createClient(
+            Deno.env.get('SUPABASE_URL')!,
+            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+            {
+                auth: {
+                    autoRefreshToken: false,
+                    persistSession: false,
+                },
+            },
+        );
+
+        const metadata = userData.user.user_metadata || {};
+        const { error } = await adminClient.auth.admin.updateUserById(userData.user.id, {
+            password,
+            user_metadata: {
+                ...metadata,
+                password_set: true,
+                password_set_at: new Date().toISOString(),
+            },
         });
 
         if (error) {
-            return errorResponse(error.message, 400);
+            return jsonResponse(req, 400, { error: error.message });
         }
 
-        return okResponse({ success: true });
-
-    } catch (err) {
-        return errorResponse(err instanceof Error ? err.message : 'Erro interno.');
+        return jsonResponse(req, 200, { success: true });
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Erro interno.';
+        return jsonResponse(req, 500, { error: message });
     }
 });
-
-function okResponse(data: object) {
-    return new Response(JSON.stringify(data), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
-    });
-}
-
-function errorResponse(message: string, status = 400) {
-    return new Response(JSON.stringify({ error: message }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status,
-    });
-}

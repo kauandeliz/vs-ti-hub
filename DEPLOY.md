@@ -10,7 +10,7 @@
 | [Node.js](https://nodejs.org) (v18+) | Rodar o Supabase CLI | ✅ |
 | [Git](https://git-scm.com) | Versionar e fazer deploy | ✅ |
 | [Supabase](https://supabase.com) | Banco de dados + autenticação | ✅ |
-| [Netlify](https://netlify.com) | Hospedar o site | ✅ |
+| [Cloudflare](https://cloudflare.com) | Hospedar o site | ✅ |
 | [GitHub](https://github.com) | Repositório do código | ✅ |
 
 ---
@@ -32,8 +32,8 @@
 
 1. No painel do projeto, vá em **Project Settings** (ícone de engrenagem) → **API**
 2. Copie e anote os dois valores:
-   - **Project URL** → algo como `https://supabase.com/dashboard/project/ufoykcfcaygtwwpwwhyl/settings/general`
-   - **anon public** (em Project API keys) → começa com `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmb3lrY2ZjYXlndHd3cHd3aHlsIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NDAyNjE4NSwiZXhwIjoyMDg5NjAyMTg1fQ.VaYr5bmi9bd_MHhRO61UqxYWI82T4HKTVTE82s30o7A`
+   - **Project URL** → algo como `https://ufoykcfcaygtwwpwwhyl.supabase.co`
+   - **anon public** (em Project API keys) → começa com `eyJ...`
 3. Ainda na mesma página, copie também:
    - **Project Reference ID** → a parte `ufoykcfcaygtwwpwwhyl` da URL, ou está em **General** como "Reference ID"
 
@@ -66,8 +66,8 @@
 ### 1.5 Configurar a URL do site (para os e-mails de convite funcionarem)
 
 1. Ainda em **Authentication**, clique em **URL Configuration**
-2. Em **Site URL**, coloque por enquanto: `http://localhost:8080`
-   *(você vai atualizar depois com a URL real do Netlify)*
+2. Em **Site URL**, coloque por enquanto: `http://localhost:3000`
+   *(você vai atualizar depois com a URL real do Cloudflare Pages)*
 3. Clique em **Save**
 
 ---
@@ -85,8 +85,8 @@
    *(Notepad, VS Code, etc.)*
 2. Localize as duas primeiras linhas de configuração e substitua pelos valores que você copiou no Passo 1.2:
    ```js
-   const SUPABASE_URL  = 'https://supabase.com/dashboard/project/ufoykcfcaygtwwpwwhyl/settings/general';   // ← sua Project URL
-   const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmb3lrY2ZjYXlndHd3cHd3aHlsIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NDAyNjE4NSwiZXhwIjoyMDg5NjAyMTg1fQ.VaYr5bmi9bd_MHhRO61UqxYWI82T4HKTVTE82s30o7A';  // ← sua anon key
+   const SUPABASE_URL  = 'https://SEU-PROJECT-REF.supabase.co';   // ← sua Project URL
+   const SUPABASE_ANON = 'SUA_ANON_PUBLIC_KEY';                   // ← sua anon key
    ```
 3. Salve o arquivo
 
@@ -156,6 +156,12 @@ Quando pedir a senha do banco, use a que você criou no Passo 1.1.
 
 ### 3.5 Fazer o deploy das funções
 
+Opcional (recomendado): restringir CORS para seu domínio Cloudflare:
+
+```bash
+supabase secrets set ALLOWED_ORIGINS=https://vs-ti-hub.pages.dev,https://seu-dominio.com
+```
+
 ```bash
 supabase functions deploy invite-user
 supabase functions deploy save-acesso
@@ -165,7 +171,7 @@ Cada comando deve finalizar com "Done". Se der erro de permissão, tente com `np
 
 ---
 
-## PARTE 4 — Deploy no GitHub + Netlify
+## PARTE 4 — Deploy no GitHub + Cloudflare Pages
 
 ### 4.1 Criar repositório no GitHub
 
@@ -193,47 +199,48 @@ git push -u origin main
 > Se pedir usuário e senha, use seu usuário e um **Personal Access Token**
 > (GitHub → Settings → Developer settings → Personal access tokens → Generate new token).
 
-### 4.3 Criar o site no Netlify
+### 4.3 Criar o site no Cloudflare Pages
 
-1. Acesse **https://app.netlify.com** e faça login (pode usar o GitHub)
-2. Clique em **Add new site** → **Import an existing project**
-3. Clique em **Deploy with GitHub**
-4. Autorize o Netlify a acessar seus repositórios
-5. Selecione o repositório `vs-ti-hub`
-6. Na tela de configuração:
-   - **Branch to deploy:** `main`
-   - **Base directory:** *(deixe em branco)*
+1. Acesse **https://dash.cloudflare.com** e faça login
+2. Vá em **Pages** → **Create a project**
+3. Conecte o repositório do GitHub `vs-ti-hub`
+4. Configure:
+   - **Production branch:** `main`
+   - **Framework preset:** None
    - **Build command:** *(deixe em branco)*
-   - **Publish directory:** *(deixe em branco ou `.`)*
-7. Clique em **Deploy vs-ti-hub**
-8. Aguarde ~1 minuto — o Netlify vai gerar uma URL tipo `https://amazing-name-123.netlify.app`
+   - **Build output directory:** `.`
+5. Clique em **Save and deploy**
+6. Aguarde ~1 minuto — o Cloudflare Pages vai gerar uma URL tipo `https://vs-ti-hub.pages.dev`
 
 ### 4.4 Atualizar a URL no Supabase
 
 Agora que você tem a URL real do site:
 
 1. Volte ao painel do Supabase → **Authentication** → **URL Configuration**
-2. Atualize a **Site URL** para a URL do Netlify:
+2. Atualize a **Site URL** para a URL do Cloudflare:
    ```
-   https://amazing-name-123.netlify.app
+   https://vs-ti-hub.pages.dev
    ```
 3. Em **Redirect URLs**, adicione também:
    ```
-   https://amazing-name-123.netlify.app/**
+   https://vs-ti-hub.pages.dev/**
    ```
 4. Clique em **Save**
+5. Se você usar domínio próprio no Cloudflare, adicione também:
+   - `https://seu-dominio.com`
+   - `https://seu-dominio.com/**`
 
-### 4.5 (Opcional) Configurar domínio personalizado no Netlify
+### 4.5 (Opcional) Configurar domínio personalizado no Cloudflare
 
-1. No painel do Netlify, vá em **Domain settings**
-2. Clique em **Add custom domain**
-3. Siga as instruções para apontar seu domínio
+1. No painel do Cloudflare, vá em **Pages** → seu projeto
+2. Clique em **Custom domains**
+3. Siga as instruções para apontar seu domínio e validar SSL
 
 ---
 
 ## PARTE 5 — Verificação final
 
-Acesse a URL do Netlify e faça este checklist:
+Acesse a URL do Cloudflare Pages e faça este checklist:
 
 - [ ] Tela de login aparece com o fundo correto (grade + glow azul)
 - [ ] Login com seu e-mail e senha funciona
@@ -257,7 +264,7 @@ git commit -m "descrição da mudança"
 git push
 ```
 
-O Netlify detecta o push automaticamente e faz o redeploy em ~1 minuto.
+O Cloudflare Pages detecta o push automaticamente e faz o redeploy em ~1 minuto.
 
 Se alterar as Edge Functions:
 

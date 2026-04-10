@@ -1,190 +1,454 @@
 /**
- * gerador.js
- * Data definitions and credential generation logic for the Gerador de Acessos page.
- */
-
-// ─── DATA ────────────────────────────────────────────
-
-const SETOR_MAP = {
-    'COM':    'Comercial',
-    'FIN':    'Financeiro',
-    'LOG':    'Logística',
-    'RH':     'Recursos Humanos',
-    'MKT':    'Marketing',
-    'MOT':    'Motoristas',
-    'SIS':    'Sistemas (TI)',
-    'TEC':    'Técnico',
-    'DIR':    'Diretoria',
-    'CONTAB': 'Contabilidade',
-    'CONTR':  'Controladoria',
-    'TER':    'Terceiros',
-    'VEND':   'Vendas',
-    'LABEL':  'Labels',
-};
-
-const CARGOS_POR_SETOR = {
-    'Comercial': [
-        'Analista Comercial Sul', 'Assistente de Vendas', 'Assistente de Vendas de JR',
-        'Coordenadora de Vendas', 'Coordenadora de Vendas PL', 'Executivo de Contas JR',
-        'Executivo de Contas PL', 'Executivo de Contas SE', 'Executivo de Vendas de Equipamentos',
-        'Gerente Adm de Vendas', 'Gerente de Mercado', 'Vendedor Interno',
-    ],
-    'Financeiro': [
-        'Assistente de Contas a Pagar', 'Assistente de Compras a Receber JR',
-        'Assistente de Crédito e Cobrança', 'Gerente Financeiro', 'Supervisor de Crédito e Cobrança',
-    ],
-    'Logística': [
-        'Assistente de Compras Pleno', 'Auxiliar Administrativo', 'Auxiliar de Documentação Fiscal',
-        'Auxiliar de Logística', 'Líder de Expedição', 'Supervisor de Logística',
-        'Gerente de Logística Central',
-    ],
-    'Recursos Humanos': [
-        'Auxiliar de Departamento Pessoal', 'Assistente de Recursos Humanos',
-        'Coordenador de Recursos Humanos',
-    ],
-    'Marketing':      ['Analista de Inteligência de Mercado', 'Menor Aprendiz'],
-    'Motoristas':     ['Motorista', 'Motorista JR'],
-    'Sistemas (TI)':  ['Assistente de TI', 'Estagiário', 'Gerente de Sistemas'],
-    'Técnico':        ['Técnico de Manutenção de Máquinas', 'Gerente de Máquinas'],
-    'Diretoria':      [],
-    'Contabilidade':  ['Contadora'],
-    'Controladoria':  ['Gerente de Controladoria'],
-    'Terceiros':      ['Representante de Vendas'],
-    'Vendas':         ['Gerente Adm de Vendas'],
-    'Labels':         ['Assistente de Vendas Labels PL'],
-};
-
-const LOCALIDADE_DATA = {
-    'PR': { 'Curitiba': ['Jardim Botânico', 'Rebouças', 'Cidade Industrial'] },
-    'SP': { 'São Paulo': ['Vila Monumento'] },
-    'RS': { 'Porto Alegre': ['Navegantes'] },
-    'RJ': { 'Rio de Janeiro': ['Bonsucesso'] },
-    'GO': { 'Aparecida de Goiânia': ['Vila Maria'], 'Goiânia': ['Setor Bueno'] },
-    'SC': { 'São José': ['Serraria'] },
-    'DF': { 'Brasília': ['Guara'] },
-    'MG': { 'Uberlândia': ['Brasil'] },
-};
-
-// ─── SELECT POPULATION ───────────────────────────────
-
-/**
- * Populate all <select> elements with data and wire change listeners.
- * Call once on DOMContentLoaded.
- */
-function initGeradorSelects() {
-    const setorSelect  = document.getElementById('setor');
-    const cargoSelect  = document.getElementById('cargo');
-    const ufSelect     = document.getElementById('uf');
-    const localSelect  = document.getElementById('local');
-    const bairroSelect = document.getElementById('bairro');
-
-    if (!setorSelect) return; // Guard: page may not be present
-
-    /** Helper: reset a select to disabled placeholder state */
-    const resetSelect = (sel, msg) => {
-        sel.innerHTML = `<option value="" disabled selected>${msg}</option>`;
-        sel.disabled = true;
-    };
-
-    // Populate sectors
-    Object.values(SETOR_MAP).sort().forEach(s => setorSelect.add(new Option(s, s)));
-
-    // Populate UFs
-    Object.keys(LOCALIDADE_DATA).sort().forEach(uf => ufSelect.add(new Option(uf, uf)));
-
-    // Setor → Cargo cascade
-    setorSelect.addEventListener('change', () => {
-        resetSelect(cargoSelect, 'Selecione um cargo');
-        cargoSelect.disabled = false;
-        (CARGOS_POR_SETOR[setorSelect.value] ?? []).sort().forEach(c => cargoSelect.add(new Option(c, c)));
-    });
-
-    // UF → Cidade cascade
-    ufSelect.addEventListener('change', () => {
-        resetSelect(localSelect,  'Selecione uma cidade');
-        resetSelect(bairroSelect, 'Cidade primeiro');
-        localSelect.disabled = false;
-
-        const cidades = Object.keys(LOCALIDADE_DATA[ufSelect.value] ?? {}).sort();
-        cidades.forEach(c => localSelect.add(new Option(c, c)));
-
-        // Auto-select if only one option
-        if (cidades.length === 1) {
-            localSelect.value = cidades[0];
-            localSelect.dispatchEvent(new Event('change'));
-        }
-    });
-
-    // Cidade → Bairro cascade
-    localSelect.addEventListener('change', () => {
-        resetSelect(bairroSelect, 'Selecione um bairro');
-        bairroSelect.disabled = false;
-
-        const bairros = (LOCALIDADE_DATA[ufSelect.value] ?? {})[localSelect.value] ?? [];
-        bairros.sort().forEach(b => bairroSelect.add(new Option(b, b)));
-
-        // Auto-select if only one option
-        if (bairros.length === 1) bairroSelect.value = bairros[0];
-    });
-}
-
-// ─── CREDENTIAL GENERATION ───────────────────────────
-
-/**
- * Generate credential data for a new employee.
+ * gerador-data.js
  *
- * @param {string}  nome       - Full name
- * @param {string}  uf         - State abbreviation (e.g. "PR")
- * @param {boolean} cEmail     - Create e-mail account
- * @param {boolean} cWts       - Create WTS user
- * @param {boolean} cHelpdesk  - Create Helpdesk account
- * @param {boolean} cNyxos     - Create Nyxos account
- * @returns {Object|null} Credential map, or null on invalid input
+ * Catálogo dinâmico (setor/cargo/localidade) + regras de geração de credenciais.
  */
-function gerarDados(nome, uf, cEmail, cWts, cHelpdesk, cNyxos) {
-    if (!cEmail && !cWts && !cHelpdesk && !cNyxos) return null;
 
-    const parts = nome.toLowerCase().trim().split(' ');
-    if (parts.length < 2) return null;
+(function bootstrapGeradorData() {
+    'use strict';
 
-    const removeDiacritics = str =>
-        str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const FALLBACK_SETOR_MAP = Object.freeze({
+        COM: 'Comercial',
+        FIN: 'Financeiro',
+        LOG: 'Logística',
+        RH: 'Recursos Humanos',
+        MKT: 'Marketing',
+        MOT: 'Motoristas',
+        SIS: 'Sistemas (TI)',
+        TEC: 'Técnico',
+        DIR: 'Diretoria',
+        CONTAB: 'Contabilidade',
+        CONTR: 'Controladoria',
+        TER: 'Terceiros',
+        VEND: 'Vendas',
+        LABEL: 'Labels',
+    });
 
-    const primeiroNome = removeDiacritics(parts[0]);
-    const ultimoNome   = removeDiacritics(parts[parts.length - 1]);
-    const prefixo      = primeiroNome.slice(0, 4);
+    const FALLBACK_CARGOS_POR_SETOR = Object.freeze({
+        Comercial: [
+            'Analista Comercial Sul',
+            'Assistente de Vendas',
+            'Assistente de Vendas de JR',
+            'Coordenadora de Vendas',
+            'Coordenadora de Vendas PL',
+            'Executivo de Contas JR',
+            'Executivo de Contas PL',
+            'Executivo de Contas SE',
+            'Executivo de Vendas de Equipamentos',
+            'Gerente Adm de Vendas',
+            'Gerente de Mercado',
+            'Vendedor Interno',
+        ],
+        Financeiro: [
+            'Assistente de Contas a Pagar',
+            'Assistente de Compras a Receber JR',
+            'Assistente de Crédito e Cobrança',
+            'Gerente Financeiro',
+            'Supervisor de Crédito e Cobrança',
+        ],
+        Logística: [
+            'Assistente de Compras Pleno',
+            'Auxiliar Administrativo',
+            'Auxiliar de Documentação Fiscal',
+            'Auxiliar de Logística',
+            'Líder de Expedição',
+            'Supervisor de Logística',
+            'Gerente de Logística Central',
+        ],
+        'Recursos Humanos': [
+            'Auxiliar de Departamento Pessoal',
+            'Assistente de Recursos Humanos',
+            'Coordenador de Recursos Humanos',
+        ],
+        Marketing: ['Analista de Inteligência de Mercado', 'Menor Aprendiz'],
+        Motoristas: ['Motorista', 'Motorista JR'],
+        'Sistemas (TI)': ['Assistente de TI', 'Estagiário', 'Gerente de Sistemas'],
+        Técnico: ['Técnico de Manutenção de Máquinas', 'Gerente de Máquinas'],
+        Diretoria: [],
+        Contabilidade: ['Contadora'],
+        Controladoria: ['Gerente de Controladoria'],
+        Terceiros: ['Representante de Vendas'],
+        Vendas: ['Gerente Adm de Vendas'],
+        Labels: ['Assistente de Vendas Labels PL'],
+    });
 
-    const now = new Date();
-    const hhmm = now.getHours().toString().padStart(2, '0')
-               + now.getMinutes().toString().padStart(2, '0');
+    const FALLBACK_LOCALIDADE_DATA = Object.freeze({
+        PR: { Curitiba: ['Jardim Botânico', 'Rebouças', 'Cidade Industrial'] },
+        SP: { 'São Paulo': ['Vila Monumento'] },
+        RS: { 'Porto Alegre': ['Navegantes'] },
+        RJ: { 'Rio de Janeiro': ['Bonsucesso'] },
+        GO: { 'Aparecida de Goiânia': ['Vila Maria'], Goiânia: ['Setor Bueno'] },
+        SC: { 'São José': ['Serraria'] },
+        DF: { Brasília: ['Guará'] },
+        MG: { Uberlândia: ['Brasil'] },
+    });
 
-    const credentials = {
-        'Login E-mail':    '',
-        'Senha E-mail':    '',
-        'Login WTS':       '',
-        'Senha WTS':       '',
-        'Login Helpdesk':  '',
-        'Senha Helpdesk':  '',
-        'Login Nyxos':     '',
-        'Senha Nyxos':     '',
+    const state = {
+        initialized: false,
+        snapshot: buildFallbackSnapshot(),
     };
 
-    if (cEmail) {
-        credentials['Login E-mail'] = `${primeiroNome}.${ultimoNome}@vinilsul.com.br`;
-        credentials['Senha E-mail'] = `${prefixo}@${hhmm}#MAIL`;
-    }
-    if (cWts) {
-        credentials['Login WTS'] = `${uf.toLowerCase()}-${primeiroNome}.${ultimoNome}`;
-        credentials['Senha WTS'] = `${prefixo}@${hhmm}#WTS`;
-    }
-    if (cHelpdesk) {
-        credentials['Login Helpdesk'] = `${primeiroNome}.${ultimoNome}@vinilsul.com.br`;
-        credentials['Senha Helpdesk'] = `${prefixo}@${hhmm}#HELP`;
-    }
-    if (cNyxos) {
-        credentials['Login Nyxos'] = `${primeiroNome}.${ultimoNome}`;
-        credentials['Senha Nyxos'] = '1234';
+    function buildFallbackSnapshot() {
+        return {
+            setores: Object.values(FALLBACK_SETOR_MAP),
+            cargosPorSetor: cloneNestedObject(FALLBACK_CARGOS_POR_SETOR),
+            localidadeData: cloneNestedObject(FALLBACK_LOCALIDADE_DATA),
+            ufs: Object.keys(FALLBACK_LOCALIDADE_DATA),
+            filiais: [],
+        };
     }
 
-    return credentials;
-}
+    function cloneNestedObject(obj) {
+        return JSON.parse(JSON.stringify(obj || {}));
+    }
+
+    function resetSelect(selectEl, placeholder, disabled = true) {
+        selectEl.innerHTML = `<option value="" disabled selected>${placeholder}</option>`;
+        selectEl.disabled = disabled;
+    }
+
+    function populateSelect(selectEl, options) {
+        options.forEach((optionValue) => {
+            selectEl.add(new Option(optionValue, optionValue));
+        });
+    }
+
+    function sortLocale(values) {
+        return [...values].sort((a, b) => String(a).localeCompare(String(b), 'pt-BR'));
+    }
+
+    function setCatalogGlobals(snapshot) {
+        const setorMap = {};
+        snapshot.setores.forEach((setor, index) => {
+            setorMap[`SETOR_${index + 1}`] = setor;
+        });
+
+        window.SETOR_MAP = Object.freeze(setorMap);
+        window.CARGOS_POR_SETOR = cloneNestedObject(snapshot.cargosPorSetor);
+        window.LOCALIDADE_DATA = cloneNestedObject(snapshot.localidadeData);
+    }
+
+    function getFormSelects() {
+        const setorSelect = document.getElementById('setor');
+        const cargoSelect = document.getElementById('cargo');
+        const ufSelect = document.getElementById('uf');
+        const cidadeSelect = document.getElementById('local');
+        const bairroSelect = document.getElementById('bairro');
+
+        if (!setorSelect || !cargoSelect || !ufSelect || !cidadeSelect || !bairroSelect) {
+            return null;
+        }
+
+        return { setorSelect, cargoSelect, ufSelect, cidadeSelect, bairroSelect };
+    }
+
+    function renderSetoresAndUfs(selects, preserveSelection = true) {
+        const { setorSelect, ufSelect } = selects;
+        const prevSetor = preserveSelection ? setorSelect.value : '';
+        const prevUf = preserveSelection ? ufSelect.value : '';
+
+        resetSelect(setorSelect, 'Selecione...', false);
+        resetSelect(ufSelect, 'Selecione...', false);
+
+        populateSelect(setorSelect, sortLocale(state.snapshot.setores || []));
+        populateSelect(ufSelect, sortLocale(state.snapshot.ufs || Object.keys(state.snapshot.localidadeData || {})));
+
+        if (prevSetor && (state.snapshot.setores || []).includes(prevSetor)) {
+            setorSelect.value = prevSetor;
+        }
+
+        if (prevUf && (state.snapshot.ufs || []).includes(prevUf)) {
+            ufSelect.value = prevUf;
+        }
+    }
+
+    function handleSetorChange(selects, preserveCargo = false) {
+        const { setorSelect, cargoSelect } = selects;
+        const previousCargo = preserveCargo ? cargoSelect.value : '';
+
+        resetSelect(cargoSelect, 'Selecione um cargo', false);
+
+        const cargos = sortLocale(state.snapshot.cargosPorSetor?.[setorSelect.value] || []);
+        populateSelect(cargoSelect, cargos);
+
+        if (!cargos.length) {
+            cargoSelect.disabled = true;
+            cargoSelect.options[0].textContent = 'Sem cargos cadastrados';
+            return;
+        }
+
+        if (previousCargo && cargos.includes(previousCargo)) {
+            cargoSelect.value = previousCargo;
+        }
+    }
+
+    function handleUfChange(selects, preserveCidade = false, preserveBairro = false) {
+        const { ufSelect, cidadeSelect, bairroSelect } = selects;
+        const previousCidade = preserveCidade ? cidadeSelect.value : '';
+
+        resetSelect(cidadeSelect, 'Selecione uma cidade', false);
+        resetSelect(bairroSelect, 'Cidade primeiro', true);
+
+        const cidades = sortLocale(Object.keys(state.snapshot.localidadeData?.[ufSelect.value] || {}));
+        populateSelect(cidadeSelect, cidades);
+
+        if (!cidades.length) {
+            cidadeSelect.disabled = true;
+            cidadeSelect.options[0].textContent = 'Sem cidades cadastradas';
+            return;
+        }
+
+        if (previousCidade && cidades.includes(previousCidade)) {
+            cidadeSelect.value = previousCidade;
+            handleCidadeChange(selects, preserveBairro);
+            return;
+        }
+
+        if (cidades.length === 1) {
+            cidadeSelect.value = cidades[0];
+            handleCidadeChange(selects, false);
+        }
+    }
+
+    function handleCidadeChange(selects, preserveBairro = false) {
+        const { ufSelect, cidadeSelect, bairroSelect } = selects;
+        const previousBairro = preserveBairro ? bairroSelect.value : '';
+
+        resetSelect(bairroSelect, 'Selecione um bairro', false);
+
+        const bairros = sortLocale((state.snapshot.localidadeData?.[ufSelect.value] || {})[cidadeSelect.value] || []);
+        populateSelect(bairroSelect, bairros);
+
+        if (!bairros.length) {
+            bairroSelect.disabled = true;
+            bairroSelect.options[0].textContent = 'Sem bairros cadastrados';
+            return;
+        }
+
+        if (previousBairro && bairros.includes(previousBairro)) {
+            bairroSelect.value = previousBairro;
+            return;
+        }
+
+        if (bairros.length === 1) {
+            bairroSelect.value = bairros[0];
+        }
+    }
+
+    function renderAllSelects({ preserveSelection = true } = {}) {
+        const selects = getFormSelects();
+        if (!selects) return;
+
+        const previous = preserveSelection
+            ? {
+                cargo: selects.cargoSelect.value,
+                cidade: selects.cidadeSelect.value,
+                bairro: selects.bairroSelect.value,
+            }
+            : { cargo: '', cidade: '', bairro: '' };
+
+        renderSetoresAndUfs(selects, preserveSelection);
+
+        if (selects.setorSelect.value) {
+            handleSetorChange(selects, preserveSelection && Boolean(previous.cargo));
+        } else {
+            resetSelect(selects.cargoSelect, 'Setor primeiro', true);
+        }
+
+        if (selects.ufSelect.value) {
+            handleUfChange(selects, preserveSelection && Boolean(previous.cidade), preserveSelection && Boolean(previous.bairro));
+        } else {
+            resetSelect(selects.cidadeSelect, 'UF primeiro', true);
+            resetSelect(selects.bairroSelect, 'Cidade primeiro', true);
+        }
+    }
+
+    function hasUsableCatalogData(snapshot) {
+        return Boolean(
+            snapshot
+            && Array.isArray(snapshot.setores)
+            && snapshot.setores.length
+            && snapshot.cargosPorSetor
+            && snapshot.localidadeData
+        );
+    }
+
+    async function carregarCatalogoRemoto({ force = false } = {}) {
+        const getter = window.App?.api?.catalog?.getCatalogSnapshot;
+        if (typeof getter !== 'function') {
+            return { data: null, error: null };
+        }
+
+        return getter({ force, apenasAtivos: true });
+    }
+
+    async function atualizarCatalogo({ force = false } = {}) {
+        const { data, error } = await carregarCatalogoRemoto({ force });
+
+        if (!error && hasUsableCatalogData(data)) {
+            state.snapshot = {
+                setores: data.setores || [],
+                cargosPorSetor: cloneNestedObject(data.cargosPorSetor || {}),
+                localidadeData: cloneNestedObject(data.localidadeData || {}),
+                ufs: data.ufs || Object.keys(data.localidadeData || {}),
+                filiais: data.filiais || [],
+            };
+        } else {
+            state.snapshot = buildFallbackSnapshot();
+        }
+
+        setCatalogGlobals(state.snapshot);
+        renderAllSelects({ preserveSelection: true });
+    }
+
+    async function initGeradorSelects() {
+        const selects = getFormSelects();
+        if (!selects) return;
+
+        if (!state.initialized) {
+            selects.setorSelect.addEventListener('change', () => handleSetorChange(selects, false));
+            selects.ufSelect.addEventListener('change', () => handleUfChange(selects, false, false));
+            selects.cidadeSelect.addEventListener('change', () => handleCidadeChange(selects, false));
+
+            document.addEventListener('app:catalog-updated', () => {
+                atualizarCatalogo({ force: true });
+            });
+
+            document.addEventListener('app:auth-changed', (event) => {
+                if (event.detail?.user) {
+                    atualizarCatalogo({ force: true });
+                }
+            });
+
+            state.initialized = true;
+        }
+
+        renderAllSelects({ preserveSelection: false });
+        await atualizarCatalogo({ force: false });
+    }
+
+    function removeDiacritics(value) {
+        return String(value || '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '');
+    }
+
+    function normalizePersonName(value) {
+        return removeDiacritics(value)
+            .toLowerCase()
+            .replace(/[^a-z\s]/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+    }
+
+    function buildEmailLogin(name) {
+        const tokens = normalizePersonName(name).split(' ').filter(Boolean);
+        if (tokens.length < 2) return null;
+
+        const first = tokens[0];
+        const last = tokens[tokens.length - 1];
+        return `${first}.${last}@vinilsul.com.br`;
+    }
+
+    function buildWtsLogin(name, uf) {
+        const tokens = normalizePersonName(name).split(' ').filter(Boolean);
+        if (tokens.length < 2) return null;
+
+        const first = tokens[0];
+        const last = tokens[tokens.length - 1];
+        return `${String(uf || '').toLowerCase()}-${first}.${last}`;
+    }
+
+    function buildNyxosLogin(name) {
+        const tokens = normalizePersonName(name).split(' ').filter(Boolean);
+        if (tokens.length < 2) return null;
+
+        return `${tokens[0]}.${tokens[tokens.length - 1]}`;
+    }
+
+    function randomSuffix(length = 4) {
+        const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        let out = '';
+
+        if (window.crypto?.getRandomValues) {
+            const buffer = new Uint8Array(length);
+            window.crypto.getRandomValues(buffer);
+            for (let i = 0; i < length; i += 1) {
+                out += alphabet[buffer[i] % alphabet.length];
+            }
+            return out;
+        }
+
+        for (let i = 0; i < length; i += 1) {
+            out += alphabet[Math.floor(Math.random() * alphabet.length)];
+        }
+        return out;
+    }
+
+    function buildPassword(name, systemTag) {
+        const normalized = normalizePersonName(name).replace(/\s+/g, '');
+        const prefix = (normalized.slice(0, 4) || 'user').padEnd(4, 'x');
+        return `${prefix}@${randomSuffix(4)}#${systemTag}`;
+    }
+
+    function normalizeFlags(emailFlag, wtsFlag, helpdeskFlag, nyxosFlag) {
+        if (emailFlag && typeof emailFlag === 'object' && !Array.isArray(emailFlag)) {
+            return {
+                email: Boolean(emailFlag.email),
+                wts: Boolean(emailFlag.wts),
+                helpdesk: Boolean(emailFlag.helpdesk),
+                nyxos: Boolean(emailFlag.nyxos),
+            };
+        }
+
+        return {
+            email: Boolean(emailFlag),
+            wts: Boolean(wtsFlag),
+            helpdesk: Boolean(helpdeskFlag),
+            nyxos: Boolean(nyxosFlag),
+        };
+    }
+
+    function gerarDados(nome, uf, emailFlag, wtsFlag, helpdeskFlag, nyxosFlag) {
+        const flags = normalizeFlags(emailFlag, wtsFlag, helpdeskFlag, nyxosFlag);
+
+        if (!flags.email && !flags.wts && !flags.helpdesk && !flags.nyxos) {
+            return null;
+        }
+
+        if (!nome || !uf) {
+            return null;
+        }
+
+        const emailLogin = buildEmailLogin(nome);
+        const wtsLogin = buildWtsLogin(nome, uf);
+        const nyxosLogin = buildNyxosLogin(nome);
+
+        if (!emailLogin || !wtsLogin || !nyxosLogin) {
+            return null;
+        }
+
+        return {
+            email: flags.email
+                ? { login: emailLogin, senha: buildPassword(nome, 'MAIL') }
+                : null,
+            wts: flags.wts
+                ? { login: wtsLogin, senha: buildPassword(nome, 'WTS') }
+                : null,
+            helpdesk: flags.helpdesk
+                ? { login: emailLogin, senha: buildPassword(nome, 'HELP') }
+                : null,
+            nyxos: flags.nyxos
+                ? { login: nyxosLogin, senha: buildPassword(nome, 'NYX') }
+                : null,
+        };
+    }
+
+    setCatalogGlobals(state.snapshot);
+    window.initGeradorSelects = initGeradorSelects;
+    window.gerarDados = gerarDados;
+
+    document.addEventListener('DOMContentLoaded', () => {
+        initGeradorSelects();
+    });
+})();
