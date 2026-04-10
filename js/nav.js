@@ -86,6 +86,10 @@
     }
 
     function runPageHook(page) {
+        if (typeof window.onDirecionadoresPageActivate === 'function') {
+            window.onDirecionadoresPageActivate(page);
+        }
+
         if (page === 'home' && typeof window.initHomeOnActivate === 'function') {
             window.initHomeOnActivate();
         }

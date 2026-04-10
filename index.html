@@ -190,39 +190,11 @@
 
                 <section>
                     <div class="section-label">Sistemas-chave</div>
-                    <div class="cards-grid wide">
-                        <a href="https://helpdesk.vinilsul.com.br/" target="_blank" class="tool-card">
-                            <div class="card-icon-banner">🎧</div>
-                            <div class="card-body">
-                                <h3>Helpdesk VinilSul</h3>
-                                <p>Atendimento interno e gestão de chamados.</p>
-                            </div>
-                            <div class="card-footer">Acessar</div>
-                        </a>
-                        <a href="https://entra.microsoft.com/" target="_blank" class="tool-card">
-                            <div class="card-icon-banner">🔐</div>
-                            <div class="card-body">
-                                <h3>Microsoft Entra</h3>
-                                <p>Gestão de identidade, diretório e licenças.</p>
-                            </div>
-                            <div class="card-footer">Acessar</div>
-                        </a>
-                        <a href="https://platform.senior.com.br/login/" target="_blank" class="tool-card">
-                            <div class="card-icon-banner">🏢</div>
-                            <div class="card-body">
-                                <h3>Senior X</h3>
-                                <p>Plataforma corporativa de ERP e RH.</p>
-                            </div>
-                            <div class="card-footer">Acessar</div>
-                        </a>
-                        <a href="https://login.salesforce.com/" target="_blank" class="tool-card">
-                            <div class="card-icon-banner">📈</div>
-                            <div class="card-body">
-                                <h3>Salesforce CRM</h3>
-                                <p>Acompanhamento comercial e relacionamento.</p>
-                            </div>
-                            <div class="card-footer">Acessar</div>
-                        </a>
+                    <div class="cards-grid wide" id="home-links-grid">
+                        <div class="table-state card-loading-state">
+                            <div class="spinner"></div>
+                            <div>Carregando cards...</div>
+                        </div>
                     </div>
                 </section>
 
@@ -349,140 +321,33 @@
         <!-- @include pages/helpdesk.html -->
         <div class="page" id="page-helpdesk">
             <div class="page-header"><h1>Helpdesk</h1><p>Sistemas de service desk e suporte</p></div>
-            <div class="external-cards">
-                <a href="https://mastertech.soft4.com.br/login" target="_blank" class="external-card">
-                    <div class="external-card-image"><img src="https://mastertechsistemas.com.br/wp-content/uploads/logotipo_mastertech.png" alt="MasterTech"></div>
-                    <div class="external-card-content">
-                        <div class="external-card-title">Helpdesk MasterTech</div>
-                        <div class="external-card-desc">GLPI Service Desk — parceiro</div>
-                    </div>
-                </a>
-                <a href="https://helpdesk.sekurtecnologia.com.br/" target="_blank" class="external-card">
-                    <div class="external-card-image"><img src="https://media.licdn.com/dms/image/v2/C4E0BAQEWdvhrQhtZXw/company-logo_200_200/company-logo_200_200/0/1631367297504/sekur_tecnologia_logo?e=2147483647&v=beta&t=YFzbClhb-amHgkBNp_LZDdC0Z3st-WM-4W1m7MDVeIU" alt="Sekur"></div>
-                    <div class="external-card-content">
-                        <div class="external-card-title">Helpdesk Sekur</div>
-                        <div class="external-card-desc">GLPI Service Desk — parceiro</div>
-                    </div>
-                </a>
-                <a href="https://helpdesk.vinilsul.com.br/" target="_blank" class="external-card">
-                    <div class="external-card-image"><img src="https://raichu-uploads.s3.amazonaws.com/logo_vinilsul_hNmJQ9.png" alt="Helpdesk VS"></div>
-                    <div class="external-card-content">
-                        <div class="external-card-title">Helpdesk VinilSul</div>
-                        <div class="external-card-desc">GLPI Service Desk — interno</div>
-                    </div>
-                </a>
+            <div class="external-cards" id="helpdesk-links-grid">
+                <div class="table-state card-loading-state">
+                    <div class="spinner"></div>
+                    <div>Carregando cards...</div>
+                </div>
             </div>
         </div>
 
         <!-- @include pages/corporativo.html -->
         <div class="page" id="page-corporativo">
             <div class="page-header"><h1>Sistemas Corporativos</h1><p>Plataformas e sistemas core da organização</p></div>
-            <div class="external-cards">
-                <a href="https://mailadmin.elhnld.hospedagemweb.net/iredadmin/" target="_blank" class="external-card">
-                    <div class="external-card-image"><img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTfxcMZCGSQUbU2Act-QbKDT9pK3X_pTkKlBg&s" alt="iRedAdmin"></div>
-                    <div class="external-card-content">
-                        <div class="external-card-title">Admin E-mails</div>
-                        <div class="external-card-desc">Console de contas</div>
-                    </div>
-                </a>
-                <a href="https://admin.goto.com/" target="_blank" class="external-card">
-                    <div class="external-card-image"><img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRmPzJYV6y5WOXMrfOge75QBfskhUaKi6WdCg&s" alt="GoTo"></div>
-                    <div class="external-card-content">
-                        <div class="external-card-title">Admin GoTo</div>
-                        <div class="external-card-desc">Telefonia IP</div>
-                    </div>
-                </a>
-                <a href="https://entra.microsoft.com/" target="_blank" class="external-card">
-                    <div class="external-card-image"><img src="https://www.lighthouseit.co.uk/wp-content/uploads/2025/03/MSFT_Entra_Blog-thumb_16-9_v1-771x434.png" alt="Entra ID"></div>
-                    <div class="external-card-content">
-                        <div class="external-card-title">Microsoft Entra</div>
-                        <div class="external-card-desc">Active Directory</div>
-                    </div>
-                </a>
-                <a href="https://login.salesforce.com/" target="_blank" class="external-card">
-                    <div class="external-card-image"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/f9/Salesforce.com_logo.svg/500px-Salesforce.com_logo.svg.png" alt="Salesforce"></div>
-                    <div class="external-card-content">
-                        <div class="external-card-title">Salesforce CRM</div>
-                        <div class="external-card-desc">Gestão Comercial</div>
-                    </div>
-                </a>
-                <a href="https://platform.senior.com.br/login/" target="_blank" class="external-card">
-                    <div class="external-card-image"><img src="https://s3.amazonaws.com//beta-img.b2bstack.net/uploads/production/provider/image/9/senior-sistemas-logo.png" alt="Senior"></div>
-                    <div class="external-card-content">
-                        <div class="external-card-title">Senior X</div>
-                        <div class="external-card-desc">ERP & RH</div>
-                    </div>
-                </a>
-                <a href="http://192.168.200.31:9070/relatorios/Pages/Folder.aspx" target="_blank" class="external-card">
-                    <div class="external-card-image"><img src="https://files.tecnoblog.net/wp-content/uploads/2019/09/windows-folder-700x394.jpg" alt="SQL Relatórios"></div>
-                    <div class="external-card-content">
-                        <div class="external-card-title">SQL — Relatórios</div>
-                        <div class="external-card-desc">Gerenciador</div>
-                    </div>
-                </a>
-                <a href="https://webmail.vinilsul.com.br/mail/" target="_blank" class="external-card">
-                    <div class="external-card-image"><img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTfxcMZCGSQUbU2Act-QbKDT9pK3X_pTkKlBg&s" alt="Webmail"></div>
-                    <div class="external-card-content">
-                        <div class="external-card-title">Webmail</div>
-                        <div class="external-card-desc">E-mail corporativo</div>
-                    </div>
-                </a>
+            <div class="external-cards" id="corporativo-links-grid">
+                <div class="table-state card-loading-state">
+                    <div class="spinner"></div>
+                    <div>Carregando cards...</div>
+                </div>
             </div>
         </div>
 
         <!-- @include pages/telecom.html -->
         <div class="page" id="page-telecom">
             <div class="page-header"><h1>Telecom &amp; Utilities</h1><p>Portais de operadoras e gestão de energia</p></div>
-            <div class="external-cards">
-                <a href="https://customeridentity.algar.com.br/auth?client_id=0d86fb2f-6a6c-47e2-9ad7-6b35521f475f&state=1965756151&nonce&redirect_uri=https%3A%2F%2Floja.algar.com.br%2Fon%2Fdemandware.store%2FSites-algartelecom-BR-Site%2Fpt_BR%2FLogin-OAuthReentryAlgarLoginProvider" target="_blank" class="external-card">
-                    <div class="external-card-image"><img src="https://yt3.googleusercontent.com/UiGmCyeAqY_fu8wExnd9XAsjwGIqwLTKiCy-m7fUY_YeLXd6xf_G3QVQb6r_OcwEw4qdmaXlqQ=s900-c-k-c0x00ffffff-no-rj" alt="Algar"></div>
-                    <div class="external-card-content">
-                        <div class="external-card-title">Algar Telecom</div>
-                        <div class="external-card-desc">Portal do cliente</div>
-                    </div>
-                </a>
-                <a href="https://webebt01.embratel.com.br/embratelonline/index.asp" target="_blank" class="external-card">
-                    <div class="external-card-image"><img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRLAHujXLaco-9GRUgrtH12xSPaLB1kMip6qA&s" alt="Claro"></div>
-                    <div class="external-card-content">
-                        <div class="external-card-title">Claro / Embratel</div>
-                        <div class="external-card-desc">Embratel Online</div>
-                    </div>
-                </a>
-                <a href="https://cliente.alexandriaenergia.com/" target="_blank" class="external-card">
-                    <div class="external-card-image"><img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQAOeYw50WCigUiyHlqGDoDX64u9LB1ngSR5Q&s" alt="Alexandria"></div>
-                    <div class="external-card-content">
-                        <div class="external-card-title">LEX Alexandria</div>
-                        <div class="external-card-desc">Gestão de energia</div>
-                    </div>
-                </a>
-                <a href="https://www.liggatelecom.com.br/autoatendimento/pub/login.jsf" target="_blank" class="external-card">
-                    <div class="external-card-image"><img src="https://carreira.inhire.com.br/wp-content/uploads/2025/10/LOGO_LIGGA_TELECOM_1-1-1.png" alt="Ligga"></div>
-                    <div class="external-card-content">
-                        <div class="external-card-title">Ligga Telecom</div>
-                        <div class="external-card-desc">Autoatendimento</div>
-                    </div>
-                </a>
-                <a href="https://meutim.tim.com.br/" target="_blank" class="external-card">
-                    <div class="external-card-image"><img src="https://play-lh.googleusercontent.com/U_NE4YtUoSzUU-wa7spbP0vB9VqrVxSrcjodyvGo-EsMDo4Pr-hLmutRuVXNz4V_eg" alt="TIM"></div>
-                    <div class="external-card-content">
-                        <div class="external-card-title">Meu TIM</div>
-                        <div class="external-card-desc">Gestão corporativa</div>
-                    </div>
-                </a>
-                <a href="https://pap.onitel.com.br/central-do-assinante/novacia/" target="_blank" class="external-card">
-                    <div class="external-card-image"><img src="https://media.licdn.com/dms/image/v2/C560BAQHGD7niTowhMw/company-logo_200_200/company-logo_200_200/0/1644847527143/grupo_novacia_logo?e=2147483647&v=beta&t=HI4DQhTCq3vWkoAxJW2Wjffj2Fhqka396GIiAbYY3Zw" alt="Novacia"></div>
-                    <div class="external-card-content">
-                        <div class="external-card-title">Novacia</div>
-                        <div class="external-card-desc">Autoatendimento</div>
-                    </div>
-                </a>
-                <a href="https://mve.vivo.com.br/" target="_blank" class="external-card">
-                    <div class="external-card-image"><img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQF6N3dTfE9QmQdpXFiBxVgrTAn_7NV05JSpQ&s" alt="Vivo"></div>
-                    <div class="external-card-content">
-                        <div class="external-card-title">Vivo Empresas</div>
-                        <div class="external-card-desc">Móvel corporativa</div>
-                    </div>
-                </a>
+            <div class="external-cards" id="telecom-links-grid">
+                <div class="table-state card-loading-state">
+                    <div class="spinner"></div>
+                    <div>Carregando cards...</div>
+                </div>
             </div>
         </div>
 
@@ -873,6 +738,77 @@
                         </table>
                     </div>
                 </div>
+
+                <div class="cad-card cad-card-wide">
+                    <h3>Cards Direcionadores</h3>
+                    <form id="cad-link-form" class="cad-form">
+                        <input type="hidden" id="cad-link-id">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Área</label>
+                                <select id="cad-link-area" required>
+                                    <option value="" selected disabled>Selecione...</option>
+                                    <option value="home">Home</option>
+                                    <option value="helpdesk">Helpdesk</option>
+                                    <option value="corporativo">Corporativo</option>
+                                    <option value="telecom">Telecom</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Nome do card</label>
+                                <input type="text" id="cad-link-nome" placeholder="Ex: Helpdesk VinilSul" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Ordem</label>
+                                <input type="number" id="cad-link-ordem" min="0" step="1" value="100">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Link</label>
+                                <input type="url" id="cad-link-url" placeholder="https://..." required>
+                            </div>
+                            <div class="form-group">
+                                <label>Foto do card (URL)</label>
+                                <input type="url" id="cad-link-imagem" placeholder="https://..." required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Descrição</label>
+                            <input type="text" id="cad-link-descricao" placeholder="Ex: GLPI Service Desk — interno" required>
+                        </div>
+                        <label class="cad-checkbox">
+                            <input type="checkbox" id="cad-link-ativo" checked>
+                            <span>Ativo</span>
+                        </label>
+                        <div class="cad-actions">
+                            <button type="submit" class="btn-primary" id="cad-link-submit">Salvar Card</button>
+                            <button type="button" class="btn-row" id="cad-link-cancel" style="display:none">Cancelar</button>
+                        </div>
+                    </form>
+
+                    <div class="table-wrap cad-table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Área</th>
+                                    <th>Card</th>
+                                    <th>Link</th>
+                                    <th>Status</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="cad-link-tbody">
+                                <tr><td colspan="5">
+                                    <div class="table-state">
+                                        <div class="icon"></div>
+                                        <div>Navegue até esta página para carregar.</div>
+                                    </div>
+                                </td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -891,6 +827,7 @@
 <script src="js/historico.js"></script>
 <script src="js/usuarios.js"></script>
 <script src="js/cadastros.js"></script>
+<script src="js/direcionadores.js"></script>
 
 </body>
 </html>

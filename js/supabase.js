@@ -662,6 +662,198 @@
         return { data: { id }, error: null };
     }
 
+    const DIRECIONADOR_AREAS = new Set(['home', 'helpdesk', 'corporativo', 'telecom']);
+
+    function normalizeDirecionadorArea(area) {
+        const parsed = sanitizeText(area).toLowerCase();
+        if (!DIRECIONADOR_AREAS.has(parsed)) {
+            return { value: null, error: normalizeError('Área inválida para o card.', 'VALIDATION_ERROR') };
+        }
+        return { value: parsed, error: null };
+    }
+
+    function normalizeHttpUrl(rawValue, fieldLabel) {
+        const value = sanitizeText(rawValue);
+        if (!value) {
+            return { value: null, error: normalizeError(`Informe ${fieldLabel}.`, 'VALIDATION_ERROR') };
+        }
+
+        try {
+            const parsed = new URL(value);
+            if (!['http:', 'https:'].includes(parsed.protocol)) {
+                return { value: null, error: normalizeError(`${fieldLabel} inválido. Use URL http(s).`, 'VALIDATION_ERROR') };
+            }
+            return { value: parsed.toString(), error: null };
+        } catch {
+            return { value: null, error: normalizeError(`${fieldLabel} inválido. Use URL http(s).`, 'VALIDATION_ERROR') };
+        }
+    }
+
+    function normalizeDirecionadorPayload(fields = {}, { partial = false } = {}) {
+        const payload = {};
+
+        if (Object.prototype.hasOwnProperty.call(fields, 'area')) {
+            const { value, error } = normalizeDirecionadorArea(fields.area);
+            if (error) return { payload: null, error };
+            payload.area = value;
+        }
+
+        if (Object.prototype.hasOwnProperty.call(fields, 'nome')) {
+            const nome = sanitizeText(fields.nome);
+            if (!nome) {
+                return { payload: null, error: normalizeError('Informe o nome do card.', 'VALIDATION_ERROR') };
+            }
+            payload.nome = nome;
+        }
+
+        if (Object.prototype.hasOwnProperty.call(fields, 'descricao')) {
+            const descricao = sanitizeText(fields.descricao);
+            if (!descricao) {
+                return { payload: null, error: normalizeError('Informe a descrição do card.', 'VALIDATION_ERROR') };
+            }
+            payload.descricao = descricao;
+        }
+
+        if (Object.prototype.hasOwnProperty.call(fields, 'link')) {
+            const { value, error } = normalizeHttpUrl(fields.link, 'o link do card');
+            if (error) return { payload: null, error };
+            payload.link = value;
+        }
+
+        if (Object.prototype.hasOwnProperty.call(fields, 'imagemUrl')) {
+            const { value, error } = normalizeHttpUrl(fields.imagemUrl, 'a foto do card');
+            if (error) return { payload: null, error };
+            payload.imagem_url = value;
+        }
+
+        if (Object.prototype.hasOwnProperty.call(fields, 'ordem')) {
+            const raw = sanitizeText(fields.ordem);
+            if (!raw) {
+                payload.ordem = 100;
+            } else {
+                const parsed = Number(raw);
+                if (!Number.isFinite(parsed) || !Number.isInteger(parsed) || parsed < 0) {
+                    return { payload: null, error: normalizeError('Ordem inválida. Use número inteiro maior ou igual a zero.', 'VALIDATION_ERROR') };
+                }
+                payload.ordem = parsed;
+            }
+        }
+
+        if (Object.prototype.hasOwnProperty.call(fields, 'ativo')) {
+            payload.ativo = Boolean(fields.ativo);
+        }
+
+        if (!partial) {
+            const requiredFields = ['area', 'nome', 'descricao', 'link', 'imagem_url'];
+            for (const key of requiredFields) {
+                if (!payload[key]) {
+                    return { payload: null, error: normalizeError(`Campo obrigatório: ${key}.`, 'VALIDATION_ERROR') };
+                }
+            }
+            if (!Object.prototype.hasOwnProperty.call(payload, 'ordem')) {
+                payload.ordem = 100;
+            }
+        }
+
+        return { payload, error: null };
+    }
+
+    async function listarDirecionadores({ area = null, apenasAtivos = false } = {}) {
+        let query = client
+            .from('catalog_direcionadores')
+            .select('*')
+            .order('area', { ascending: true })
+            .order('ordem', { ascending: true })
+            .order('nome', { ascending: true });
+
+        if (sanitizeText(area)) {
+            const { value, error } = normalizeDirecionadorArea(area);
+            if (error) {
+                return { data: null, error };
+            }
+            query = query.eq('area', value);
+        }
+
+        if (apenasAtivos) {
+            query = query.eq('ativo', true);
+        }
+
+        const { data, error } = await query;
+        if (error) {
+            return {
+                data: null,
+                error: normalizeError(error.message, error.code || 'DB_DIRECIONADOR_LIST_ERROR', error),
+            };
+        }
+
+        return { data: data || [], error: null };
+    }
+
+    async function criarDirecionador(fields = {}) {
+        const { payload, error: payloadError } = normalizeDirecionadorPayload(fields, { partial: false });
+        if (payloadError) {
+            return { data: null, error: payloadError };
+        }
+
+        const { data, error } = await client
+            .from('catalog_direcionadores')
+            .insert([payload])
+            .select()
+            .single();
+
+        if (error) {
+            return {
+                data: null,
+                error: normalizeError(error.message, error.code || 'DB_DIRECIONADOR_CREATE_ERROR', error),
+            };
+        }
+
+        return { data, error: null };
+    }
+
+    async function atualizarDirecionador(id, fields = {}) {
+        const { payload, error: payloadError } = normalizeDirecionadorPayload(fields, { partial: true });
+        if (payloadError) {
+            return { data: null, error: payloadError };
+        }
+
+        if (!Object.keys(payload).length) {
+            return { data: null, error: normalizeError('Nenhuma alteração foi informada.', 'VALIDATION_ERROR') };
+        }
+
+        const { data, error } = await client
+            .from('catalog_direcionadores')
+            .update(payload)
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (error) {
+            return {
+                data: null,
+                error: normalizeError(error.message, error.code || 'DB_DIRECIONADOR_UPDATE_ERROR', error),
+            };
+        }
+
+        return { data, error: null };
+    }
+
+    async function removerDirecionador(id) {
+        const { error } = await client
+            .from('catalog_direcionadores')
+            .delete()
+            .eq('id', id);
+
+        if (error) {
+            return {
+                data: null,
+                error: normalizeError(error.message, error.code || 'DB_DIRECIONADOR_DELETE_ERROR', error),
+            };
+        }
+
+        return { data: { id }, error: null };
+    }
+
     function buildCatalogSnapshot({ setores, cargos, filiais }) {
         const sortedSetores = sortLocaleBR(setores.map((item) => item.nome));
         const setorNomePorId = new Map(setores.map((item) => [item.id, item.nome]));
@@ -811,6 +1003,10 @@
             criarFilial,
             atualizarFilial,
             removerFilial,
+            listarDirecionadores,
+            criarDirecionador,
+            atualizarDirecionador,
+            removerDirecionador,
             getCatalogSnapshot,
             invalidateCatalogCache,
         },

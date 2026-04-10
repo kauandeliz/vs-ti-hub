@@ -72,6 +72,46 @@
     margin-bottom: 0;
 }
 
+.cad-area-tag {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 92px;
+    border-radius: 999px;
+    border: 1px solid rgba(79, 142, 247, 0.24);
+    background: rgba(79, 142, 247, 0.1);
+    color: var(--accent);
+    padding: 3px 8px;
+    font-size: 0.62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.cad-link-main {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.cad-link-main strong {
+    font-size: 0.74rem;
+    color: #fff;
+}
+
+.cad-link-main span {
+    font-size: 0.64rem;
+    color: var(--text-muted);
+    line-height: 1.45;
+}
+
+.cad-link-url {
+    font-family: var(--mono);
+    font-size: 0.62rem;
+    color: var(--text-soft);
+    word-break: break-all;
+}
+
 @media (max-width: 1100px) {
     .cad-grid {
         grid-template-columns: 1fr;
