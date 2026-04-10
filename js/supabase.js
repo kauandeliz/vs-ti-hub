@@ -12,7 +12,7 @@
 
     const DEFAULT_CONFIG = Object.freeze({
         supabaseUrl: 'https://ufoykcfcaygtwwpwwhyl.supabase.co',
-        supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmb3lrY2ZjYXlndHd3cHd3aHlsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA2NTA0MTksImV4cCI6MjA1NjIyNjQxOX0.rufSQuwlR4xK5UTQvAW0fyu2Y97p8vA9u2YrDmA4sZY',
+        supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmb3lrY2ZjYXlndHd3cHd3aHlsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwMjYxODUsImV4cCI6MjA4OTYwMjE4NX0.ZgY6K0rf6MEhY9sVnX0D0XRlITA6wyc8X_wZs-m5pq0',
         functionsPrefix: '/functions/v1',
     });
 
