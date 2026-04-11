@@ -4,6 +4,7 @@
  * Administração de usuários (somente admin):
  * - list
  * - invite
+ * - update-profile
  * - deactivate
  * - reactivate
  * - change-password
@@ -84,10 +85,9 @@ function parseJsonBody(raw: unknown): Body {
     return raw as Body;
 }
 
-function parseInvitePayload(body: Body) {
+function parseProfilePayload(body: Body) {
     const name = sanitizeText(body.name);
     const email = normalizeEmail(body.email);
-    const password = sanitizeText(body.password);
     const type = normalizeUserType(body.type);
     const setor = sanitizeText(body.setor);
     const cargo = sanitizeText(body.cargo);
@@ -98,10 +98,6 @@ function parseInvitePayload(body: Body) {
 
     if (!isValidEmail(email)) {
         return { data: null, error: 'E-mail inválido.' };
-    }
-
-    if (password.length < 8) {
-        return { data: null, error: 'A senha deve ter no mínimo 8 caracteres.' };
     }
 
     if (!type) {
@@ -120,10 +116,29 @@ function parseInvitePayload(body: Body) {
         data: {
             name,
             email,
-            password,
             type,
             setor,
             cargo,
+        },
+        error: null,
+    };
+}
+
+function parseInvitePayload(body: Body) {
+    const { data: profileData, error: profileError } = parseProfilePayload(body);
+    if (profileError || !profileData) {
+        return { data: null, error: profileError || 'Payload inválido.' };
+    }
+
+    const password = sanitizeText(body.password);
+    if (password.length < 8) {
+        return { data: null, error: 'A senha deve ter no mínimo 8 caracteres.' };
+    }
+
+    return {
+        data: {
+            ...profileData,
+            password,
         },
         error: null,
     };
@@ -201,6 +216,65 @@ async function handleInviteUser(
             id: created.user?.id,
             email: created.user?.email,
             user_metadata: created.user?.user_metadata,
+        },
+    });
+}
+
+async function handleUpdateUserProfile(
+    req: Request,
+    adminClient: ReturnType<typeof createClient>,
+    body: Body,
+    callerId: string,
+) {
+    const targetUserId = sanitizeText(body.targetUserId);
+    if (!targetUserId) {
+        return jsonResponse(req, 400, { error: 'targetUserId é obrigatório.' });
+    }
+
+    if (targetUserId === callerId) {
+        return jsonResponse(req, 400, { error: 'Use o perfil lateral para editar o próprio usuário.' });
+    }
+
+    const { data: profileData, error: profileError } = parseProfilePayload(body);
+    if (profileError || !profileData) {
+        return jsonResponse(req, 400, { error: profileError || 'Payload inválido.' });
+    }
+
+    const { data: currentData, error: currentError } = await adminClient.auth.admin.getUserById(targetUserId);
+    if (currentError || !currentData.user) {
+        return jsonResponse(req, 404, { error: 'Usuário não encontrado.' });
+    }
+
+    const existingMetadata = (currentData.user.user_metadata || {}) as Record<string, unknown>;
+    const role = userTypeToRole(profileData.type);
+
+    const { data: updated, error } = await adminClient.auth.admin.updateUserById(targetUserId, {
+        email: profileData.email,
+        user_metadata: {
+            ...existingMetadata,
+            name: profileData.name,
+            role,
+            type: profileData.type,
+            setor: profileData.setor,
+            cargo: profileData.cargo,
+            updated_by: callerId,
+            updated_at: new Date().toISOString(),
+        },
+    });
+
+    if (error) {
+        const normalized = error.message.toLowerCase();
+        if (normalized.includes('already been registered') || normalized.includes('already exists')) {
+            return jsonResponse(req, 409, { error: 'Este e-mail já está cadastrado.' });
+        }
+        return jsonResponse(req, 400, { error: error.message });
+    }
+
+    return jsonResponse(req, 200, {
+        user: {
+            id: updated.user?.id,
+            email: updated.user?.email,
+            user_metadata: updated.user?.user_metadata,
         },
     });
 }
@@ -331,6 +405,10 @@ Deno.serve(async (req: Request) => {
 
         if (action === 'invite') {
             return handleInviteUser(req, adminClient, body, caller.id);
+        }
+
+        if (action === 'update-profile') {
+            return handleUpdateUserProfile(req, adminClient, body, caller.id);
         }
 
         if (action === 'deactivate') {

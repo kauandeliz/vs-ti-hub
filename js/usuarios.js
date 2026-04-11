@@ -129,9 +129,9 @@
         await loadUsuarios();
     }
 
-    function validateInviteInput({ name, email, type, setor, cargo, password }) {
-        if (!name || !email || !type || !setor || !cargo || !password) {
-            return 'Preencha nome, tipo, setor, cargo, e-mail e senha.';
+    function validateProfileInput({ name, email, type, setor, cargo }) {
+        if (!name || !email || !type || !setor || !cargo) {
+            return 'Preencha nome, tipo, setor, cargo e e-mail.';
         }
 
         if (name.split(/\s+/).length < 2) {
@@ -148,6 +148,23 @@
 
         if (!['adm', 'comum'].includes(type)) {
             return 'Tipo inválido. Use adm ou usuário comum.';
+        }
+
+        return null;
+    }
+
+    function validateInviteInput({ name, email, type, setor, cargo, password }) {
+        const profileValidation = validateProfileInput({ name, email, type, setor, cargo });
+        if (profileValidation) {
+            return profileValidation;
+        }
+
+        if (!password) {
+            return 'Preencha a senha de acesso.';
+        }
+
+        if (password.length < MIN_PASSWORD_LENGTH) {
+            return `A senha deve ter no mínimo ${MIN_PASSWORD_LENGTH} caracteres.`;
         }
 
         return null;
@@ -270,6 +287,11 @@
         const email = actionBtn.dataset.email || '';
         const name = actionBtn.dataset.name || '';
 
+        if (action === 'edit-user' && userId) {
+            abrirEdicaoUsuario(userId);
+            return;
+        }
+
         if (action === 'change-password' && userId) {
             abrirTrocaSenha(userId, name || email, false);
             return;
@@ -288,6 +310,206 @@
         if (action === 'reactivate' && userId) {
             reativarUsuario(userId, email);
         }
+    }
+
+    function abrirEdicaoUsuario(userId) {
+        const user = state.users.find((item) => item.id === userId);
+        if (!user) {
+            showToast('Usuário não encontrado para edição.', 'error');
+            return;
+        }
+
+        const name = user.user_metadata?.name || '';
+        const email = user.email || '';
+        const type = resolveUserType(user.user_metadata);
+        const setor = user.user_metadata?.setor || '';
+        const cargo = user.user_metadata?.cargo || '';
+
+        const modal = document.createElement('div');
+        modal.className = 'modal-backdrop';
+        modal.id = 'usuario-edit-modal';
+
+        modal.innerHTML = `
+            <div class="modal" style="max-width:560px" onclick="event.stopPropagation()">
+                <div class="modal-header">
+                    <h3>Editar usuário</h3>
+                    <button class="modal-close" data-action="close">✕</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Nome completo</label>
+                        <input type="text" id="edit-user-name" value="${escapeHtmlAttribute(name)}" placeholder="Joao da Silva">
+                    </div>
+                    <div class="form-group">
+                        <label>E-mail corporativo</label>
+                        <input type="email" id="edit-user-email" value="${escapeHtmlAttribute(email)}" placeholder="joao.silva@vinilsul.com.br">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Tipo</label>
+                            <select id="edit-user-type">
+                                <option value="comum"${type === 'comum' ? ' selected' : ''}>Usuario comum</option>
+                                <option value="adm"${type === 'adm' ? ' selected' : ''}>Administrador</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Setor</label>
+                            <select id="edit-user-setor"></select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Cargo</label>
+                        <select id="edit-user-cargo"></select>
+                    </div>
+
+                    <div class="error-msg" id="edit-user-error" style="margin-top:8px"></div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn-row" data-action="close">Cancelar</button>
+                    <button class="btn-row primary" data-action="save-profile">Salvar alteracoes</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        const close = () => modal.remove();
+
+        modal.addEventListener('click', (event) => {
+            if (event.target === modal) close();
+        });
+
+        modal.querySelectorAll('[data-action="close"]').forEach((button) => {
+            button.addEventListener('click', close);
+        });
+
+        const setorSelect = modal.querySelector('#edit-user-setor');
+        const cargoSelect = modal.querySelector('#edit-user-cargo');
+
+        renderEditSetorOptions(setorSelect, setor);
+        renderEditCargoOptions(cargoSelect, setor, cargo);
+
+        setorSelect?.addEventListener('change', () => {
+            renderEditCargoOptions(cargoSelect, setorSelect.value || '', '');
+        });
+
+        modal.querySelector('[data-action="save-profile"]')?.addEventListener('click', async () => {
+            await executarEdicaoUsuario(modal, userId);
+        });
+
+        setTimeout(() => {
+            modal.querySelector('#edit-user-name')?.focus();
+        }, 60);
+    }
+
+    function getSetoresAtivosDoCatalogo() {
+        const ativos = (state.inviteCatalog?.raw?.setores || [])
+            .filter((setor) => setor?.ativo !== false)
+            .map((setor) => String(setor.nome || '').trim())
+            .filter(Boolean);
+
+        return Array.from(new Set(ativos)).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    }
+
+    function renderEditSetorOptions(setorSelect, selectedSetor = '') {
+        if (!setorSelect) return;
+
+        const setores = getSetoresAtivosDoCatalogo();
+        const selected = String(selectedSetor || '').trim();
+
+        if (selected && !setores.includes(selected)) {
+            setores.unshift(selected);
+        }
+
+        setorSelect.innerHTML = '<option value="" selected disabled>Selecione...</option>';
+        setores.forEach((setorNome) => {
+            setorSelect.add(new Option(setorNome, setorNome));
+        });
+
+        if (selected && Array.from(setorSelect.options).some((option) => option.value === selected)) {
+            setorSelect.value = selected;
+        }
+    }
+
+    function renderEditCargoOptions(cargoSelect, setorNome = '', selectedCargo = '') {
+        if (!cargoSelect) return;
+
+        const setor = String(setorNome || '').trim();
+        const selected = String(selectedCargo || '').trim();
+        const catalogCargos = state.inviteCatalog?.cargosPorSetor?.[setor] || [];
+        const cargos = [...catalogCargos].sort((a, b) => String(a).localeCompare(String(b), 'pt-BR'));
+
+        if (selected && !cargos.includes(selected)) {
+            cargos.unshift(selected);
+        }
+
+        if (!setor) {
+            cargoSelect.innerHTML = '<option value="" selected disabled>Setor primeiro</option>';
+            cargoSelect.disabled = true;
+            return;
+        }
+
+        if (!cargos.length) {
+            cargoSelect.innerHTML = '<option value="" selected disabled>Sem cargos neste setor</option>';
+            cargoSelect.disabled = true;
+            return;
+        }
+
+        cargoSelect.innerHTML = '<option value="" selected disabled>Selecione...</option>';
+        cargos.forEach((cargoNome) => {
+            cargoSelect.add(new Option(cargoNome, cargoNome));
+        });
+
+        if (selected && Array.from(cargoSelect.options).some((option) => option.value === selected)) {
+            cargoSelect.value = selected;
+        }
+
+        cargoSelect.disabled = false;
+    }
+
+    function setEditBusy(modal, busy) {
+        const saveButton = modal?.querySelector('[data-action="save-profile"]');
+        if (!saveButton) return;
+
+        saveButton.disabled = busy;
+        saveButton.textContent = busy ? 'Salvando...' : 'Salvar alteracoes';
+    }
+
+    async function executarEdicaoUsuario(modal, targetUserId) {
+        const name = modal.querySelector('#edit-user-name')?.value?.trim() || '';
+        const email = modal.querySelector('#edit-user-email')?.value?.trim().toLowerCase() || '';
+        const type = modal.querySelector('#edit-user-type')?.value || '';
+        const setor = modal.querySelector('#edit-user-setor')?.value || '';
+        const cargo = modal.querySelector('#edit-user-cargo')?.value || '';
+        const errorBox = modal.querySelector('#edit-user-error');
+
+        hideMessage(errorBox);
+
+        const validation = validateProfileInput({ name, email, type, setor, cargo });
+        if (validation) {
+            showMessage(errorBox, validation);
+            return;
+        }
+
+        setEditBusy(modal, true);
+        const { error } = await window.App.api.admin.updateUserProfile({
+            targetUserId,
+            name,
+            email,
+            type,
+            setor,
+            cargo,
+        });
+        setEditBusy(modal, false);
+
+        if (error) {
+            showMessage(errorBox, error.message);
+            return;
+        }
+
+        modal.remove();
+        showToast('Usuario atualizado com sucesso.', 'success');
+        await loadUsuarios();
     }
 
     async function desativarUsuario(userId, email) {
@@ -509,6 +731,7 @@
             const actions = isSelf
                 ? `<button class="btn-row primary" data-action="change-password-self" data-user-id="${user.id}" data-name="${safeName}" data-email="${safeEmail}">🔑 Minha senha</button>`
                 : `
+                    <button class="btn-row" data-action="edit-user" data-user-id="${user.id}" data-name="${safeName}" data-email="${safeEmail}">Editar</button>
                     <button class="btn-row primary" data-action="change-password" data-user-id="${user.id}" data-name="${safeName}" data-email="${safeEmail}">🔑 Senha</button>
                     ${status !== 'inativo'
                         ? `<button class="btn-row danger" data-action="deactivate" data-user-id="${user.id}" data-email="${safeEmail}">Desativar</button>`
@@ -629,6 +852,10 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#039;');
+    }
+
+    function escapeHtmlAttribute(value) {
+        return escapeHtml(value).replace(/\n/g, '&#10;');
     }
 
     window.initUsuarios = initUsuarios;

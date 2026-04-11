@@ -268,6 +268,18 @@
         }, { requiresAuth: true });
     }
 
+    async function updateUserProfile({ targetUserId, name, email, type, setor, cargo }) {
+        return invokeFunction('invite-user', {
+            action: 'update-profile',
+            targetUserId,
+            name,
+            email,
+            type,
+            setor,
+            cargo,
+        }, { requiresAuth: true });
+    }
+
     async function deactivateUser(userId) {
         return invokeFunction('invite-user', { action: 'deactivate', userId }, { requiresAuth: true });
     }
@@ -986,6 +998,7 @@
         admin: {
             listUsers,
             inviteUser,
+            updateUserProfile,
             deactivateUser,
             reactivateUser,
             changeUserPassword,
