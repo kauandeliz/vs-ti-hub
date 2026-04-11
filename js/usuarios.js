@@ -142,10 +142,6 @@
             return 'E-mail inválido.';
         }
 
-        if (password.length < MIN_PASSWORD_LENGTH) {
-            return `A senha deve ter no mínimo ${MIN_PASSWORD_LENGTH} caracteres.`;
-        }
-
         if (!['adm', 'comum'].includes(type)) {
             return 'Tipo inválido. Use adm ou usuário comum.';
         }
@@ -394,7 +390,14 @@
         });
 
         modal.querySelector('[data-action="save-profile"]')?.addEventListener('click', async () => {
-            await executarEdicaoUsuario(modal, userId);
+            try {
+                await executarEdicaoUsuario(modal, userId);
+            } catch (error) {
+                const errorBox = modal.querySelector('#edit-user-error');
+                const message = error instanceof Error ? error.message : 'Erro inesperado ao salvar usuário.';
+                showMessage(errorBox, message);
+                console.error('Falha ao executar edição de usuário:', error);
+            }
         });
 
         setTimeout(() => {
