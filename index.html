@@ -557,7 +557,7 @@
         <div class="page" id="page-cadastros">
             <div class="page-header">
                 <h1>Cadastros</h1>
-                <p>CRUD de setores, cargos e filiais para substituir dados estáticos</p>
+                <p>Área organizada por módulos para gestão de estrutura, filiais e cards</p>
             </div>
 
             <div class="cad-toolbar">
@@ -565,24 +565,77 @@
                 <button class="btn-icon" id="cad-refresh-btn">↻ Atualizar</button>
             </div>
 
-            <div class="cad-grid">
+            <div class="cad-kpi-grid">
+                <div class="cad-kpi-card">
+                    <span>Setores ativos</span>
+                    <strong id="cad-kpi-setores">—</strong>
+                </div>
+                <div class="cad-kpi-card">
+                    <span>Cargos ativos</span>
+                    <strong id="cad-kpi-cargos">—</strong>
+                </div>
+                <div class="cad-kpi-card">
+                    <span>Filiais ativas</span>
+                    <strong id="cad-kpi-filiais">—</strong>
+                </div>
+            </div>
+
+            <div class="cad-module-switch" role="tablist" aria-label="Módulos de cadastro">
+                <button
+                    type="button"
+                    class="cad-module-btn active"
+                    data-cad-module-btn="organizacional"
+                    role="tab"
+                    aria-selected="true"
+                >
+                    Estrutura Organizacional
+                </button>
+                <button
+                    type="button"
+                    class="cad-module-btn"
+                    data-cad-module-btn="filiais"
+                    role="tab"
+                    aria-selected="false"
+                >
+                    Filiais
+                </button>
+                <button
+                    type="button"
+                    class="cad-module-btn"
+                    data-cad-module-btn="direcionadores"
+                    role="tab"
+                    aria-selected="false"
+                >
+                    Cards Direcionadores
+                </button>
+            </div>
+            <div class="cad-module-hint" id="cad-module-hint">
+                Cadastre setores e cargos usados pelos formulários de usuários e onboarding.
+            </div>
+
+            <div class="cad-grid cad-module-panel active" data-cad-module-panel="organizacional">
                 <div class="cad-card">
-                    <h3>Setores</h3>
-                    <form id="cad-setor-form" class="cad-form">
-                        <input type="hidden" id="cad-setor-id">
-                        <div class="form-group">
-                            <label>Nome do setor</label>
-                            <input type="text" id="cad-setor-nome" placeholder="Ex: Comercial" required>
-                        </div>
-                        <label class="cad-checkbox">
-                            <input type="checkbox" id="cad-setor-ativo" checked>
-                            <span>Ativo</span>
-                        </label>
-                        <div class="cad-actions">
-                            <button type="submit" class="btn-primary" id="cad-setor-submit">Salvar Setor</button>
-                            <button type="button" class="btn-row" id="cad-setor-cancel" style="display:none">Cancelar</button>
-                        </div>
-                    </form>
+                    <div class="cad-card-head">
+                        <h3>Setores</h3>
+                        <p>Base organizacional usada na criação de usuários e cargos.</p>
+                    </div>
+                    <div class="cad-form-shell">
+                        <form id="cad-setor-form" class="cad-form">
+                            <input type="hidden" id="cad-setor-id">
+                            <div class="form-group">
+                                <label>Nome do setor</label>
+                                <input type="text" id="cad-setor-nome" placeholder="Ex: Comercial" required>
+                            </div>
+                            <label class="cad-checkbox">
+                                <input type="checkbox" id="cad-setor-ativo" checked>
+                                <span>Ativo</span>
+                            </label>
+                            <div class="cad-actions">
+                                <button type="submit" class="btn-primary" id="cad-setor-submit">Salvar Setor</button>
+                                <button type="button" class="btn-row" id="cad-setor-cancel" style="display:none">Cancelar</button>
+                            </div>
+                        </form>
+                    </div>
 
                     <div class="table-wrap cad-table-wrap">
                         <table>
@@ -607,30 +660,35 @@
                 </div>
 
                 <div class="cad-card">
-                    <h3>Cargos</h3>
-                    <form id="cad-cargo-form" class="cad-form">
-                        <input type="hidden" id="cad-cargo-id">
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Setor</label>
-                                <select id="cad-cargo-setor" required>
-                                    <option value="">Selecione...</option>
-                                </select>
+                    <div class="cad-card-head">
+                        <h3>Cargos</h3>
+                        <p>Defina os cargos vinculados aos setores já cadastrados.</p>
+                    </div>
+                    <div class="cad-form-shell">
+                        <form id="cad-cargo-form" class="cad-form">
+                            <input type="hidden" id="cad-cargo-id">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Setor</label>
+                                    <select id="cad-cargo-setor" required>
+                                        <option value="">Selecione...</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Nome do cargo</label>
+                                    <input type="text" id="cad-cargo-nome" placeholder="Ex: Assistente" required>
+                                </div>
                             </div>
-                            <div class="form-group">
-                                <label>Nome do cargo</label>
-                                <input type="text" id="cad-cargo-nome" placeholder="Ex: Assistente" required>
+                            <label class="cad-checkbox">
+                                <input type="checkbox" id="cad-cargo-ativo" checked>
+                                <span>Ativo</span>
+                            </label>
+                            <div class="cad-actions">
+                                <button type="submit" class="btn-primary" id="cad-cargo-submit">Salvar Cargo</button>
+                                <button type="button" class="btn-row" id="cad-cargo-cancel" style="display:none">Cancelar</button>
                             </div>
-                        </div>
-                        <label class="cad-checkbox">
-                            <input type="checkbox" id="cad-cargo-ativo" checked>
-                            <span>Ativo</span>
-                        </label>
-                        <div class="cad-actions">
-                            <button type="submit" class="btn-primary" id="cad-cargo-submit">Salvar Cargo</button>
-                            <button type="button" class="btn-row" id="cad-cargo-cancel" style="display:none">Cancelar</button>
-                        </div>
-                    </form>
+                        </form>
+                    </div>
 
                     <div class="table-wrap cad-table-wrap">
                         <table>
@@ -653,68 +711,75 @@
                         </table>
                     </div>
                 </div>
+            </div>
 
+            <div class="cad-grid cad-module-panel" data-cad-module-panel="filiais">
                 <div class="cad-card cad-card-wide">
-                    <h3>Filiais</h3>
-                    <form id="cad-filial-form" class="cad-form">
-                        <input type="hidden" id="cad-filial-id">
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Código</label>
-                                <input type="number" id="cad-filial-codigo" placeholder="Ex: 11">
+                    <div class="cad-card-head">
+                        <h3>Filiais</h3>
+                        <p>Cadastro completo de unidades com endereço, identificação e uso em etiquetas.</p>
+                    </div>
+                    <div class="cad-form-shell">
+                        <form id="cad-filial-form" class="cad-form">
+                            <input type="hidden" id="cad-filial-id">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Código</label>
+                                    <input type="number" id="cad-filial-codigo" placeholder="Ex: 11">
+                                </div>
+                                <div class="form-group">
+                                    <label>Nome da filial</label>
+                                    <input type="text" id="cad-filial-nome" placeholder="Ex: Curitiba (Matriz)" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>UF</label>
+                                    <input type="text" id="cad-filial-uf" maxlength="2" placeholder="PR" required>
+                                </div>
                             </div>
-                            <div class="form-group">
-                                <label>Nome da filial</label>
-                                <input type="text" id="cad-filial-nome" placeholder="Ex: Curitiba (Matriz)" required>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Cidade</label>
+                                    <input type="text" id="cad-filial-cidade" placeholder="Curitiba" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Bairro</label>
+                                    <input type="text" id="cad-filial-bairro" placeholder="Jardim Botânico" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Número</label>
+                                    <input type="text" id="cad-filial-numero" placeholder="185" required>
+                                </div>
                             </div>
-                            <div class="form-group">
-                                <label>UF</label>
-                                <input type="text" id="cad-filial-uf" maxlength="2" placeholder="PR" required>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Endereço</label>
+                                    <input type="text" id="cad-filial-endereco" placeholder="Rua São Joaquim" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>CNPJ</label>
+                                    <input type="text" id="cad-filial-cnpj" placeholder="00.000.000/0000-00">
+                                </div>
+                                <div class="form-group">
+                                    <label>CEP</label>
+                                    <input type="text" id="cad-filial-cep" placeholder="80000-000">
+                                </div>
                             </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Cidade</label>
-                                <input type="text" id="cad-filial-cidade" placeholder="Curitiba" required>
+                            <div class="cad-checkbox-row">
+                                <label class="cad-checkbox">
+                                    <input type="checkbox" id="cad-filial-etiqueta" checked>
+                                    <span>Usar em etiquetas</span>
+                                </label>
+                                <label class="cad-checkbox">
+                                    <input type="checkbox" id="cad-filial-ativo" checked>
+                                    <span>Ativa</span>
+                                </label>
                             </div>
-                            <div class="form-group">
-                                <label>Bairro</label>
-                                <input type="text" id="cad-filial-bairro" placeholder="Jardim Botânico" required>
+                            <div class="cad-actions">
+                                <button type="submit" class="btn-primary" id="cad-filial-submit">Salvar Filial</button>
+                                <button type="button" class="btn-row" id="cad-filial-cancel" style="display:none">Cancelar</button>
                             </div>
-                            <div class="form-group">
-                                <label>Número</label>
-                                <input type="text" id="cad-filial-numero" placeholder="185" required>
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Endereço</label>
-                                <input type="text" id="cad-filial-endereco" placeholder="Rua São Joaquim" required>
-                            </div>
-                            <div class="form-group">
-                                <label>CNPJ</label>
-                                <input type="text" id="cad-filial-cnpj" placeholder="00.000.000/0000-00">
-                            </div>
-                            <div class="form-group">
-                                <label>CEP</label>
-                                <input type="text" id="cad-filial-cep" placeholder="80000-000">
-                            </div>
-                        </div>
-                        <div class="cad-checkbox-row">
-                            <label class="cad-checkbox">
-                                <input type="checkbox" id="cad-filial-etiqueta" checked>
-                                <span>Usar em etiquetas</span>
-                            </label>
-                            <label class="cad-checkbox">
-                                <input type="checkbox" id="cad-filial-ativo" checked>
-                                <span>Ativa</span>
-                            </label>
-                        </div>
-                        <div class="cad-actions">
-                            <button type="submit" class="btn-primary" id="cad-filial-submit">Salvar Filial</button>
-                            <button type="button" class="btn-row" id="cad-filial-cancel" style="display:none">Cancelar</button>
-                        </div>
-                    </form>
+                        </form>
+                    </div>
 
                     <div class="table-wrap cad-table-wrap">
                         <table>
@@ -738,54 +803,61 @@
                         </table>
                     </div>
                 </div>
+            </div>
 
+            <div class="cad-grid cad-module-panel" data-cad-module-panel="direcionadores">
                 <div class="cad-card cad-card-wide">
-                    <h3>Cards Direcionadores</h3>
-                    <form id="cad-link-form" class="cad-form">
-                        <input type="hidden" id="cad-link-id">
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Área</label>
-                                <select id="cad-link-area" required>
-                                    <option value="" selected disabled>Selecione...</option>
-                                    <option value="home">Home</option>
-                                    <option value="helpdesk">Helpdesk</option>
-                                    <option value="corporativo">Corporativo</option>
-                                    <option value="telecom">Telecom</option>
-                                </select>
+                    <div class="cad-card-head">
+                        <h3>Cards Direcionadores</h3>
+                        <p>Gerencie os cards exibidos na Home e nas áreas de sistemas.</p>
+                    </div>
+                    <div class="cad-form-shell">
+                        <form id="cad-link-form" class="cad-form">
+                            <input type="hidden" id="cad-link-id">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Área</label>
+                                    <select id="cad-link-area" required>
+                                        <option value="" selected disabled>Selecione...</option>
+                                        <option value="home">Home</option>
+                                        <option value="helpdesk">Helpdesk</option>
+                                        <option value="corporativo">Corporativo</option>
+                                        <option value="telecom">Telecom</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Nome do card</label>
+                                    <input type="text" id="cad-link-nome" placeholder="Ex: Helpdesk VinilSul" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Ordem</label>
+                                    <input type="number" id="cad-link-ordem" min="0" step="1" value="100">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Link</label>
+                                    <input type="url" id="cad-link-url" placeholder="https://..." required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Foto do card (URL)</label>
+                                    <input type="url" id="cad-link-imagem" placeholder="https://..." required>
+                                </div>
                             </div>
                             <div class="form-group">
-                                <label>Nome do card</label>
-                                <input type="text" id="cad-link-nome" placeholder="Ex: Helpdesk VinilSul" required>
+                                <label>Descrição</label>
+                                <input type="text" id="cad-link-descricao" placeholder="Ex: GLPI Service Desk - interno" required>
                             </div>
-                            <div class="form-group">
-                                <label>Ordem</label>
-                                <input type="number" id="cad-link-ordem" min="0" step="1" value="100">
+                            <label class="cad-checkbox">
+                                <input type="checkbox" id="cad-link-ativo" checked>
+                                <span>Ativo</span>
+                            </label>
+                            <div class="cad-actions">
+                                <button type="submit" class="btn-primary" id="cad-link-submit">Salvar Card</button>
+                                <button type="button" class="btn-row" id="cad-link-cancel" style="display:none">Cancelar</button>
                             </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Link</label>
-                                <input type="url" id="cad-link-url" placeholder="https://..." required>
-                            </div>
-                            <div class="form-group">
-                                <label>Foto do card (URL)</label>
-                                <input type="url" id="cad-link-imagem" placeholder="https://..." required>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label>Descrição</label>
-                            <input type="text" id="cad-link-descricao" placeholder="Ex: GLPI Service Desk — interno" required>
-                        </div>
-                        <label class="cad-checkbox">
-                            <input type="checkbox" id="cad-link-ativo" checked>
-                            <span>Ativo</span>
-                        </label>
-                        <div class="cad-actions">
-                            <button type="submit" class="btn-primary" id="cad-link-submit">Salvar Card</button>
-                            <button type="button" class="btn-row" id="cad-link-cancel" style="display:none">Cancelar</button>
-                        </div>
-                    </form>
+                        </form>
+                    </div>
 
                     <div class="table-wrap cad-table-wrap">
                         <table>

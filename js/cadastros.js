@@ -13,6 +13,13 @@
         setores: [],
         cargos: [],
         filiais: [],
+        activeModule: 'organizacional',
+    };
+
+    const MODULE_HINTS = {
+        organizacional: 'Cadastre setores e cargos usados pelos formulários de usuários e onboarding.',
+        filiais: 'Mantenha filiais, endereços e dados de etiqueta centralizados em um único cadastro.',
+        direcionadores: 'Publique e mantenha os cards com links usados na Home e nas páginas de sistemas.',
     };
 
     function initCadastros() {
@@ -31,6 +38,7 @@
         document.getElementById('cad-filial-tbody')?.addEventListener('click', handleFilialTableClick);
 
         document.getElementById('cad-refresh-btn')?.addEventListener('click', loadCadastros);
+        document.getElementById('page-cadastros')?.addEventListener('click', handleModuleSwitchClick);
 
         document.addEventListener('app:catalog-updated', () => {
             if (isCadastrosActive()) {
@@ -38,6 +46,7 @@
             }
         });
 
+        syncModuleUI();
         state.initialized = true;
     }
 
@@ -46,6 +55,8 @@
     }
 
     async function onCadastrosActivate() {
+        syncModuleUI();
+
         if (!isAdmin()) {
             renderRestricted();
             return;
@@ -108,6 +119,11 @@
                 </tr>
             `;
         });
+
+        setText('cad-summary', 'Acesso restrito a administradores.');
+        setText('cad-kpi-setores', '—');
+        setText('cad-kpi-cargos', '—');
+        setText('cad-kpi-filiais', '—');
     }
 
     function renderLoadingStates() {
@@ -168,6 +184,44 @@
         const activeFiliais = state.filiais.filter((f) => f.ativo).length;
 
         setText('cad-summary', `${activeSetores} setores ativos • ${activeCargos} cargos ativos • ${activeFiliais} filiais ativas`);
+        setText('cad-kpi-setores', String(activeSetores));
+        setText('cad-kpi-cargos', String(activeCargos));
+        setText('cad-kpi-filiais', String(activeFiliais));
+    }
+
+    function handleModuleSwitchClick(event) {
+        const button = event.target.closest('[data-cad-module-btn]');
+        if (!button) return;
+
+        const module = button.dataset.cadModuleBtn;
+        if (!module) return;
+
+        setActiveModule(module);
+    }
+
+    function setActiveModule(module) {
+        if (!Object.prototype.hasOwnProperty.call(MODULE_HINTS, module)) return;
+
+        state.activeModule = module;
+        syncModuleUI();
+    }
+
+    function syncModuleUI() {
+        const activeModule = Object.prototype.hasOwnProperty.call(MODULE_HINTS, state.activeModule)
+            ? state.activeModule
+            : 'organizacional';
+
+        document.querySelectorAll('[data-cad-module-btn]').forEach((button) => {
+            const isActive = button.dataset.cadModuleBtn === activeModule;
+            button.classList.toggle('active', isActive);
+            button.setAttribute('aria-selected', isActive ? 'true' : 'false');
+        });
+
+        document.querySelectorAll('[data-cad-module-panel]').forEach((panel) => {
+            panel.classList.toggle('active', panel.dataset.cadModulePanel === activeModule);
+        });
+
+        setText('cad-module-hint', MODULE_HINTS[activeModule]);
     }
 
     function setText(id, text) {

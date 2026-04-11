@@ -4,12 +4,83 @@
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    margin-bottom: 14px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
 }
 
 .cad-summary {
     font-size: 0.74rem;
     color: var(--text-soft);
+}
+
+.cad-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.cad-kpi-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.cad-kpi-card span {
+    font-size: 0.62rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+}
+
+.cad-kpi-card strong {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: -0.02em;
+}
+
+.cad-module-switch {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+}
+
+.cad-module-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--text-soft);
+    font-size: 0.68rem;
+    font-weight: 600;
+    font-family: var(--font);
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    padding: 7px 12px;
+    transition: all 0.15s;
+}
+
+.cad-module-btn:hover {
+    border-color: var(--border-hover);
+    color: var(--text);
+}
+
+.cad-module-btn.active {
+    border-color: rgba(79, 142, 247, 0.5);
+    background: rgba(79, 142, 247, 0.1);
+    color: var(--accent);
+}
+
+.cad-module-hint {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    margin-bottom: 14px;
 }
 
 .cad-grid {
@@ -19,17 +90,42 @@
     align-items: start;
 }
 
+.cad-module-panel {
+    display: none;
+}
+
+.cad-module-panel.active {
+    display: grid;
+    animation: fadeIn 0.18s ease;
+}
+
 .cad-card {
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    padding: 14px;
+    overflow: hidden;
+}
+
+.cad-card-head {
+    padding: 14px 14px 0;
 }
 
 .cad-card h3 {
     font-size: 0.88rem;
-    margin-bottom: 12px;
+    margin-bottom: 6px;
     color: #fff;
+}
+
+.cad-card-head p {
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    line-height: 1.45;
+    margin-bottom: 12px;
+}
+
+.cad-form-shell {
+    padding: 0 14px 14px;
+    border-bottom: 1px solid var(--border);
 }
 
 .cad-card-wide {
@@ -37,7 +133,7 @@
 }
 
 .cad-form {
-    margin-bottom: 12px;
+    margin-bottom: 0;
 }
 
 .cad-checkbox-row {
@@ -46,6 +142,7 @@
     align-items: center;
     margin-top: 4px;
     margin-bottom: 10px;
+    flex-wrap: wrap;
 }
 
 .cad-checkbox {
@@ -62,6 +159,7 @@
     display: flex;
     gap: 8px;
     align-items: center;
+    flex-wrap: wrap;
 }
 
 .cad-actions .btn-primary {
@@ -70,6 +168,8 @@
 
 .cad-table-wrap {
     margin-bottom: 0;
+    border: none;
+    border-radius: 0;
 }
 
 .cad-area-tag {
@@ -117,7 +217,23 @@
         grid-template-columns: 1fr;
     }
 
+    .cad-kpi-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+
     .cad-card-wide {
         grid-column: auto;
+    }
+}
+
+@media (max-width: 760px) {
+    .cad-kpi-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .cad-module-btn {
+        width: 100%;
+        text-align: left;
+        border-radius: 9px;
     }
 }
