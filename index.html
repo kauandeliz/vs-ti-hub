@@ -20,6 +20,7 @@
     <link rel="stylesheet" href="css/home.css">
     <link rel="stylesheet" href="css/gerador.css">
     <link rel="stylesheet" href="css/historico.css">
+    <link rel="stylesheet" href="css/colaboradores.css">
     <link rel="stylesheet" href="css/cadastros.css">
     <link rel="stylesheet" href="css/auth.css">
 
@@ -70,8 +71,8 @@
     <button class="nav-item" id="nav-cadastros" data-nav="cadastros" style="display:none">
         <i class="nav-icon fas fa-database"></i> Cadastros
     </button>
-    <button class="nav-item" data-nav="historico">
-        <i class="nav-icon fas fa-history"></i> Histórico de Acessos
+    <button class="nav-item" id="nav-colaboradores" data-nav="colaboradores" style="display:none">
+        <i class="nav-icon fas fa-id-badge"></i> Colaboradores
     </button>
     <button class="nav-item" data-nav="unidades">
         <i class="nav-icon fas fa-city"></i> Unidades &amp; Filiais
@@ -112,13 +113,13 @@
                         <span class="landing-pill" id="landingGreeting">Bem-vindo ao VS TI Hub</span>
                         <h1 class="landing-title">Landing de Apresentação do VS TI Hub</h1>
                         <p class="landing-subtitle">
-                            A porta de entrada da operação de TI da VinilSul: onboarding, auditoria de acessos,
+                            A porta de entrada da operação de TI da VinilSul: onboarding, gestão de colaboradores,
                             gestão de usuários e catálogo centralizado em um único ambiente.
                         </p>
 
                         <div class="landing-cta-row">
                             <a href="#" data-nav="gerador" class="landing-btn primary">Começar onboarding</a>
-                            <a href="#" data-nav="historico" class="landing-btn ghost">Abrir histórico</a>
+                            <a href="#" data-nav="colaboradores" data-home-admin style="display:none" class="landing-btn ghost">Abrir colaboradores</a>
                         </div>
 
                         <div class="landing-meta-row">
@@ -132,7 +133,7 @@
                         <ol class="landing-steps">
                             <li>Padronize setor, cargo e filiais no módulo Cadastros.</li>
                             <li>Gere acessos com consistência no Gerador de Acessos.</li>
-                            <li>Acompanhe status e rastreabilidade no Histórico.</li>
+                            <li>Gerencie o quadro interno no módulo Colaboradores.</li>
                         </ol>
 
                         <div class="landing-kpi-grid">
@@ -160,10 +161,10 @@
                             <div class="shortcut-title">Gerador de Acessos</div>
                             <div class="shortcut-desc">Provisionamento de novos colaboradores com padrão único.</div>
                         </a>
-                        <a href="#" data-nav="historico" class="shortcut-card landing-action-card">
-                            <div class="shortcut-icon">📋</div>
-                            <div class="shortcut-title">Histórico de Acessos</div>
-                            <div class="shortcut-desc">Consulta, revogação e reativação com auditoria completa.</div>
+                        <a href="#" data-nav="colaboradores" data-home-admin style="display:none" class="shortcut-card landing-action-card">
+                            <div class="shortcut-icon">🧑‍💼</div>
+                            <div class="shortcut-title">Colaboradores</div>
+                            <div class="shortcut-desc">CRUD de colaboradores sem armazenamento de credenciais.</div>
                         </a>
                         <a href="#" data-nav="unidades" class="shortcut-card landing-action-card">
                             <div class="shortcut-icon">🏙️</div>
@@ -388,73 +389,136 @@
             <div class="labels-grid" id="labelGrid"></div>
         </div>
 
-        <!-- @include pages/historico.html -->
-        <div class="page" id="page-historico">
+        <!-- @include pages/colaboradores.html -->
+        <div class="page" id="page-colaboradores">
             <div class="page-header">
-                <h1>Histórico de Acessos</h1>
-                <p>Todos os acessos gerados — consulte, filtre, revogue ou reative</p>
+                <h1>Colaboradores</h1>
+                <p>CRUD interno de colaboradores, sem armazenamento de credenciais.</p>
             </div>
 
-            <!-- Stats strip -->
-            <div class="stats-strip">
-                <div class="stat-card">
-                    <div class="stat-value" id="stat-total">—</div>
-                    <div class="stat-label">Total</div>
-                </div>
-                <div class="stat-card success">
-                    <div class="stat-value" id="stat-ativos">—</div>
-                    <div class="stat-label">Ativos</div>
-                </div>
-                <div class="stat-card danger">
-                    <div class="stat-value" id="stat-revogados">—</div>
-                    <div class="stat-label">Revogados</div>
-                </div>
-            </div>
+            <div class="colab-layout">
+                <div class="colab-table-card">
+                    <div class="colab-table-header">
+                        <h3>Colaboradores cadastrados</h3>
+                        <button class="btn-icon" id="colab-refresh-btn">↻ Atualizar</button>
+                    </div>
 
-            <!-- Toolbar -->
-            <div class="historico-toolbar">
-                <div class="search-wrap">
-                    <span class="search-icon"></span>
-                    <input type="text" id="hist-search" placeholder="Buscar por nome, CPF, cargo..." style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px 8px 32px;color:var(--text);font-family:var(--font);font-size:0.8rem;outline:none;">
-                </div>
-                <select class="filter-select" id="hist-filter-status">
-                    <option value="">Todos os status</option>
-                    <option value="ativo">Ativos</option>
-                    <option value="revogado">Revogados</option>
-                </select>
-                <select class="filter-select" id="hist-filter-uf">
-                    <option value="">Todos os estados</option>
-                </select>
-                <div class="toolbar-spacer"></div>
-                <button class="btn-icon" id="hist-refresh-btn">↻ Atualizar</button>
-            </div>
+                    <div class="colab-toolbar">
+                        <div class="search-wrap">
+                            <span class="search-icon"></span>
+                            <input
+                                type="text"
+                                id="colab-search"
+                                placeholder="Buscar por nome, CPF, setor ou cargo..."
+                                style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px 8px 32px;color:var(--text);font-family:var(--font);font-size:0.8rem;outline:none;"
+                            >
+                        </div>
+                        <select class="filter-select" id="colab-filter-status">
+                            <option value="">Todos os status</option>
+                            <option value="ativo">Ativos</option>
+                            <option value="inativo">Inativos</option>
+                        </select>
+                        <div class="colab-summary" id="colab-summary">Carregue os colaboradores para ver os indicadores.</div>
+                    </div>
 
-            <!-- Table -->
-            <div class="table-wrap">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Nome</th>
-                            <th>UF</th>
-                            <th>Cargo</th>
-                            <th>Login E-mail</th>
-                            <th>Status</th>
-                            <th>Criado em</th>
-                            <th>Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody id="hist-tbody">
-                        <tr><td colspan="7">
-                            <div class="table-state">
-                                <div class="icon"></div>
-                                <div>Navegue até esta página para carregar os registros.</div>
+                    <div class="table-wrap" style="border:none;border-radius:0;margin-bottom:0">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Colaborador</th>
+                                    <th>Estrutura</th>
+                                    <th>Localidade</th>
+                                    <th>Admissão</th>
+                                    <th>Status</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="colab-tbody">
+                                <tr><td colspan="6">
+                                    <div class="table-state">
+                                        <div class="icon">🧑‍💼</div>
+                                        <div>Navegue até esta página para carregar os colaboradores.</div>
+                                    </div>
+                                </td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div id="colab-pagination" class="pagination"></div>
+                </div>
+
+                <div class="colab-form-card">
+                    <h3>Cadastro de colaborador</h3>
+                    <div class="colab-form-note">
+                        Dados organizacionais e de localidade. Este módulo não salva nenhuma senha ou credencial.
+                    </div>
+
+                    <form id="colab-form">
+                        <input type="hidden" id="colab-id">
+
+                        <div class="form-group">
+                            <label>Nome completo</label>
+                            <input type="text" id="colab-form-nome" placeholder="João da Silva" required>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>CPF</label>
+                                <input type="text" id="colab-form-cpf" placeholder="000.000.000-00" required>
                             </div>
-                        </td></tr>
-                    </tbody>
-                </table>
-            </div>
+                            <div class="form-group">
+                                <label>Data de admissão</label>
+                                <input type="text" id="colab-form-data" placeholder="dd/mm/aaaa">
+                            </div>
+                        </div>
 
-            <div id="hist-pagination" class="pagination"></div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Setor</label>
+                                <select id="colab-form-setor" required>
+                                    <option value="" selected disabled>Selecione...</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Cargo</label>
+                                <select id="colab-form-cargo" required disabled>
+                                    <option value="" selected disabled>Setor primeiro</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>UF</label>
+                                <select id="colab-form-uf" required>
+                                    <option value="" selected disabled>Selecione...</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Cidade</label>
+                                <select id="colab-form-cidade" required disabled>
+                                    <option value="" selected disabled>UF primeiro</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Bairro</label>
+                            <input type="text" id="colab-form-bairro" placeholder="Ex: Jardim Botânico">
+                        </div>
+
+                        <label class="cad-checkbox">
+                            <input type="checkbox" id="colab-form-ativo" checked>
+                            <span>Colaborador ativo</span>
+                        </label>
+
+                        <div class="cad-actions">
+                            <button type="submit" class="btn-primary" id="colab-submit-btn">Salvar Colaborador</button>
+                            <button type="button" class="btn-row" id="colab-cancel-btn" style="display:none">Cancelar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
         </div>
 
         <!-- @include pages/usuarios.html -->
@@ -896,7 +960,7 @@
 <script src="js/gerador-ui.js"></script>
 <script src="js/unidades.js"></script>
 <script src="js/etiquetas.js"></script>
-<script src="js/historico.js"></script>
+<script src="js/colaboradores.js"></script>
 <script src="js/usuarios.js"></script>
 <script src="js/cadastros.js"></script>
 <script src="js/direcionadores.js"></script>

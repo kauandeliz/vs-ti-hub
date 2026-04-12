@@ -111,89 +111,148 @@
         return String(rawTerm || '').trim();
     }
 
-    async function salvarAcesso(admissionData, acessos) {
-        const { data, error } = await invokeFunction('save-acesso', { admissionData, acessos }, { requiresAuth: true });
-        if (error) {
-            return { data: null, error };
-        }
-
-        return {
-            data: data?.record || null,
-            error: null,
-        };
+    function normalizeCpf(value) {
+        return String(value || '').replace(/\D/g, '');
     }
 
-    async function listarAcessos({ search = '', status = '', uf = '', limit = 100, page = 1, pageSize = 50 } = {}) {
-        const resolvedPageSize = Number.isFinite(pageSize) && pageSize > 0 ? pageSize : 50;
-        const resolvedPage = Number.isFinite(page) && page > 0 ? page : 1;
+    function normalizeColaboradorPayload(fields = {}, { partial = false } = {}) {
+        const payload = {};
 
-        let query = client
-            .from('acessos')
-            .select('*', { count: 'exact' })
-            .order('criado_em', { ascending: false });
-
-        if (status) {
-            query = query.eq('status', status);
+        if (Object.prototype.hasOwnProperty.call(fields, 'nome')) {
+            const nome = sanitizeText(fields.nome);
+            if (!nome) {
+                return { payload: null, error: normalizeError('Informe o nome do colaborador.', 'VALIDATION_ERROR') };
+            }
+            payload.nome = nome;
         }
 
-        if (uf) {
-            query = query.eq('uf', uf);
+        if (Object.prototype.hasOwnProperty.call(fields, 'cpf')) {
+            const cpf = normalizeCpf(fields.cpf);
+            if (!/^\d{11}$/.test(cpf)) {
+                return { payload: null, error: normalizeError('CPF inválido. Informe 11 dígitos.', 'VALIDATION_ERROR') };
+            }
+            payload.cpf = cpf;
+        }
+
+        if (Object.prototype.hasOwnProperty.call(fields, 'dataAdmissao')) {
+            const rawDate = sanitizeText(fields.dataAdmissao);
+            if (!rawDate) {
+                payload.data_admissao = null;
+            } else {
+                const parsedDate = parseDateBR(rawDate);
+                if (!parsedDate) {
+                    return { payload: null, error: normalizeError('Data de admissão inválida. Use dd/mm/aaaa.', 'VALIDATION_ERROR') };
+                }
+                payload.data_admissao = parsedDate;
+            }
+        }
+
+        ['setor', 'cargo', 'cidade'].forEach((field) => {
+            if (Object.prototype.hasOwnProperty.call(fields, field)) {
+                const value = sanitizeText(fields[field]);
+                if (!value) {
+                    return;
+                }
+                payload[field] = value;
+            }
+        });
+
+        if (Object.prototype.hasOwnProperty.call(fields, 'bairro')) {
+            const bairro = sanitizeText(fields.bairro);
+            payload.bairro = bairro || null;
+        }
+
+        if (Object.prototype.hasOwnProperty.call(fields, 'uf')) {
+            const uf = sanitizeText(fields.uf).toUpperCase();
+            if (!/^[A-Z]{2}$/.test(uf)) {
+                return { payload: null, error: normalizeError('UF inválida. Use 2 letras.', 'VALIDATION_ERROR') };
+            }
+            payload.uf = uf;
+        }
+
+        if (Object.prototype.hasOwnProperty.call(fields, 'ativo')) {
+            payload.ativo = Boolean(fields.ativo);
+        }
+
+        if (!partial) {
+            const required = ['nome', 'cpf', 'setor', 'cargo', 'uf', 'cidade'];
+            for (const field of required) {
+                if (!payload[field]) {
+                    return { payload: null, error: normalizeError(`Campo obrigatório: ${field}.`, 'VALIDATION_ERROR') };
+                }
+            }
+            if (!Object.prototype.hasOwnProperty.call(payload, 'ativo')) {
+                payload.ativo = true;
+            }
+        }
+
+        return { payload, error: null };
+    }
+
+    async function listarColaboradores({ search = '', status = '' } = {}) {
+        let query = client
+            .from('colaboradores')
+            .select('*')
+            .order('nome', { ascending: true });
+
+        const normalizedStatus = sanitizeText(status).toLowerCase();
+        if (normalizedStatus === 'ativo') {
+            query = query.eq('ativo', true);
+        } else if (normalizedStatus === 'inativo') {
+            query = query.eq('ativo', false);
         }
 
         const term = sanitizeSearchTerm(search);
         if (term) {
-            query = query.or(`nome.ilike.%${term}%,cpf.ilike.%${term}%,cargo.ilike.%${term}%,setor.ilike.%${term}%,login_email.ilike.%${term}%`);
+            query = query.or(`nome.ilike.%${term}%,cpf.ilike.%${term}%,setor.ilike.%${term}%,cargo.ilike.%${term}%,cidade.ilike.%${term}%`);
         }
 
-        if (Number.isFinite(limit) && limit > 0) {
-            query = query.limit(limit);
-        } else {
-            const rangeFrom = (resolvedPage - 1) * resolvedPageSize;
-            const rangeTo = rangeFrom + resolvedPageSize - 1;
-            query = query.range(rangeFrom, rangeTo);
-        }
-
-        const { data, error, count } = await query;
+        const { data, error } = await query;
         if (error) {
             return {
                 data: null,
-                count: 0,
-                error: normalizeError(error.message, error.code || 'DB_LIST_ERROR', error),
+                error: normalizeError(error.message, error.code || 'DB_COLAB_LIST_ERROR', error),
             };
         }
 
-        return {
-            data: data || [],
-            count: Number.isFinite(count) ? count : (data || []).length,
-            error: null,
-        };
+        return { data: data || [], error: null };
     }
 
-    async function buscarAcesso(id) {
+    async function criarColaborador(fields = {}) {
+        const { payload, error: payloadError } = normalizeColaboradorPayload(fields, { partial: false });
+        if (payloadError) {
+            return { data: null, error: payloadError };
+        }
+
         const { data, error } = await client
-            .from('acessos')
-            .select('*')
-            .eq('id', id)
+            .from('colaboradores')
+            .insert([payload])
+            .select()
             .single();
 
         if (error) {
             return {
                 data: null,
-                error: normalizeError(error.message, error.code || 'DB_GET_ERROR', error),
+                error: normalizeError(error.message, error.code || 'DB_COLAB_CREATE_ERROR', error),
             };
         }
 
         return { data, error: null };
     }
 
-    async function revogarAcesso(id, motivo = '') {
+    async function atualizarColaborador(id, fields = {}) {
+        const { payload, error: payloadError } = normalizeColaboradorPayload(fields, { partial: true });
+        if (payloadError) {
+            return { data: null, error: payloadError };
+        }
+
+        if (!Object.keys(payload).length) {
+            return { data: null, error: normalizeError('Nenhuma alteração foi informada.', 'VALIDATION_ERROR') };
+        }
+
         const { data, error } = await client
-            .from('acessos')
-            .update({
-                status: 'revogado',
-                revogado_em: new Date().toISOString(),
-                motivo_revogacao: motivo || null,
-            })
+            .from('colaboradores')
+            .update(payload)
             .eq('id', id)
             .select()
             .single();
@@ -201,51 +260,27 @@
         if (error) {
             return {
                 data: null,
-                error: normalizeError(error.message, error.code || 'DB_REVOKE_ERROR', error),
+                error: normalizeError(error.message, error.code || 'DB_COLAB_UPDATE_ERROR', error),
             };
         }
 
         return { data, error: null };
     }
 
-    async function reativarAcesso(id) {
-        const { data, error } = await client
-            .from('acessos')
-            .update({
-                status: 'ativo',
-                revogado_em: null,
-                motivo_revogacao: null,
-            })
-            .eq('id', id)
-            .select()
-            .single();
+    async function removerColaborador(id) {
+        const { error } = await client
+            .from('colaboradores')
+            .delete()
+            .eq('id', id);
 
         if (error) {
             return {
                 data: null,
-                error: normalizeError(error.message, error.code || 'DB_RESTORE_ERROR', error),
+                error: normalizeError(error.message, error.code || 'DB_COLAB_DELETE_ERROR', error),
             };
         }
 
-        return { data, error: null };
-    }
-
-    async function atualizarAcesso(id, fields) {
-        const { data, error } = await client
-            .from('acessos')
-            .update({ ...fields, atualizado_em: new Date().toISOString() })
-            .eq('id', id)
-            .select()
-            .single();
-
-        if (error) {
-            return {
-                data: null,
-                error: normalizeError(error.message, error.code || 'DB_UPDATE_ERROR', error),
-            };
-        }
-
-        return { data, error: null };
+        return { data: { id }, error: null };
     }
 
     async function listUsers() {
@@ -987,13 +1022,11 @@
     }
 
     const api = {
-        db: {
-            salvarAcesso,
-            listarAcessos,
-            buscarAcesso,
-            revogarAcesso,
-            reativarAcesso,
-            atualizarAcesso,
+        colaboradores: {
+            listar: listarColaboradores,
+            criar: criarColaborador,
+            atualizar: atualizarColaborador,
+            remover: removerColaborador,
         },
         admin: {
             listUsers,
@@ -1044,13 +1077,6 @@
     window.SUPABASE_URL = config.supabaseUrl;
     window.SUPABASE_ANON = config.supabaseAnonKey;
     window._supabase = client;
-
-    window.dbSalvarAcesso = salvarAcesso;
-    window.dbListarAcessos = listarAcessos;
-    window.dbBuscarAcesso = buscarAcesso;
-    window.dbRevogarAcesso = revogarAcesso;
-    window.dbReativarAcesso = reativarAcesso;
-    window.dbAtualizarAcesso = atualizarAcesso;
     window.dbGetCatalogSnapshot = getCatalogSnapshot;
 
     window.parseDateBR = parseDateBR;

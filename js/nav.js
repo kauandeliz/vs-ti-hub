@@ -15,7 +15,7 @@
         telecom: 'Telecom',
         unidades: 'Unidades',
         etiquetas: 'Etiquetas',
-        historico: 'Histórico de Acessos',
+        colaboradores: 'Colaboradores',
         usuarios: 'Usuários',
         cadastros: 'Cadastros',
     };
@@ -31,7 +31,7 @@
         });
 
         document.addEventListener('app:auth-changed', (event) => {
-            if (!event.detail?.isAdmin && (currentPage === 'usuarios' || currentPage === 'cadastros')) {
+            if (!event.detail?.isAdmin && (currentPage === 'usuarios' || currentPage === 'cadastros' || currentPage === 'colaboradores')) {
                 const homeBtn = document.querySelector('.nav-item[data-nav="home"]');
                 navTo('home', homeBtn || null);
             }
@@ -94,8 +94,8 @@
             window.initHomeOnActivate();
         }
 
-        if (page === 'historico' && typeof window.onHistoricoActivate === 'function') {
-            window.onHistoricoActivate();
+        if (page === 'colaboradores' && typeof window.onColaboradoresActivate === 'function') {
+            window.onColaboradoresActivate();
         }
 
         if (page === 'usuarios' && typeof window.onUsuariosActivate === 'function') {

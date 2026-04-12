@@ -4,7 +4,7 @@
  * UI do Gerador de Acessos:
  * - coleta e valida dados
  * - gera credenciais
- * - persiste no banco
+ * - não persiste credenciais no banco (segurança)
  * - renderiza resultado
  */
 
@@ -162,15 +162,7 @@
         generatedDataForSave = { admissionData, acessos };
         renderResults(admissionData, acessos);
         if (saveButton) saveButton.style.display = 'flex';
-
-        const { error } = await dbSalvarAcesso(admissionData, acessos);
-        if (error) {
-            notify('Acesso gerado, mas não salvo no histórico: ' + error.message, 'error');
-            return;
-        }
-
-        notify('Acesso gerado e salvo no histórico com sucesso.', 'success');
-        document.dispatchEvent(new CustomEvent('app:acesso-salvo'));
+        notify('Acesso gerado localmente. Nenhuma credencial foi salva no banco.', 'success');
     }
 
     function renderResults(admissionData, acessos) {
@@ -187,7 +179,7 @@
         const html = `
             <div style="background:rgba(245,166,35,0.08);border:1px solid rgba(245,166,35,0.2);border-radius:8px;padding:9px 13px;margin-bottom:14px;font-size:0.7rem;color:var(--accent3);display:flex;gap:8px;align-items:flex-start;line-height:1.5">
                 <span>⚠</span>
-                <span><strong>Anote as senhas agora.</strong> Elas são exibidas apenas uma vez. No histórico, apenas o hash é armazenado.</span>
+                <span><strong>Anote as senhas agora.</strong> Elas são exibidas apenas uma vez e não são armazenadas no banco.</span>
             </div>
 
             <div class="person-info">
@@ -341,7 +333,7 @@
             return;
         }
 
-        // fallback silencioso sem depender do historico.js
+        // fallback silencioso caso toast global não esteja disponível
         if (type === 'error') {
             console.error(message);
         } else {

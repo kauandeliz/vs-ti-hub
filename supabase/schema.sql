@@ -6,7 +6,7 @@ BEGIN;
 
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
-CREATE TABLE IF NOT EXISTS public.acessos (
+CREATE TABLE IF NOT EXISTS public.colaboradores (
     id BIGSERIAL PRIMARY KEY,
 
     -- Dados do colaborador
@@ -19,20 +19,8 @@ CREATE TABLE IF NOT EXISTS public.acessos (
     cidade TEXT NOT NULL,
     bairro TEXT,
 
-    -- Credenciais (sempre hash, nunca senha plana)
-    login_email TEXT,
-    senha_email TEXT,
-    login_wts TEXT,
-    senha_wts TEXT,
-    login_helpdesk TEXT,
-    senha_helpdesk TEXT,
-    login_nyxos TEXT,
-    senha_nyxos TEXT,
-
     -- Controle de status
-    status TEXT NOT NULL DEFAULT 'ativo',
-    motivo_revogacao TEXT,
-    revogado_em TIMESTAMPTZ,
+    ativo BOOLEAN NOT NULL DEFAULT TRUE,
 
     -- Auditoria
     criado_por UUID REFERENCES auth.users(id),
@@ -41,7 +29,7 @@ CREATE TABLE IF NOT EXISTS public.acessos (
 );
 
 -- Backfill seguro para instalações existentes
-UPDATE public.acessos
+UPDATE public.colaboradores
 SET atualizado_em = COALESCE(atualizado_em, NOW())
 WHERE atualizado_em IS NULL;
 
@@ -50,60 +38,34 @@ DO $$
 BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM pg_constraint
-        WHERE conname = 'acessos_status_chk'
+        WHERE conname = 'colaboradores_cpf_digits_chk'
     ) THEN
-        ALTER TABLE public.acessos
-        ADD CONSTRAINT acessos_status_chk
-        CHECK (status IN ('ativo', 'revogado'));
-    END IF;
-
-    IF NOT EXISTS (
-        SELECT 1 FROM pg_constraint
-        WHERE conname = 'acessos_cpf_digits_chk'
-    ) THEN
-        ALTER TABLE public.acessos
-        ADD CONSTRAINT acessos_cpf_digits_chk
+        ALTER TABLE public.colaboradores
+        ADD CONSTRAINT colaboradores_cpf_digits_chk
         CHECK (cpf ~ '^[0-9]{11}$');
     END IF;
 
     IF NOT EXISTS (
         SELECT 1 FROM pg_constraint
-        WHERE conname = 'acessos_uf_chk'
+        WHERE conname = 'colaboradores_uf_chk'
     ) THEN
-        ALTER TABLE public.acessos
-        ADD CONSTRAINT acessos_uf_chk
+        ALTER TABLE public.colaboradores
+        ADD CONSTRAINT colaboradores_uf_chk
         CHECK (uf ~ '^[A-Z]{2}$');
     END IF;
 
     IF NOT EXISTS (
         SELECT 1 FROM pg_constraint
-        WHERE conname = 'acessos_has_login_chk'
+        WHERE conname = 'colaboradores_cpf_unique'
     ) THEN
-        ALTER TABLE public.acessos
-        ADD CONSTRAINT acessos_has_login_chk
-        CHECK (
-            COALESCE(login_email, '') <> ''
-            OR COALESCE(login_wts, '') <> ''
-            OR COALESCE(login_helpdesk, '') <> ''
-            OR COALESCE(login_nyxos, '') <> ''
-        );
-    END IF;
-
-    IF NOT EXISTS (
-        SELECT 1 FROM pg_constraint
-        WHERE conname = 'acessos_revogacao_consistencia_chk'
-    ) THEN
-        ALTER TABLE public.acessos
-        ADD CONSTRAINT acessos_revogacao_consistencia_chk
-        CHECK (
-            (status = 'ativo' AND revogado_em IS NULL AND motivo_revogacao IS NULL)
-            OR (status = 'revogado' AND revogado_em IS NOT NULL)
-        );
+        ALTER TABLE public.colaboradores
+        ADD CONSTRAINT colaboradores_cpf_unique
+        UNIQUE (cpf);
     END IF;
 END $$;
 
 -- Trigger: normalização + proteção de metadados
-CREATE OR REPLACE FUNCTION public.normalize_acessos_before_write()
+CREATE OR REPLACE FUNCTION public.normalize_colaboradores_before_write()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 AS $$
@@ -130,31 +92,23 @@ BEGIN
         NEW.criado_por := OLD.criado_por;
     END IF;
 
-    -- Consistência de status/revogação
-    IF NEW.status = 'ativo' THEN
-        NEW.revogado_em := NULL;
-        NEW.motivo_revogacao := NULL;
-    ELSIF NEW.status = 'revogado' AND NEW.revogado_em IS NULL THEN
-        NEW.revogado_em := NOW();
-    END IF;
-
     RETURN NEW;
 END;
 $$;
 
-DROP TRIGGER IF EXISTS trg_normalize_acessos_before_write ON public.acessos;
-CREATE TRIGGER trg_normalize_acessos_before_write
-BEFORE INSERT OR UPDATE ON public.acessos
+DROP TRIGGER IF EXISTS trg_normalize_colaboradores_before_write ON public.colaboradores;
+CREATE TRIGGER trg_normalize_colaboradores_before_write
+BEFORE INSERT OR UPDATE ON public.colaboradores
 FOR EACH ROW
-EXECUTE FUNCTION public.normalize_acessos_before_write();
+EXECUTE FUNCTION public.normalize_colaboradores_before_write();
 
 -- Índices
-CREATE INDEX IF NOT EXISTS idx_acessos_criado_em_desc ON public.acessos (criado_em DESC);
-CREATE INDEX IF NOT EXISTS idx_acessos_status_criado_em ON public.acessos (status, criado_em DESC);
-CREATE INDEX IF NOT EXISTS idx_acessos_uf_criado_em ON public.acessos (uf, criado_em DESC);
-CREATE INDEX IF NOT EXISTS idx_acessos_cpf ON public.acessos (cpf);
-CREATE INDEX IF NOT EXISTS idx_acessos_nome_trgm ON public.acessos USING gin (nome gin_trgm_ops);
-CREATE INDEX IF NOT EXISTS idx_acessos_cargo_trgm ON public.acessos USING gin (cargo gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_colaboradores_criado_em_desc ON public.colaboradores (criado_em DESC);
+CREATE INDEX IF NOT EXISTS idx_colaboradores_ativo_nome ON public.colaboradores (ativo, nome);
+CREATE INDEX IF NOT EXISTS idx_colaboradores_uf_cidade ON public.colaboradores (uf, cidade);
+CREATE INDEX IF NOT EXISTS idx_colaboradores_cpf ON public.colaboradores (cpf);
+CREATE INDEX IF NOT EXISTS idx_colaboradores_nome_trgm ON public.colaboradores USING gin (nome gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_colaboradores_setor_trgm ON public.colaboradores USING gin (setor gin_trgm_ops);
 
 -- =====================================================
 -- Catálogos Dinâmicos (CRUD)
@@ -399,19 +353,19 @@ ON CONFLICT (area, nome) DO NOTHING;
 -- =====================================================
 -- RLS
 -- =====================================================
-ALTER TABLE public.acessos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.colaboradores ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.catalog_setores ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.catalog_cargos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.filiais ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.catalog_direcionadores ENABLE ROW LEVEL SECURITY;
 
 GRANT USAGE ON SCHEMA public TO authenticated;
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.acessos TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.colaboradores TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.catalog_setores TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.catalog_cargos TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.filiais TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.catalog_direcionadores TO authenticated;
-GRANT USAGE, SELECT ON SEQUENCE public.acessos_id_seq TO authenticated;
+GRANT USAGE, SELECT ON SEQUENCE public.colaboradores_id_seq TO authenticated;
 GRANT USAGE, SELECT ON SEQUENCE public.catalog_setores_id_seq TO authenticated;
 GRANT USAGE, SELECT ON SEQUENCE public.catalog_cargos_id_seq TO authenticated;
 GRANT USAGE, SELECT ON SEQUENCE public.filiais_id_seq TO authenticated;
@@ -427,12 +381,10 @@ $$;
 
 GRANT EXECUTE ON FUNCTION public.is_admin() TO authenticated;
 
-DROP POLICY IF EXISTS "Somente autenticados podem ler" ON public.acessos;
-DROP POLICY IF EXISTS "Somente autenticados podem inserir" ON public.acessos;
-DROP POLICY IF EXISTS "Somente autenticados podem atualizar" ON public.acessos;
-DROP POLICY IF EXISTS acessos_select_authenticated ON public.acessos;
-DROP POLICY IF EXISTS acessos_insert_authenticated ON public.acessos;
-DROP POLICY IF EXISTS acessos_update_authenticated ON public.acessos;
+DROP POLICY IF EXISTS colaboradores_select_authenticated ON public.colaboradores;
+DROP POLICY IF EXISTS colaboradores_write_admin ON public.colaboradores;
+DROP POLICY IF EXISTS colaboradores_update_admin ON public.colaboradores;
+DROP POLICY IF EXISTS colaboradores_delete_admin ON public.colaboradores;
 DROP POLICY IF EXISTS catalog_setores_select_authenticated ON public.catalog_setores;
 DROP POLICY IF EXISTS catalog_setores_write_admin ON public.catalog_setores;
 DROP POLICY IF EXISTS catalog_setores_update_admin ON public.catalog_setores;
@@ -450,24 +402,30 @@ DROP POLICY IF EXISTS catalog_direcionadores_write_admin ON public.catalog_direc
 DROP POLICY IF EXISTS catalog_direcionadores_update_admin ON public.catalog_direcionadores;
 DROP POLICY IF EXISTS catalog_direcionadores_delete_admin ON public.catalog_direcionadores;
 
-CREATE POLICY acessos_select_authenticated
-ON public.acessos
+CREATE POLICY colaboradores_select_authenticated
+ON public.colaboradores
 FOR SELECT
 TO authenticated
 USING (TRUE);
 
-CREATE POLICY acessos_insert_authenticated
-ON public.acessos
+CREATE POLICY colaboradores_write_admin
+ON public.colaboradores
 FOR INSERT
 TO authenticated
-WITH CHECK (auth.uid() IS NOT NULL);
+WITH CHECK (public.is_admin());
 
-CREATE POLICY acessos_update_authenticated
-ON public.acessos
+CREATE POLICY colaboradores_update_admin
+ON public.colaboradores
 FOR UPDATE
 TO authenticated
-USING (TRUE)
-WITH CHECK (TRUE);
+USING (public.is_admin())
+WITH CHECK (public.is_admin());
+
+CREATE POLICY colaboradores_delete_admin
+ON public.colaboradores
+FOR DELETE
+TO authenticated
+USING (public.is_admin());
 
 CREATE POLICY catalog_setores_select_authenticated
 ON public.catalog_setores
@@ -571,9 +529,8 @@ USING (public.is_admin());
 
 -- Sem policy de DELETE por padrão.
 
-COMMENT ON TABLE public.acessos IS 'Historico de acessos gerados no VS TI Hub';
-COMMENT ON COLUMN public.acessos.senha_email IS 'Hash bcrypt (senha em texto nunca e armazenada)';
-COMMENT ON COLUMN public.acessos.status IS 'ativo | revogado';
+COMMENT ON TABLE public.colaboradores IS 'Cadastro interno de colaboradores sem armazenamento de credenciais';
+COMMENT ON COLUMN public.colaboradores.ativo IS 'TRUE quando colaborador está ativo na operação';
 COMMENT ON TABLE public.catalog_setores IS 'Cadastro de setores para o Gerador de Acessos (CRUD)';
 COMMENT ON TABLE public.catalog_cargos IS 'Cadastro de cargos vinculados a setores (CRUD)';
 COMMENT ON TABLE public.filiais IS 'Cadastro de filiais/unidades e base para cidades/bairros e etiquetas';
