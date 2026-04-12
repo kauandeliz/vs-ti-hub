@@ -9,18 +9,14 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;
 CREATE TABLE IF NOT EXISTS public.colaboradores (
     id BIGSERIAL PRIMARY KEY,
 
-    -- Dados do colaborador
-    nome TEXT NOT NULL,
-    cpf TEXT NOT NULL,
-    data_admissao DATE,
-    setor TEXT NOT NULL,
-    cargo TEXT NOT NULL,
+    -- Campos de cadastro operacional
+    status TEXT NOT NULL DEFAULT 'ATIVO',
     uf CHAR(2) NOT NULL,
-    cidade TEXT NOT NULL,
-    bairro TEXT,
-
-    -- Controle de status
-    ativo BOOLEAN NOT NULL DEFAULT TRUE,
+    loja TEXT NOT NULL,
+    empresa TEXT NOT NULL,
+    nome TEXT NOT NULL,
+    setor TEXT NOT NULL,
+    funcao TEXT NOT NULL,
 
     -- Auditoria
     criado_por UUID REFERENCES auth.users(id),
@@ -38,11 +34,11 @@ DO $$
 BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM pg_constraint
-        WHERE conname = 'colaboradores_cpf_digits_chk'
+        WHERE conname = 'colaboradores_status_chk'
     ) THEN
         ALTER TABLE public.colaboradores
-        ADD CONSTRAINT colaboradores_cpf_digits_chk
-        CHECK (cpf ~ '^[0-9]{11}$');
+        ADD CONSTRAINT colaboradores_status_chk
+        CHECK (status IN ('ATIVO', 'INATIVO'));
     END IF;
 
     IF NOT EXISTS (
@@ -54,14 +50,6 @@ BEGIN
         CHECK (uf ~ '^[A-Z]{2}$');
     END IF;
 
-    IF NOT EXISTS (
-        SELECT 1 FROM pg_constraint
-        WHERE conname = 'colaboradores_cpf_unique'
-    ) THEN
-        ALTER TABLE public.colaboradores
-        ADD CONSTRAINT colaboradores_cpf_unique
-        UNIQUE (cpf);
-    END IF;
 END $$;
 
 -- Trigger: normalização + proteção de metadados
@@ -70,14 +58,13 @@ RETURNS TRIGGER
 LANGUAGE plpgsql
 AS $$
 BEGIN
+    NEW.status := UPPER(BTRIM(COALESCE(NEW.status, 'ATIVO')));
+    NEW.uf := UPPER(BTRIM(COALESCE(NEW.uf, '')));
+    NEW.loja := BTRIM(COALESCE(NEW.loja, ''));
+    NEW.empresa := BTRIM(COALESCE(NEW.empresa, ''));
     NEW.nome := BTRIM(COALESCE(NEW.nome, ''));
     NEW.setor := BTRIM(COALESCE(NEW.setor, ''));
-    NEW.cargo := BTRIM(COALESCE(NEW.cargo, ''));
-    NEW.cidade := BTRIM(COALESCE(NEW.cidade, ''));
-    NEW.bairro := NULLIF(BTRIM(COALESCE(NEW.bairro, '')), '');
-
-    NEW.cpf := REGEXP_REPLACE(COALESCE(NEW.cpf, ''), '\D', '', 'g');
-    NEW.uf := UPPER(BTRIM(COALESCE(NEW.uf, '')));
+    NEW.funcao := BTRIM(COALESCE(NEW.funcao, ''));
 
     NEW.atualizado_em := NOW();
 
@@ -104,11 +91,11 @@ EXECUTE FUNCTION public.normalize_colaboradores_before_write();
 
 -- Índices
 CREATE INDEX IF NOT EXISTS idx_colaboradores_criado_em_desc ON public.colaboradores (criado_em DESC);
-CREATE INDEX IF NOT EXISTS idx_colaboradores_ativo_nome ON public.colaboradores (ativo, nome);
-CREATE INDEX IF NOT EXISTS idx_colaboradores_uf_cidade ON public.colaboradores (uf, cidade);
-CREATE INDEX IF NOT EXISTS idx_colaboradores_cpf ON public.colaboradores (cpf);
+CREATE INDEX IF NOT EXISTS idx_colaboradores_status_nome ON public.colaboradores (status, nome);
+CREATE INDEX IF NOT EXISTS idx_colaboradores_uf_loja ON public.colaboradores (uf, loja);
 CREATE INDEX IF NOT EXISTS idx_colaboradores_nome_trgm ON public.colaboradores USING gin (nome gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS idx_colaboradores_setor_trgm ON public.colaboradores USING gin (setor gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_colaboradores_funcao_trgm ON public.colaboradores USING gin (funcao gin_trgm_ops);
 
 -- =====================================================
 -- Catálogos Dinâmicos (CRUD)
@@ -530,7 +517,7 @@ USING (public.is_admin());
 -- Sem policy de DELETE por padrão.
 
 COMMENT ON TABLE public.colaboradores IS 'Cadastro interno de colaboradores sem armazenamento de credenciais';
-COMMENT ON COLUMN public.colaboradores.ativo IS 'TRUE quando colaborador está ativo na operação';
+COMMENT ON COLUMN public.colaboradores.status IS 'Status operacional do colaborador (ATIVO/INATIVO)';
 COMMENT ON TABLE public.catalog_setores IS 'Cadastro de setores para o Gerador de Acessos (CRUD)';
 COMMENT ON TABLE public.catalog_cargos IS 'Cadastro de cargos vinculados a setores (CRUD)';
 COMMENT ON TABLE public.filiais IS 'Cadastro de filiais/unidades e base para cidades/bairros e etiquetas';

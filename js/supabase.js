@@ -111,55 +111,23 @@
         return String(rawTerm || '').trim();
     }
 
-    function normalizeCpf(value) {
-        return String(value || '').replace(/\D/g, '');
+    function normalizeColaboradorStatus(value) {
+        const normalized = sanitizeText(value).toUpperCase();
+        if (normalized === 'ATIVO' || normalized === 'INATIVO') {
+            return normalized;
+        }
+        return null;
     }
 
     function normalizeColaboradorPayload(fields = {}, { partial = false } = {}) {
         const payload = {};
 
-        if (Object.prototype.hasOwnProperty.call(fields, 'nome')) {
-            const nome = sanitizeText(fields.nome);
-            if (!nome) {
-                return { payload: null, error: normalizeError('Informe o nome do colaborador.', 'VALIDATION_ERROR') };
+        if (Object.prototype.hasOwnProperty.call(fields, 'status')) {
+            const status = normalizeColaboradorStatus(fields.status);
+            if (!status) {
+                return { payload: null, error: normalizeError('Status inválido. Use ATIVO ou INATIVO.', 'VALIDATION_ERROR') };
             }
-            payload.nome = nome;
-        }
-
-        if (Object.prototype.hasOwnProperty.call(fields, 'cpf')) {
-            const cpf = normalizeCpf(fields.cpf);
-            if (!/^\d{11}$/.test(cpf)) {
-                return { payload: null, error: normalizeError('CPF inválido. Informe 11 dígitos.', 'VALIDATION_ERROR') };
-            }
-            payload.cpf = cpf;
-        }
-
-        if (Object.prototype.hasOwnProperty.call(fields, 'dataAdmissao')) {
-            const rawDate = sanitizeText(fields.dataAdmissao);
-            if (!rawDate) {
-                payload.data_admissao = null;
-            } else {
-                const parsedDate = parseDateBR(rawDate);
-                if (!parsedDate) {
-                    return { payload: null, error: normalizeError('Data de admissão inválida. Use dd/mm/aaaa.', 'VALIDATION_ERROR') };
-                }
-                payload.data_admissao = parsedDate;
-            }
-        }
-
-        ['setor', 'cargo', 'cidade'].forEach((field) => {
-            if (Object.prototype.hasOwnProperty.call(fields, field)) {
-                const value = sanitizeText(fields[field]);
-                if (!value) {
-                    return;
-                }
-                payload[field] = value;
-            }
-        });
-
-        if (Object.prototype.hasOwnProperty.call(fields, 'bairro')) {
-            const bairro = sanitizeText(fields.bairro);
-            payload.bairro = bairro || null;
+            payload.status = status;
         }
 
         if (Object.prototype.hasOwnProperty.call(fields, 'uf')) {
@@ -170,19 +138,22 @@
             payload.uf = uf;
         }
 
-        if (Object.prototype.hasOwnProperty.call(fields, 'ativo')) {
-            payload.ativo = Boolean(fields.ativo);
+        const requiredTextFields = ['loja', 'empresa', 'nome', 'setor', 'funcao'];
+        for (const field of requiredTextFields) {
+            if (!Object.prototype.hasOwnProperty.call(fields, field)) continue;
+            const value = sanitizeText(fields[field]);
+            if (!value) {
+                return { payload: null, error: normalizeError(`Informe ${field}.`, 'VALIDATION_ERROR') };
+            }
+            payload[field] = value;
         }
 
         if (!partial) {
-            const required = ['nome', 'cpf', 'setor', 'cargo', 'uf', 'cidade'];
+            const required = ['status', 'uf', 'loja', 'empresa', 'nome', 'setor', 'funcao'];
             for (const field of required) {
                 if (!payload[field]) {
                     return { payload: null, error: normalizeError(`Campo obrigatório: ${field}.`, 'VALIDATION_ERROR') };
                 }
-            }
-            if (!Object.prototype.hasOwnProperty.call(payload, 'ativo')) {
-                payload.ativo = true;
             }
         }
 
@@ -197,14 +168,14 @@
 
         const normalizedStatus = sanitizeText(status).toLowerCase();
         if (normalizedStatus === 'ativo') {
-            query = query.eq('ativo', true);
+            query = query.eq('status', 'ATIVO');
         } else if (normalizedStatus === 'inativo') {
-            query = query.eq('ativo', false);
+            query = query.eq('status', 'INATIVO');
         }
 
         const term = sanitizeSearchTerm(search);
         if (term) {
-            query = query.or(`nome.ilike.%${term}%,cpf.ilike.%${term}%,setor.ilike.%${term}%,cargo.ilike.%${term}%,cidade.ilike.%${term}%`);
+            query = query.or(`status.ilike.%${term}%,uf.ilike.%${term}%,loja.ilike.%${term}%,empresa.ilike.%${term}%,nome.ilike.%${term}%,setor.ilike.%${term}%,funcao.ilike.%${term}%`);
         }
 
         const { data, error } = await query;

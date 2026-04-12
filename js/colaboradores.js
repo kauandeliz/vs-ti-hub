@@ -1,7 +1,8 @@
 /**
  * colaboradores.js
  *
- * CRUD de colaboradores (sem armazenamento de credenciais).
+ * CRUD de colaboradores no formato operacional:
+ * STATUS, UF, LOJA, EMPRESA, NOME, SETOR, FUNCAO
  */
 
 (function bootstrapColaboradores() {
@@ -31,10 +32,9 @@
 
         document.getElementById('colab-form-setor')?.addEventListener('change', handleSetorChange);
         document.getElementById('colab-form-uf')?.addEventListener('change', handleUfChange);
-        document.getElementById('colab-form-cidade')?.addEventListener('change', handleCidadeChange);
 
         document.addEventListener('app:catalog-updated', () => {
-            if (!isAdmin()) return;
+            if (!hasAdminAccess()) return;
             loadCatalog(true);
         });
 
@@ -46,14 +46,15 @@
         });
 
         state.initialized = true;
+        resetForm();
     }
 
-    function isActive() {
-        return document.getElementById('page-colaboradores')?.classList.contains('active');
+    function hasAdminAccess() {
+        return typeof window.isAdmin === 'function' ? window.isAdmin() : false;
     }
 
     async function onColaboradoresActivate() {
-        if (!isAdmin()) {
+        if (!hasAdminAccess()) {
             renderRestricted();
             setFormDisabled(true);
             return;
@@ -87,41 +88,41 @@
 
         if (previous && setores.includes(previous)) {
             select.value = previous;
-            renderCargoOptions(previous);
+            renderFuncaoOptions(previous);
         } else {
-            renderCargoOptions('');
+            renderFuncaoOptions('');
         }
     }
 
-    function renderCargoOptions(setorNome, selectedCargo = '') {
-        const select = document.getElementById('colab-form-cargo');
+    function renderFuncaoOptions(setorNome, selectedFuncao = '') {
+        const select = document.getElementById('colab-form-funcao');
         if (!select) return;
 
         const setor = String(setorNome || '').trim();
-        const cargos = [...(state.catalog?.cargosPorSetor?.[setor] || [])]
+        const funcoes = [...(state.catalog?.cargosPorSetor?.[setor] || [])]
             .sort((a, b) => String(a).localeCompare(String(b), 'pt-BR'));
-        const selected = String(selectedCargo || '').trim();
+        const selected = String(selectedFuncao || '').trim();
 
-        if (selected && !cargos.includes(selected)) {
-            cargos.unshift(selected);
+        if (selected && !funcoes.includes(selected)) {
+            funcoes.unshift(selected);
         }
 
-        select.innerHTML = '<option value="" selected disabled>Selecione...</option>';
         if (!setor) {
             select.innerHTML = '<option value="" selected disabled>Setor primeiro</option>';
             select.disabled = true;
             return;
         }
 
-        cargos.forEach((cargo) => select.add(new Option(cargo, cargo)));
+        select.innerHTML = '<option value="" selected disabled>Selecione...</option>';
+        funcoes.forEach((funcao) => select.add(new Option(funcao, funcao)));
 
-        if (!cargos.length) {
-            select.innerHTML = '<option value="" selected disabled>Sem cargos neste setor</option>';
+        if (!funcoes.length) {
+            select.innerHTML = '<option value="" selected disabled>Sem funções neste setor</option>';
             select.disabled = true;
             return;
         }
 
-        if (selected && cargos.includes(selected)) {
+        if (selected && funcoes.includes(selected)) {
             select.value = selected;
         }
 
@@ -143,70 +144,32 @@
 
         if (previous && ufs.includes(previous)) {
             select.value = previous;
-            renderCidadeOptions(previous);
+            renderLojaSuggestion(previous);
         } else {
-            renderCidadeOptions('');
+            renderLojaSuggestion('');
         }
     }
 
-    function renderCidadeOptions(uf, selectedCidade = '') {
-        const select = document.getElementById('colab-form-cidade');
-        if (!select) return;
-
-        const cidades = Object.keys(state.catalog?.localidadeData?.[uf] || {})
-            .sort((a, b) => String(a).localeCompare(String(b), 'pt-BR'));
-        const selected = String(selectedCidade || '').trim();
-        if (selected && !cidades.includes(selected)) {
-            cidades.unshift(selected);
-        }
-
-        if (!uf) {
-            select.innerHTML = '<option value="" selected disabled>UF primeiro</option>';
-            select.disabled = true;
-            return;
-        }
-
-        select.innerHTML = '<option value="" selected disabled>Selecione...</option>';
-        cidades.forEach((cidade) => select.add(new Option(cidade, cidade)));
-
-        if (!cidades.length) {
-            select.innerHTML = '<option value="" selected disabled>Sem cidades nesta UF</option>';
-            select.disabled = true;
-            return;
-        }
-
-        if (selected && cidades.includes(selected)) {
-            select.value = selected;
-        }
-
-        select.disabled = false;
-    }
-
-    function renderBairroSuggestion(uf, cidade) {
-        const input = document.getElementById('colab-form-bairro');
+    function renderLojaSuggestion(uf) {
+        const input = document.getElementById('colab-form-loja');
         if (!input) return;
 
-        const bairros = state.catalog?.localidadeData?.[uf]?.[cidade] || [];
-        if (!bairros.length) {
-            input.placeholder = 'Ex: Jardim Botânico';
+        const lojas = Object.keys(state.catalog?.localidadeData?.[uf] || {});
+        if (!uf || !lojas.length) {
+            input.placeholder = 'Ex: CURITIBA BOTÂNICO';
             return;
         }
 
-        input.placeholder = `Sugestão: ${bairros[0]}`;
+        const sorted = [...lojas].sort((a, b) => String(a).localeCompare(String(b), 'pt-BR'));
+        input.placeholder = `Sugestão: ${sorted[0]}`;
     }
 
     function handleSetorChange(event) {
-        renderCargoOptions(event.target.value || '');
+        renderFuncaoOptions(event.target.value || '');
     }
 
     function handleUfChange(event) {
-        renderCidadeOptions(event.target.value || '');
-        renderBairroSuggestion('', '');
-    }
-
-    function handleCidadeChange(event) {
-        const uf = document.getElementById('colab-form-uf')?.value || '';
-        renderBairroSuggestion(uf, event.target.value || '');
+        renderLojaSuggestion(event.target.value || '');
     }
 
     function handleSearchInput(event) {
@@ -222,7 +185,7 @@
     }
 
     async function loadColaboradores() {
-        if (!isAdmin()) {
+        if (!hasAdminAccess()) {
             renderRestricted();
             return;
         }
@@ -255,9 +218,14 @@
 
     function renderSummary() {
         const total = state.records.length;
-        const ativos = state.records.filter((item) => item.ativo).length;
-        const inativos = total - ativos;
-        const summary = `${total} colaboradores • ${ativos} ativos • ${inativos} inativos`;
+        const ativos = state.records.filter((item) => getStatusLabel(item.status) === 'ATIVO').length;
+        const inativos = state.records.filter((item) => getStatusLabel(item.status) === 'INATIVO').length;
+        const outros = total - ativos - inativos;
+
+        let summary = `${total} colaboradores • ${ativos} ativos • ${inativos} inativos`;
+        if (outros > 0) {
+            summary += ` • ${outros} com status diferente`;
+        }
         setText('colab-summary', summary);
     }
 
@@ -275,7 +243,7 @@
         if (!rows.length) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="6">
+                    <td colspan="8">
                         <div class="table-state">
                             <div class="icon">🧑‍💼</div>
                             <div>Nenhum colaborador encontrado.</div>
@@ -288,26 +256,27 @@
         }
 
         tbody.innerHTML = rows.map((item) => {
-            const statusPill = item.ativo
-                ? '<span class="status-pill ativo">● Ativo</span>'
-                : '<span class="status-pill revogado">✕ Inativo</span>';
+            const status = getStatusLabel(item.status);
+            let statusPill = '<span class="status-pill ativo">● ATIVO</span>';
+            if (status === 'INATIVO') {
+                statusPill = '<span class="status-pill revogado">✕ INATIVO</span>';
+            } else if (status !== 'ATIVO') {
+                statusPill = `<span class="status-pill">${escapeHtml(status || 'SEM STATUS')}</span>`;
+            }
 
             return `
                 <tr>
-                    <td>
-                        <div class="colab-row-main">
-                            <strong>${escapeHtml(item.nome)}</strong>
-                            <small>CPF ${formatCpf(item.cpf)}</small>
-                        </div>
-                    </td>
-                    <td>${escapeHtml(item.setor)} • ${escapeHtml(item.cargo)}</td>
-                    <td>${escapeHtml(item.cidade)} - ${escapeHtml(item.uf)}${item.bairro ? ` <span style="color:var(--text-muted)">(${escapeHtml(item.bairro)})</span>` : ''}</td>
-                    <td>${window.App?.utils?.formatDateBR?.(item.data_admissao) || '—'}</td>
                     <td>${statusPill}</td>
+                    <td>${escapeHtml(item.uf || '—')}</td>
+                    <td>${escapeHtml(item.loja || '—')}</td>
+                    <td>${escapeHtml(item.empresa || '—')}</td>
+                    <td>${escapeHtml(item.nome || '—')}</td>
+                    <td>${escapeHtml(item.setor || '—')}</td>
+                    <td>${escapeHtml(item.funcao || '—')}</td>
                     <td>
                         <div class="row-actions">
                             <button class="btn-row primary" data-action="edit" data-id="${item.id}">Editar</button>
-                            <button class="btn-row danger" data-action="delete" data-id="${item.id}" data-name="${escapeHtmlAttribute(item.nome)}">Excluir</button>
+                            <button class="btn-row danger" data-action="delete" data-id="${item.id}" data-name="${escapeHtmlAttribute(item.nome || '')}">Excluir</button>
                         </div>
                     </td>
                 </tr>
@@ -348,7 +317,7 @@
 
         tbody.innerHTML = `
             <tr>
-                <td colspan="6">
+                <td colspan="8">
                     <div class="table-state">
                         <div class="spinner"></div>
                         <div>Carregando colaboradores...</div>
@@ -364,7 +333,7 @@
 
         tbody.innerHTML = `
             <tr>
-                <td colspan="6">
+                <td colspan="8">
                     <div class="table-state">
                         <div class="icon">⚠️</div>
                         <div>${escapeHtml(message)}</div>
@@ -379,7 +348,7 @@
         if (tbody) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="6">
+                    <td colspan="8">
                         <div class="table-state">
                             <div class="icon">🔒</div>
                             <div>Acesso restrito a administradores.</div>
@@ -405,7 +374,7 @@
 
     async function handleFormSubmit(event) {
         event.preventDefault();
-        if (!isAdmin()) return;
+        if (!hasAdminAccess()) return;
 
         const payload = collectFormData();
         const validation = validateFormData(payload);
@@ -416,12 +385,11 @@
 
         const id = Number(document.getElementById('colab-id')?.value || 0);
         const api = window.App.api.colaboradores;
-
-        const op = id > 0
+        const operation = id > 0
             ? api.atualizar(id, payload)
             : api.criar(payload);
 
-        const { error } = await op;
+        const { error } = await operation;
         if (error) {
             showToast(error.message, 'error');
             return;
@@ -435,40 +403,31 @@
 
     function collectFormData() {
         return {
-            nome: document.getElementById('colab-form-nome')?.value || '',
-            cpf: document.getElementById('colab-form-cpf')?.value || '',
-            dataAdmissao: document.getElementById('colab-form-data')?.value || '',
-            setor: document.getElementById('colab-form-setor')?.value || '',
-            cargo: document.getElementById('colab-form-cargo')?.value || '',
+            status: document.getElementById('colab-form-status')?.value || '',
             uf: document.getElementById('colab-form-uf')?.value || '',
-            cidade: document.getElementById('colab-form-cidade')?.value || '',
-            bairro: document.getElementById('colab-form-bairro')?.value || '',
-            ativo: Boolean(document.getElementById('colab-form-ativo')?.checked),
+            loja: document.getElementById('colab-form-loja')?.value || '',
+            empresa: document.getElementById('colab-form-empresa')?.value || '',
+            nome: document.getElementById('colab-form-nome')?.value || '',
+            setor: document.getElementById('colab-form-setor')?.value || '',
+            funcao: document.getElementById('colab-form-funcao')?.value || '',
         };
     }
 
     function validateFormData(payload) {
+        const status = getNormalizedStatusInput(payload.status);
+        const uf = String(payload.uf || '').trim().toUpperCase();
+        const loja = String(payload.loja || '').trim();
+        const empresa = String(payload.empresa || '').trim();
         const nome = String(payload.nome || '').trim();
-        const cpf = String(payload.cpf || '').replace(/\D/g, '');
         const setor = String(payload.setor || '').trim();
-        const cargo = String(payload.cargo || '').trim();
-        const uf = String(payload.uf || '').trim();
-        const cidade = String(payload.cidade || '').trim();
+        const funcao = String(payload.funcao || '').trim();
 
-        if (!nome || !cpf || !setor || !cargo || !uf || !cidade) {
-            return 'Preencha nome, CPF, setor, cargo, UF e cidade.';
+        if (!status || !uf || !loja || !empresa || !nome || !setor || !funcao) {
+            return 'Preencha status, UF, loja, empresa, nome, setor e função.';
         }
 
-        if (nome.split(/\s+/).length < 2) {
-            return 'Informe nome e sobrenome.';
-        }
-
-        if (!/^\d{11}$/.test(cpf)) {
-            return 'CPF inválido. Informe 11 dígitos.';
-        }
-
-        if (payload.dataAdmissao && !window.App?.utils?.parseDateBR?.(payload.dataAdmissao)) {
-            return 'Data de admissão inválida. Use dd/mm/aaaa.';
+        if (!/^[A-Z]{2}$/.test(uf)) {
+            return 'UF inválida. Use duas letras.';
         }
 
         return null;
@@ -509,19 +468,14 @@
         if (!record) return;
 
         setValue('colab-id', String(record.id));
-        setValue('colab-form-nome', record.nome || '');
-        setValue('colab-form-cpf', formatCpf(record.cpf));
-        setValue('colab-form-data', window.App?.utils?.formatDateBR?.(record.data_admissao) || '');
-
-        setValue('colab-form-setor', record.setor || '');
-        renderCargoOptions(record.setor || '', record.cargo || '');
-
+        setValue('colab-form-status', getNormalizedStatusInput(record.status));
         setValue('colab-form-uf', record.uf || '');
-        renderCidadeOptions(record.uf || '', record.cidade || '');
-        renderBairroSuggestion(record.uf || '', record.cidade || '');
-
-        setValue('colab-form-bairro', record.bairro || '');
-        setChecked('colab-form-ativo', Boolean(record.ativo));
+        renderLojaSuggestion(record.uf || '');
+        setValue('colab-form-loja', record.loja || '');
+        setValue('colab-form-empresa', record.empresa || '');
+        setValue('colab-form-nome', record.nome || '');
+        setValue('colab-form-setor', record.setor || '');
+        renderFuncaoOptions(record.setor || '', record.funcao || '');
 
         setText('colab-submit-btn', 'Atualizar Colaborador');
         toggleDisplay('colab-cancel-btn', true);
@@ -530,15 +484,15 @@
 
     function resetForm() {
         setValue('colab-id', '');
-        setValue('colab-form-nome', '');
-        setValue('colab-form-cpf', '');
-        setValue('colab-form-data', '');
-        setValue('colab-form-setor', '');
-        renderCargoOptions('', '');
+        setValue('colab-form-status', 'ATIVO');
         setValue('colab-form-uf', '');
-        renderCidadeOptions('', '');
-        setValue('colab-form-bairro', '');
-        setChecked('colab-form-ativo', true);
+        setValue('colab-form-loja', '');
+        setValue('colab-form-empresa', '');
+        setValue('colab-form-nome', '');
+        setValue('colab-form-setor', '');
+        renderFuncaoOptions('', '');
+        renderLojaSuggestion('');
+
         setText('colab-submit-btn', 'Salvar Colaborador');
         toggleDisplay('colab-cancel-btn', false);
     }
@@ -553,14 +507,18 @@
         });
     }
 
+    function getStatusLabel(value) {
+        return String(value || '').trim().toUpperCase();
+    }
+
+    function getNormalizedStatusInput(value) {
+        const status = String(value || '').trim().toUpperCase();
+        return status === 'INATIVO' ? 'INATIVO' : 'ATIVO';
+    }
+
     function setValue(id, value) {
         const el = document.getElementById(id);
         if (el) el.value = value;
-    }
-
-    function setChecked(id, checked) {
-        const el = document.getElementById(id);
-        if (el) el.checked = checked;
     }
 
     function toggleDisplay(id, visible) {
@@ -572,12 +530,6 @@
     function setText(id, text) {
         const el = document.getElementById(id);
         if (el) el.textContent = text;
-    }
-
-    function formatCpf(value) {
-        const digits = String(value || '').replace(/\D/g, '').slice(0, 11);
-        if (digits.length !== 11) return digits;
-        return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
     }
 
     function showToast(message, type = 'success') {

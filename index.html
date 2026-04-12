@@ -409,7 +409,7 @@
                             <input
                                 type="text"
                                 id="colab-search"
-                                placeholder="Buscar por nome, CPF, setor ou cargo..."
+                                placeholder="Buscar por status, UF, loja, empresa, nome, setor ou função..."
                                 style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px 8px 32px;color:var(--text);font-family:var(--font);font-size:0.8rem;outline:none;"
                             >
                         </div>
@@ -425,16 +425,18 @@
                         <table>
                             <thead>
                                 <tr>
-                                    <th>Colaborador</th>
-                                    <th>Estrutura</th>
-                                    <th>Localidade</th>
-                                    <th>Admissão</th>
                                     <th>Status</th>
+                                    <th>UF</th>
+                                    <th>Loja</th>
+                                    <th>Empresa</th>
+                                    <th>Nome</th>
+                                    <th>Setor</th>
+                                    <th>Função</th>
                                     <th>Ações</th>
                                 </tr>
                             </thead>
                             <tbody id="colab-tbody">
-                                <tr><td colspan="6">
+                                <tr><td colspan="8">
                                     <div class="table-state">
                                         <div class="icon">🧑‍💼</div>
                                         <div>Navegue até esta página para carregar os colaboradores.</div>
@@ -450,26 +452,42 @@
                 <div class="colab-form-card">
                     <h3>Cadastro de colaborador</h3>
                     <div class="colab-form-note">
-                        Dados organizacionais e de localidade. Este módulo não salva nenhuma senha ou credencial.
+                        Estrutura alinhada ao cadastro operacional: STATUS, UF, LOJA, EMPRESA, NOME, SETOR e FUNÇÃO.
                     </div>
 
                     <form id="colab-form">
                         <input type="hidden" id="colab-id">
 
-                        <div class="form-group">
-                            <label>Nome completo</label>
-                            <input type="text" id="colab-form-nome" placeholder="João da Silva" required>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Status</label>
+                                <select id="colab-form-status" required>
+                                    <option value="ATIVO" selected>ATIVO</option>
+                                    <option value="INATIVO">INATIVO</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>UF</label>
+                                <select id="colab-form-uf" required>
+                                    <option value="" selected disabled>Selecione...</option>
+                                </select>
+                            </div>
                         </div>
 
                         <div class="form-row">
                             <div class="form-group">
-                                <label>CPF</label>
-                                <input type="text" id="colab-form-cpf" placeholder="000.000.000-00" required>
+                                <label>Loja</label>
+                                <input type="text" id="colab-form-loja" placeholder="Ex: CURITIBA BOTÂNICO" required>
                             </div>
                             <div class="form-group">
-                                <label>Data de admissão</label>
-                                <input type="text" id="colab-form-data" placeholder="dd/mm/aaaa">
+                                <label>Empresa</label>
+                                <input type="text" id="colab-form-empresa" placeholder="Ex: 11" required>
                             </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Nome</label>
+                            <input type="text" id="colab-form-nome" placeholder="Nome completo do colaborador" required>
                         </div>
 
                         <div class="form-row">
@@ -480,37 +498,12 @@
                                 </select>
                             </div>
                             <div class="form-group">
-                                <label>Cargo</label>
-                                <select id="colab-form-cargo" required disabled>
+                                <label>Função</label>
+                                <select id="colab-form-funcao" required disabled>
                                     <option value="" selected disabled>Setor primeiro</option>
                                 </select>
                             </div>
                         </div>
-
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>UF</label>
-                                <select id="colab-form-uf" required>
-                                    <option value="" selected disabled>Selecione...</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label>Cidade</label>
-                                <select id="colab-form-cidade" required disabled>
-                                    <option value="" selected disabled>UF primeiro</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="form-group">
-                            <label>Bairro</label>
-                            <input type="text" id="colab-form-bairro" placeholder="Ex: Jardim Botânico">
-                        </div>
-
-                        <label class="cad-checkbox">
-                            <input type="checkbox" id="colab-form-ativo" checked>
-                            <span>Colaborador ativo</span>
-                        </label>
 
                         <div class="cad-actions">
                             <button type="submit" class="btn-primary" id="colab-submit-btn">Salvar Colaborador</button>
