@@ -121,6 +121,15 @@
 
     function normalizeColaboradorPayload(fields = {}, { partial = false } = {}) {
         const payload = {};
+        const labels = {
+            status: 'STATUS',
+            uf: 'UF',
+            loja: 'LOJA',
+            empresa: 'EMPRESA',
+            nome: 'NOME',
+            setor: 'SETOR',
+            funcao: 'FUNÇÃO',
+        };
 
         if (Object.prototype.hasOwnProperty.call(fields, 'status')) {
             const status = normalizeColaboradorStatus(fields.status);
@@ -143,7 +152,7 @@
             if (!Object.prototype.hasOwnProperty.call(fields, field)) continue;
             const value = sanitizeText(fields[field]);
             if (!value) {
-                return { payload: null, error: normalizeError(`Informe ${field}.`, 'VALIDATION_ERROR') };
+                return { payload: null, error: normalizeError(`Informe ${labels[field] || field}.`, 'VALIDATION_ERROR') };
             }
             payload[field] = value;
         }
@@ -152,7 +161,7 @@
             const required = ['status', 'uf', 'loja', 'empresa', 'nome', 'setor', 'funcao'];
             for (const field of required) {
                 if (!payload[field]) {
-                    return { payload: null, error: normalizeError(`Campo obrigatório: ${field}.`, 'VALIDATION_ERROR') };
+                    return { payload: null, error: normalizeError(`Campo obrigatório: ${labels[field] || field}.`, 'VALIDATION_ERROR') };
                 }
             }
         }

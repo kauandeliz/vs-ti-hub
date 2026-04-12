@@ -1,8 +1,8 @@
 /**
  * colaboradores.js
  *
- * CRUD de colaboradores no formato operacional:
- * STATUS, UF, LOJA, EMPRESA, NOME, SETOR, FUNCAO
+ * CRUD de colaboradores no formato da planilha:
+ * STATUS, UF, LOJA, EMPRESA, NOME, SETOR, FUNÇÃO
  */
 
 (function bootstrapColaboradores() {
@@ -16,7 +16,6 @@
         pageSize: 20,
         search: '',
         statusFilter: '',
-        catalog: null,
     };
 
     function initColaboradores() {
@@ -29,14 +28,6 @@
         document.getElementById('colab-search')?.addEventListener('input', debounce(handleSearchInput, 300));
         document.getElementById('colab-tbody')?.addEventListener('click', handleTableClick);
         document.getElementById('colab-pagination')?.addEventListener('click', handlePaginationClick);
-
-        document.getElementById('colab-form-setor')?.addEventListener('change', handleSetorChange);
-        document.getElementById('colab-form-uf')?.addEventListener('change', handleUfChange);
-
-        document.addEventListener('app:catalog-updated', () => {
-            if (!hasAdminAccess()) return;
-            loadCatalog(true);
-        });
 
         document.addEventListener('app:auth-changed', (event) => {
             if (!event.detail?.isAdmin) {
@@ -61,115 +52,7 @@
         }
 
         setFormDisabled(false);
-        await Promise.all([loadCatalog(false), loadColaboradores()]);
-    }
-
-    async function loadCatalog(force = false) {
-        const api = window.App?.api?.catalog;
-        if (!api?.getCatalogSnapshot) return;
-
-        const { data, error } = await api.getCatalogSnapshot({ force, apenasAtivos: true });
-        if (error || !data) return;
-
-        state.catalog = data;
-        renderSetorOptions();
-        renderUfOptions();
-    }
-
-    function renderSetorOptions() {
-        const select = document.getElementById('colab-form-setor');
-        if (!select) return;
-
-        const previous = select.value || '';
-        const setores = [...(state.catalog?.setores || [])];
-
-        select.innerHTML = '<option value="" selected disabled>Selecione...</option>';
-        setores.forEach((setor) => select.add(new Option(setor, setor)));
-
-        if (previous && setores.includes(previous)) {
-            select.value = previous;
-            renderFuncaoOptions(previous);
-        } else {
-            renderFuncaoOptions('');
-        }
-    }
-
-    function renderFuncaoOptions(setorNome, selectedFuncao = '') {
-        const select = document.getElementById('colab-form-funcao');
-        if (!select) return;
-
-        const setor = String(setorNome || '').trim();
-        const funcoes = [...(state.catalog?.cargosPorSetor?.[setor] || [])]
-            .sort((a, b) => String(a).localeCompare(String(b), 'pt-BR'));
-        const selected = String(selectedFuncao || '').trim();
-
-        if (selected && !funcoes.includes(selected)) {
-            funcoes.unshift(selected);
-        }
-
-        if (!setor) {
-            select.innerHTML = '<option value="" selected disabled>Setor primeiro</option>';
-            select.disabled = true;
-            return;
-        }
-
-        select.innerHTML = '<option value="" selected disabled>Selecione...</option>';
-        funcoes.forEach((funcao) => select.add(new Option(funcao, funcao)));
-
-        if (!funcoes.length) {
-            select.innerHTML = '<option value="" selected disabled>Sem funções neste setor</option>';
-            select.disabled = true;
-            return;
-        }
-
-        if (selected && funcoes.includes(selected)) {
-            select.value = selected;
-        }
-
-        select.disabled = false;
-    }
-
-    function renderUfOptions() {
-        const select = document.getElementById('colab-form-uf');
-        if (!select) return;
-
-        const previous = String(select.value || '').trim();
-        const ufs = [...(state.catalog?.ufs || [])];
-        if (previous && !ufs.includes(previous)) {
-            ufs.unshift(previous);
-        }
-
-        select.innerHTML = '<option value="" selected disabled>Selecione...</option>';
-        ufs.forEach((uf) => select.add(new Option(uf, uf)));
-
-        if (previous && ufs.includes(previous)) {
-            select.value = previous;
-            renderLojaSuggestion(previous);
-        } else {
-            renderLojaSuggestion('');
-        }
-    }
-
-    function renderLojaSuggestion(uf) {
-        const input = document.getElementById('colab-form-loja');
-        if (!input) return;
-
-        const lojas = Object.keys(state.catalog?.localidadeData?.[uf] || {});
-        if (!uf || !lojas.length) {
-            input.placeholder = 'Ex: CURITIBA BOTÂNICO';
-            return;
-        }
-
-        const sorted = [...lojas].sort((a, b) => String(a).localeCompare(String(b), 'pt-BR'));
-        input.placeholder = `Sugestão: ${sorted[0]}`;
-    }
-
-    function handleSetorChange(event) {
-        renderFuncaoOptions(event.target.value || '');
-    }
-
-    function handleUfChange(event) {
-        renderLojaSuggestion(event.target.value || '');
+        await loadColaboradores();
     }
 
     function handleSearchInput(event) {
@@ -423,7 +306,7 @@
         const funcao = String(payload.funcao || '').trim();
 
         if (!status || !uf || !loja || !empresa || !nome || !setor || !funcao) {
-            return 'Preencha status, UF, loja, empresa, nome, setor e função.';
+            return 'Preencha STATUS, UF, LOJA, EMPRESA, NOME, SETOR e FUNÇÃO.';
         }
 
         if (!/^[A-Z]{2}$/.test(uf)) {
@@ -469,13 +352,12 @@
 
         setValue('colab-id', String(record.id));
         setValue('colab-form-status', getNormalizedStatusInput(record.status));
-        setValue('colab-form-uf', record.uf || '');
-        renderLojaSuggestion(record.uf || '');
+        setValue('colab-form-uf', String(record.uf || '').toUpperCase());
         setValue('colab-form-loja', record.loja || '');
         setValue('colab-form-empresa', record.empresa || '');
         setValue('colab-form-nome', record.nome || '');
         setValue('colab-form-setor', record.setor || '');
-        renderFuncaoOptions(record.setor || '', record.funcao || '');
+        setValue('colab-form-funcao', record.funcao || '');
 
         setText('colab-submit-btn', 'Atualizar Colaborador');
         toggleDisplay('colab-cancel-btn', true);
@@ -490,8 +372,7 @@
         setValue('colab-form-empresa', '');
         setValue('colab-form-nome', '');
         setValue('colab-form-setor', '');
-        renderFuncaoOptions('', '');
-        renderLojaSuggestion('');
+        setValue('colab-form-funcao', '');
 
         setText('colab-submit-btn', 'Salvar Colaborador');
         toggleDisplay('colab-cancel-btn', false);

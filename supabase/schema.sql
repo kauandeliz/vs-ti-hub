@@ -97,6 +97,17 @@ CREATE INDEX IF NOT EXISTS idx_colaboradores_nome_trgm ON public.colaboradores U
 CREATE INDEX IF NOT EXISTS idx_colaboradores_setor_trgm ON public.colaboradores USING gin (setor gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS idx_colaboradores_funcao_trgm ON public.colaboradores USING gin (funcao gin_trgm_ops);
 
+CREATE OR REPLACE VIEW public.vw_colaboradores_planilha AS
+SELECT
+    c.status AS "STATUS",
+    c.uf AS "UF",
+    c.loja AS "LOJA",
+    c.empresa AS "EMPRESA",
+    c.nome AS "NOME",
+    c.setor AS "SETOR",
+    c.funcao AS "FUNÇÃO"
+FROM public.colaboradores c;
+
 -- =====================================================
 -- Catálogos Dinâmicos (CRUD)
 -- =====================================================
@@ -352,6 +363,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.catalog_setores TO authenti
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.catalog_cargos TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.filiais TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.catalog_direcionadores TO authenticated;
+GRANT SELECT ON TABLE public.vw_colaboradores_planilha TO authenticated;
 GRANT USAGE, SELECT ON SEQUENCE public.colaboradores_id_seq TO authenticated;
 GRANT USAGE, SELECT ON SEQUENCE public.catalog_setores_id_seq TO authenticated;
 GRANT USAGE, SELECT ON SEQUENCE public.catalog_cargos_id_seq TO authenticated;
@@ -518,6 +530,7 @@ USING (public.is_admin());
 
 COMMENT ON TABLE public.colaboradores IS 'Cadastro interno de colaboradores sem armazenamento de credenciais';
 COMMENT ON COLUMN public.colaboradores.status IS 'Status operacional do colaborador (ATIVO/INATIVO)';
+COMMENT ON VIEW public.vw_colaboradores_planilha IS 'Visão dos colaboradores com colunas no padrão da planilha (STATUS, UF, LOJA, EMPRESA, NOME, SETOR, FUNÇÃO)';
 COMMENT ON TABLE public.catalog_setores IS 'Cadastro de setores para o Gerador de Acessos (CRUD)';
 COMMENT ON TABLE public.catalog_cargos IS 'Cadastro de cargos vinculados a setores (CRUD)';
 COMMENT ON TABLE public.filiais IS 'Cadastro de filiais/unidades e base para cidades/bairros e etiquetas';

@@ -425,14 +425,14 @@
                         <table>
                             <thead>
                                 <tr>
-                                    <th>Status</th>
+                                    <th>STATUS</th>
                                     <th>UF</th>
-                                    <th>Loja</th>
-                                    <th>Empresa</th>
-                                    <th>Nome</th>
-                                    <th>Setor</th>
-                                    <th>Função</th>
-                                    <th>Ações</th>
+                                    <th>LOJA</th>
+                                    <th>EMPRESA</th>
+                                    <th>NOME</th>
+                                    <th>SETOR</th>
+                                    <th>FUNÇÃO</th>
+                                    <th>AÇÕES</th>
                                 </tr>
                             </thead>
                             <tbody id="colab-tbody">
@@ -452,7 +452,7 @@
                 <div class="colab-form-card">
                     <h3>Cadastro de colaborador</h3>
                     <div class="colab-form-note">
-                        Estrutura alinhada ao cadastro operacional: STATUS, UF, LOJA, EMPRESA, NOME, SETOR e FUNÇÃO.
+                        Estrutura idêntica à planilha: STATUS, UF, LOJA, EMPRESA, NOME, SETOR, FUNÇÃO.
                     </div>
 
                     <form id="colab-form">
@@ -460,7 +460,7 @@
 
                         <div class="form-row">
                             <div class="form-group">
-                                <label>Status</label>
+                                <label>STATUS</label>
                                 <select id="colab-form-status" required>
                                     <option value="ATIVO" selected>ATIVO</option>
                                     <option value="INATIVO">INATIVO</option>
@@ -468,40 +468,34 @@
                             </div>
                             <div class="form-group">
                                 <label>UF</label>
-                                <select id="colab-form-uf" required>
-                                    <option value="" selected disabled>Selecione...</option>
-                                </select>
+                                <input type="text" id="colab-form-uf" placeholder="SP" maxlength="2" required>
                             </div>
                         </div>
 
                         <div class="form-row">
                             <div class="form-group">
-                                <label>Loja</label>
+                                <label>LOJA</label>
                                 <input type="text" id="colab-form-loja" placeholder="Ex: CURITIBA BOTÂNICO" required>
                             </div>
                             <div class="form-group">
-                                <label>Empresa</label>
+                                <label>EMPRESA</label>
                                 <input type="text" id="colab-form-empresa" placeholder="Ex: 11" required>
                             </div>
                         </div>
 
                         <div class="form-group">
-                            <label>Nome</label>
+                            <label>NOME</label>
                             <input type="text" id="colab-form-nome" placeholder="Nome completo do colaborador" required>
                         </div>
 
                         <div class="form-row">
                             <div class="form-group">
-                                <label>Setor</label>
-                                <select id="colab-form-setor" required>
-                                    <option value="" selected disabled>Selecione...</option>
-                                </select>
+                                <label>SETOR</label>
+                                <input type="text" id="colab-form-setor" placeholder="Ex: COMERCIAL" required>
                             </div>
                             <div class="form-group">
-                                <label>Função</label>
-                                <select id="colab-form-funcao" required disabled>
-                                    <option value="" selected disabled>Setor primeiro</option>
-                                </select>
+                                <label>FUNÇÃO</label>
+                                <input type="text" id="colab-form-funcao" placeholder="Ex: EXECUTIVO DE VENDAS" required>
                             </div>
                         </div>
 
