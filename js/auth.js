@@ -363,7 +363,7 @@
     }
 
     function showAdminNav(visible) {
-        ['nav-usuarios', 'nav-cadastros', 'nav-colaboradores'].forEach((id) => {
+        ['nav-cadastros', 'nav-colaboradores'].forEach((id) => {
             const adminNav = document.getElementById(id);
             if (adminNav) {
                 adminNav.style.display = visible ? '' : 'none';
