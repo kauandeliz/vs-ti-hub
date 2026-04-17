@@ -394,20 +394,23 @@
 
             <div class="docs-layout">
                 <aside class="docs-tree-card">
-                    <div class="docs-tree-header">
-                        <h3>Árvore de Pastas</h3>
+                    <div class="docs-panel-head docs-tree-header">
+                        <div class="docs-head-copy">
+                            <h3>Navegação</h3>
+                            <p>Estrutura de pastas</p>
+                        </div>
                     </div>
                     <div class="docs-toolbar">
-                        <div class="search-wrap">
-                            <span class="search-icon"></span>
+                        <label class="docs-search-wrap" for="docs-search">
+                            <i class="fa-solid fa-magnifying-glass docs-search-icon" aria-hidden="true"></i>
                             <input
                                 type="text"
                                 id="docs-search"
+                                class="docs-search-input"
                                 placeholder="Buscar por título, categoria, descrição ou nome do arquivo..."
-                                style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px 8px 32px;color:var(--text);font-family:var(--font);font-size:0.8rem;outline:none;"
                             >
-                        </div>
-                        <select class="filter-select" id="docs-filter-categoria">
+                        </label>
+                        <select class="filter-select docs-filter-select" id="docs-filter-categoria">
                             <option value="">Todas as categorias</option>
                             <option value="TERMO_RESPONSABILIDADE">Termo de Responsabilidade</option>
                             <option value="TUTORIAL_TI">Tutorial de TI</option>
@@ -424,9 +427,12 @@
                 </aside>
 
                 <div class="docs-content-card">
-                    <div class="docs-content-header">
-                        <h3>Conteúdo</h3>
-                        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                    <div class="docs-panel-head docs-content-header">
+                        <div class="docs-head-copy">
+                            <h3>Explorador de Arquivos</h3>
+                            <p>Navegue, visualize e baixe os documentos da base.</p>
+                        </div>
+                        <div class="docs-content-actions">
                             <button class="btn-icon" id="docs-go-root-btn">Raiz</button>
                             <button class="btn-icon" id="docs-go-up-btn">Subir</button>
                             <button class="btn-icon" id="docs-refresh-btn">↻ Atualizar</button>
@@ -445,68 +451,76 @@
                 </div>
 
                 <div class="docs-form-card">
-                    <h3>Cadastro de item</h3>
-                    <div class="docs-form-note">
-                        Crie pastas para organizar a árvore e documentos para armazenar os arquivos.
+                    <div class="docs-panel-head docs-form-header">
+                        <div class="docs-head-copy">
+                            <h3>Gestão de Itens</h3>
+                            <p>Cadastro de pastas e documentos</p>
+                        </div>
                     </div>
-                    <div class="docs-form-permission" id="docs-form-permission"></div>
 
-                    <form id="docs-form">
-                        <input type="hidden" id="docs-id">
+                    <div class="docs-form-body">
+                        <div class="docs-form-note">
+                            Crie pastas para organizar a árvore e documentos para armazenar os arquivos.
+                        </div>
+                        <div class="docs-form-permission" id="docs-form-permission"></div>
 
-                        <div class="form-row">
+                        <form id="docs-form">
+                            <input type="hidden" id="docs-id">
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Tipo</label>
+                                    <select id="docs-form-tipo" required>
+                                        <option value="DOCUMENTO" selected>Documento</option>
+                                        <option value="PASTA">Pasta</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Pasta pai</label>
+                                    <select id="docs-form-parent">
+                                        <option value="">Raiz</option>
+                                    </select>
+                                </div>
+                            </div>
+
                             <div class="form-group">
-                                <label>Tipo</label>
-                                <select id="docs-form-tipo" required>
-                                    <option value="DOCUMENTO" selected>Documento</option>
-                                    <option value="PASTA">Pasta</option>
+                                <label>Categoria</label>
+                                <select id="docs-form-categoria" required>
+                                    <option value="" selected disabled>Selecione...</option>
+                                    <option value="TERMO_RESPONSABILIDADE">Termo de Responsabilidade</option>
+                                    <option value="TUTORIAL_TI">Tutorial de TI</option>
+                                    <option value="TERMO_ASSINADO">Termo Assinado</option>
+                                    <option value="GERAL">Documentação Geral</option>
                                 </select>
                             </div>
+
                             <div class="form-group">
-                                <label>Pasta pai</label>
-                                <select id="docs-form-parent">
-                                    <option value="">Raiz</option>
-                                </select>
+                                <label>Título</label>
+                                <input type="text" id="docs-form-titulo" placeholder="Ex: Termo de responsabilidade - Notebook / Pasta Contratos" required>
                             </div>
-                        </div>
 
-                        <div class="form-group">
-                            <label>Categoria</label>
-                            <select id="docs-form-categoria" required>
-                                <option value="" selected disabled>Selecione...</option>
-                                <option value="TERMO_RESPONSABILIDADE">Termo de Responsabilidade</option>
-                                <option value="TUTORIAL_TI">Tutorial de TI</option>
-                                <option value="TERMO_ASSINADO">Termo Assinado</option>
-                                <option value="GERAL">Documentação Geral</option>
-                            </select>
-                        </div>
+                            <div class="form-group">
+                                <label>Descrição</label>
+                                <textarea id="docs-form-descricao" placeholder="Resumo rápido do conteúdo do documento..."></textarea>
+                            </div>
 
-                        <div class="form-group">
-                            <label>Título</label>
-                            <input type="text" id="docs-form-titulo" placeholder="Ex: Termo de responsabilidade - Notebook / Pasta Contratos" required>
-                        </div>
+                            <div class="form-group" id="docs-file-group">
+                                <label>Arquivo</label>
+                                <input
+                                    type="file"
+                                    id="docs-form-arquivo"
+                                    accept=".pdf,.png,.jpg,.jpeg,.webp,.txt,.csv,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+                                >
+                                <div class="docs-file-help">Máximo recomendado: 20 MB. Em edição, envie arquivo apenas se quiser substituir o atual.</div>
+                                <div class="docs-current-file" id="docs-current-file" style="display:none"></div>
+                            </div>
 
-                        <div class="form-group">
-                            <label>Descrição</label>
-                            <textarea id="docs-form-descricao" placeholder="Resumo rápido do conteúdo do documento..."></textarea>
-                        </div>
-
-                        <div class="form-group" id="docs-file-group">
-                            <label>Arquivo</label>
-                            <input
-                                type="file"
-                                id="docs-form-arquivo"
-                                accept=".pdf,.png,.jpg,.jpeg,.webp,.txt,.csv,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
-                            >
-                            <div class="docs-file-help">Máximo recomendado: 20 MB. Em edição, envie arquivo apenas se quiser substituir o atual.</div>
-                            <div class="docs-current-file" id="docs-current-file" style="display:none"></div>
-                        </div>
-
-                        <div class="cad-actions">
-                            <button type="submit" class="btn-primary" id="docs-submit-btn">Salvar Documento</button>
-                            <button type="button" class="btn-row" id="docs-cancel-btn" style="display:none">Cancelar</button>
-                        </div>
-                    </form>
+                            <div class="cad-actions">
+                                <button type="submit" class="btn-primary" id="docs-submit-btn">Salvar Documento</button>
+                                <button type="button" class="btn-row" id="docs-cancel-btn" style="display:none">Cancelar</button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             </div>
         </div>

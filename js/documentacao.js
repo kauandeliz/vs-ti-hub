@@ -233,8 +233,8 @@
             <ul class="docs-tree-list root">
                 <li class="docs-tree-item">
                     <button class="docs-tree-btn ${activeRootClass}" data-action="tree-open" data-id="">
-                        <span>🗂️</span>
-                        <span>Raiz</span>
+                        <span class="docs-tree-btn-icon">🗂️</span>
+                        <span class="docs-tree-btn-label">Raiz</span>
                     </button>
                 </li>
                 ${rootFolders.map((folder) => renderTreeNode(folder, new Set())).join('')}
@@ -257,8 +257,8 @@
         return `
             <li class="docs-tree-item">
                 <button class="docs-tree-btn ${activeClass}" data-action="tree-open" data-id="${folderId}">
-                    <span>📁</span>
-                    <span>${escapeHtml(folder.titulo || 'Pasta')}</span>
+                    <span class="docs-tree-btn-icon">📁</span>
+                    <span class="docs-tree-btn-label">${escapeHtml(folder.titulo || 'Pasta')}</span>
                 </button>
                 ${childrenFolders.length ? `
                     <ul class="docs-tree-list">
@@ -287,7 +287,15 @@
 
         const items = [{ id: '', label: 'Raiz' }, ...chain];
         breadcrumb.innerHTML = items.map((item, index) => `
-            <span class="crumb" data-action="crumb-open" data-id="${escapeHtmlAttribute(item.id)}">${escapeHtml(item.label)}</span>${index < items.length - 1 ? ' / ' : ''}
+            <button
+                type="button"
+                class="crumb ${index === items.length - 1 ? 'current' : ''}"
+                data-action="crumb-open"
+                data-id="${escapeHtmlAttribute(item.id)}"
+            >
+                ${escapeHtml(item.label)}
+            </button>
+            ${index < items.length - 1 ? '<span class="crumb-separator">/</span>' : ''}
         `).join('');
     }
 
@@ -384,6 +392,11 @@
                 <div class="table-state">
                     <div class="icon">📂</div>
                     <div>Nenhum item encontrado nesta pasta.</div>
+                    <div class="docs-empty-hint">
+                        ${hasAdminAccess()
+                            ? 'Use o painel à direita para criar uma pasta ou enviar um novo documento.'
+                            : 'Use os filtros da esquerda para encontrar documentos em outras pastas.'}
+                    </div>
                 </div>
             `;
             return;
@@ -402,16 +415,23 @@
 
         return `
             <article class="doc-card folder">
+                <div class="doc-card-kind-row">
+                    <span class="doc-kind-chip folder">Pasta</span>
+                    <span class="doc-kind-meta">${childCount} item(ns)</span>
+                </div>
                 <div class="doc-card-head">
-                    <div class="doc-card-icon">📁</div>
-                    <div>
+                    <div class="doc-card-icon folder-icon">📁</div>
+                    <div class="doc-card-head-text">
                         <div class="doc-card-title">${escapeHtml(item.titulo || 'Pasta')}</div>
-                        <span class="doc-category-badge">Pasta</span>
+                        <div class="doc-card-subtitle">Container de arquivos e subpastas</div>
                     </div>
                 </div>
                 <div class="doc-card-desc">${escapeHtml(item.descricao || 'Pasta para organizar documentos e subpastas.')}</div>
                 <div class="doc-card-meta">
-                    ${childCount} item(ns) • Atualização ${escapeHtml(formatDateTime(item.atualizado_em || item.criado_em))}
+                    <div class="doc-meta-row">
+                        <span>Atualização</span>
+                        <strong>${escapeHtml(formatDateTime(item.atualizado_em || item.criado_em))}</strong>
+                    </div>
                 </div>
                 <div class="doc-card-actions">
                     <button class="btn-row primary" data-action="open-folder" data-id="${item.id}">Abrir</button>
@@ -429,17 +449,27 @@
 
         return `
             <article class="doc-card">
+                <div class="doc-card-kind-row">
+                    <span class="doc-kind-chip document">Documento</span>
+                    <span class="doc-kind-meta">${escapeHtml(formatFileSize(item.arquivo_tamanho_bytes))}</span>
+                </div>
                 <div class="doc-card-head">
                     <div class="doc-card-icon">${escapeHtml(icon)}</div>
-                    <div>
+                    <div class="doc-card-head-text">
                         <div class="doc-card-title">${escapeHtml(item.titulo || 'Documento')}</div>
                         <span class="doc-category-badge">${escapeHtml(category)}</span>
                     </div>
                 </div>
                 <div class="doc-card-desc">${escapeHtml(item.descricao || 'Documento sem descrição cadastrada.')}</div>
                 <div class="doc-card-meta">
-                    ${escapeHtml(item.arquivo_nome || 'Arquivo sem nome')} • ${escapeHtml(formatFileSize(item.arquivo_tamanho_bytes))}<br>
-                    Atualização ${escapeHtml(formatDateTime(item.atualizado_em || item.criado_em))}
+                    <div class="doc-meta-row">
+                        <span>Arquivo</span>
+                        <strong class="doc-file-name">${escapeHtml(item.arquivo_nome || 'Arquivo sem nome')}</strong>
+                    </div>
+                    <div class="doc-meta-row">
+                        <span>Atualização</span>
+                        <strong>${escapeHtml(formatDateTime(item.atualizado_em || item.criado_em))}</strong>
+                    </div>
                 </div>
                 <div class="doc-card-actions">
                     <button class="btn-row primary" data-action="preview-item" data-id="${item.id}">Visualizar</button>
