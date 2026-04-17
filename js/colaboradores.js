@@ -1,7 +1,7 @@
 /**
  * colaboradores.js
  *
- * CRUD de colaboradores no formato da planilha:
+ * CRUD de colaboradores internos no formato da planilha:
  * STATUS, UF, LOJA, EMPRESA, NOME, SETOR, FUNÇÃO
  */
 
@@ -105,7 +105,7 @@
         const inativos = state.records.filter((item) => getStatusLabel(item.status) === 'INATIVO').length;
         const outros = total - ativos - inativos;
 
-        let summary = `${total} colaboradores • ${ativos} ativos • ${inativos} inativos`;
+        let summary = `${total} colaboradores internos • ${ativos} ativos • ${inativos} inativos`;
         if (outros > 0) {
             summary += ` • ${outros} com status diferente`;
         }
@@ -129,7 +129,7 @@
                     <td colspan="8">
                         <div class="table-state">
                             <div class="icon">🧑‍💼</div>
-                            <div>Nenhum colaborador encontrado.</div>
+                            <div>Nenhum colaborador interno encontrado.</div>
                         </div>
                     </td>
                 </tr>
@@ -203,7 +203,7 @@
                 <td colspan="8">
                     <div class="table-state">
                         <div class="spinner"></div>
-                        <div>Carregando colaboradores...</div>
+                        <div>Carregando colaboradores internos...</div>
                     </div>
                 </td>
             </tr>
@@ -278,7 +278,7 @@
             return;
         }
 
-        showToast(id > 0 ? 'Colaborador atualizado.' : 'Colaborador criado.', 'success');
+        showToast(id > 0 ? 'Colaborador interno atualizado.' : 'Colaborador interno criado.', 'success');
         resetForm();
         await loadColaboradores();
         document.dispatchEvent(new CustomEvent('app:colaboradores-updated'));
@@ -329,7 +329,7 @@
         }
 
         if (btn.dataset.action === 'delete') {
-            const name = btn.dataset.name || 'este colaborador';
+            const name = btn.dataset.name || 'este colaborador interno';
             const ok = window.confirm(`Excluir ${name}?`);
             if (!ok) return;
 
@@ -339,7 +339,7 @@
                 return;
             }
 
-            showToast('Colaborador removido.', 'success');
+            showToast('Colaborador interno removido.', 'success');
             resetForm();
             await loadColaboradores();
             document.dispatchEvent(new CustomEvent('app:colaboradores-updated'));
@@ -359,7 +359,7 @@
         setValue('colab-form-setor', record.setor || '');
         setValue('colab-form-funcao', record.funcao || '');
 
-        setText('colab-submit-btn', 'Atualizar Colaborador');
+        setText('colab-submit-btn', 'Atualizar Colaborador Interno');
         toggleDisplay('colab-cancel-btn', true);
         document.getElementById('colab-form-nome')?.focus();
     }
@@ -374,7 +374,7 @@
         setValue('colab-form-setor', '');
         setValue('colab-form-funcao', '');
 
-        setText('colab-submit-btn', 'Salvar Colaborador');
+        setText('colab-submit-btn', 'Salvar Colaborador Interno');
         toggleDisplay('colab-cancel-btn', false);
     }
 

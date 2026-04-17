@@ -21,6 +21,7 @@
     <link rel="stylesheet" href="css/gerador.css">
     <link rel="stylesheet" href="css/historico.css">
     <link rel="stylesheet" href="css/colaboradores.css">
+    <link rel="stylesheet" href="css/documentacao.css">
     <link rel="stylesheet" href="css/cadastros.css">
     <link rel="stylesheet" href="css/auth.css">
 
@@ -66,13 +67,16 @@
     <hr class="nav-separator">
 
     <button class="nav-item" id="nav-usuarios" data-nav="usuarios" style="display:none">
-        <i class="nav-icon fas fa-users"></i> Usuários
+        <i class="nav-icon fas fa-users"></i> Contas de Acesso
     </button>
     <button class="nav-item" id="nav-cadastros" data-nav="cadastros" style="display:none">
         <i class="nav-icon fas fa-database"></i> Cadastros
     </button>
     <button class="nav-item" id="nav-colaboradores" data-nav="colaboradores" style="display:none">
-        <i class="nav-icon fas fa-id-badge"></i> Colaboradores
+        <i class="nav-icon fas fa-id-badge"></i> Colaboradores Internos
+    </button>
+    <button class="nav-item" id="nav-documentacao" data-nav="documentacao" style="display:none">
+        <i class="nav-icon fas fa-folder-open"></i> Documentação
     </button>
     <button class="nav-item" data-nav="unidades">
         <i class="nav-icon fas fa-city"></i> Unidades &amp; Filiais
@@ -113,13 +117,13 @@
                         <span class="landing-pill" id="landingGreeting">Bem-vindo ao VS TI Hub</span>
                         <h1 class="landing-title">Landing de Apresentação do VS TI Hub</h1>
                         <p class="landing-subtitle">
-                            A porta de entrada da operação de TI da VinilSul: onboarding, gestão de colaboradores,
-                            gestão de usuários e catálogo centralizado em um único ambiente.
+                            A porta de entrada da operação de TI da VinilSul: onboarding, gestão de colaboradores internos
+                            e catálogo centralizado em um único ambiente.
                         </p>
 
                         <div class="landing-cta-row">
                             <a href="#" data-nav="gerador" class="landing-btn primary">Começar onboarding</a>
-                            <a href="#" data-nav="colaboradores" data-home-admin style="display:none" class="landing-btn ghost">Abrir colaboradores</a>
+                            <a href="#" data-nav="colaboradores" data-home-admin style="display:none" class="landing-btn ghost">Abrir colaboradores internos</a>
                         </div>
 
                         <div class="landing-meta-row">
@@ -133,7 +137,7 @@
                         <ol class="landing-steps">
                             <li>Padronize setor, cargo e filiais no módulo Cadastros.</li>
                             <li>Gere acessos com consistência no Gerador de Acessos.</li>
-                            <li>Gerencie o quadro interno no módulo Colaboradores.</li>
+                            <li>Gerencie o quadro interno no módulo Colaboradores Internos.</li>
                         </ol>
 
                         <div class="landing-kpi-grid">
@@ -163,8 +167,8 @@
                         </a>
                         <a href="#" data-nav="colaboradores" data-home-admin style="display:none" class="shortcut-card landing-action-card">
                             <div class="shortcut-icon">🧑‍💼</div>
-                            <div class="shortcut-title">Colaboradores</div>
-                            <div class="shortcut-desc">CRUD de colaboradores sem armazenamento de credenciais.</div>
+                            <div class="shortcut-title">Colaboradores Internos</div>
+                            <div class="shortcut-desc">Cadastro de pessoas sem login e sem armazenamento de credenciais.</div>
                         </a>
                         <a href="#" data-nav="unidades" class="shortcut-card landing-action-card">
                             <div class="shortcut-icon">🏙️</div>
@@ -175,11 +179,6 @@
                             <div class="shortcut-icon">🏷️</div>
                             <div class="shortcut-title">Etiquetas</div>
                             <div class="shortcut-desc">Geração e cópia rápida de etiquetas de remessa.</div>
-                        </a>
-                        <a href="#" data-nav="usuarios" data-home-admin style="display:none" class="shortcut-card landing-action-card">
-                            <div class="shortcut-icon">👥</div>
-                            <div class="shortcut-title">Usuários</div>
-                            <div class="shortcut-desc">Gestão de contas, senhas e permissões de acesso.</div>
                         </a>
                         <a href="#" data-nav="cadastros" data-home-admin style="display:none" class="shortcut-card landing-action-card">
                             <div class="shortcut-icon">🗂️</div>
@@ -389,17 +388,127 @@
             <div class="labels-grid" id="labelGrid"></div>
         </div>
 
+        <!-- @include pages/documentacao.html -->
+        <div class="page" id="page-documentacao">
+            <div class="page-header">
+                <h1>Documentação</h1>
+                <p>CRUD de documentos de TI com visualização, download e histórico de atualização.</p>
+            </div>
+
+            <div class="docs-layout">
+                <div class="docs-table-card">
+                    <div class="docs-table-header">
+                        <h3>Documentos cadastrados</h3>
+                        <button class="btn-icon" id="docs-refresh-btn">↻ Atualizar</button>
+                    </div>
+
+                    <div class="docs-toolbar">
+                        <div class="search-wrap">
+                            <span class="search-icon"></span>
+                            <input
+                                type="text"
+                                id="docs-search"
+                                placeholder="Buscar por título, categoria, descrição ou nome do arquivo..."
+                                style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px 8px 32px;color:var(--text);font-family:var(--font);font-size:0.8rem;outline:none;"
+                            >
+                        </div>
+                        <select class="filter-select" id="docs-filter-categoria">
+                            <option value="">Todas as categorias</option>
+                            <option value="TERMO_RESPONSABILIDADE">Termo de Responsabilidade</option>
+                            <option value="TUTORIAL_TI">Tutorial de TI</option>
+                            <option value="TERMO_ASSINADO">Termo Assinado</option>
+                            <option value="GERAL">Documentação Geral</option>
+                        </select>
+                        <div class="docs-summary" id="docs-summary">Carregue os documentos para ver os indicadores.</div>
+                    </div>
+
+                    <div class="table-wrap" style="border:none;border-radius:0;margin-bottom:0">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>CATEGORIA</th>
+                                    <th>DOCUMENTO</th>
+                                    <th>ARQUIVO</th>
+                                    <th>ATUALIZAÇÃO</th>
+                                    <th>AÇÕES</th>
+                                </tr>
+                            </thead>
+                            <tbody id="docs-tbody">
+                                <tr><td colspan="5">
+                                    <div class="table-state">
+                                        <div class="icon">📚</div>
+                                        <div>Navegue até esta página para carregar os documentos.</div>
+                                    </div>
+                                </td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div id="docs-pagination" class="pagination"></div>
+                </div>
+
+                <div class="docs-form-card">
+                    <h3>Cadastro de documento</h3>
+                    <div class="docs-form-note">
+                        Use este espaço para manter termos de responsabilidade, tutoriais de TI, termos assinados e materiais gerais.
+                    </div>
+                    <div class="docs-form-permission" id="docs-form-permission"></div>
+
+                    <form id="docs-form">
+                        <input type="hidden" id="docs-id">
+
+                        <div class="form-group">
+                            <label>Categoria</label>
+                            <select id="docs-form-categoria" required>
+                                <option value="" selected disabled>Selecione...</option>
+                                <option value="TERMO_RESPONSABILIDADE">Termo de Responsabilidade</option>
+                                <option value="TUTORIAL_TI">Tutorial de TI</option>
+                                <option value="TERMO_ASSINADO">Termo Assinado</option>
+                                <option value="GERAL">Documentação Geral</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Título</label>
+                            <input type="text" id="docs-form-titulo" placeholder="Ex: Termo de responsabilidade - Notebook" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Descrição</label>
+                            <textarea id="docs-form-descricao" placeholder="Resumo rápido do conteúdo do documento..."></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Arquivo</label>
+                            <input
+                                type="file"
+                                id="docs-form-arquivo"
+                                accept=".pdf,.png,.jpg,.jpeg,.webp,.txt,.csv,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+                            >
+                            <div class="docs-file-help">Máximo recomendado: 20 MB. Em edição, envie arquivo apenas se quiser substituir o atual.</div>
+                            <div class="docs-current-file" id="docs-current-file" style="display:none"></div>
+                        </div>
+
+                        <div class="cad-actions">
+                            <button type="submit" class="btn-primary" id="docs-submit-btn">Salvar Documento</button>
+                            <button type="button" class="btn-row" id="docs-cancel-btn" style="display:none">Cancelar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
         <!-- @include pages/colaboradores.html -->
         <div class="page" id="page-colaboradores">
             <div class="page-header">
-                <h1>Colaboradores</h1>
-                <p>CRUD interno de colaboradores, sem armazenamento de credenciais.</p>
+                <h1>Colaboradores Internos</h1>
+                <p>Cadastro interno de colaboradores sem login e sem armazenamento de credenciais.</p>
             </div>
 
             <div class="colab-layout">
                 <div class="colab-table-card">
                     <div class="colab-table-header">
-                        <h3>Colaboradores cadastrados</h3>
+                        <h3>Colaboradores internos cadastrados</h3>
                         <button class="btn-icon" id="colab-refresh-btn">↻ Atualizar</button>
                     </div>
 
@@ -418,7 +527,7 @@
                             <option value="ativo">Ativos</option>
                             <option value="inativo">Inativos</option>
                         </select>
-                        <div class="colab-summary" id="colab-summary">Carregue os colaboradores para ver os indicadores.</div>
+                        <div class="colab-summary" id="colab-summary">Carregue os colaboradores internos para ver os indicadores.</div>
                     </div>
 
                     <div class="table-wrap" style="border:none;border-radius:0;margin-bottom:0">
@@ -439,7 +548,7 @@
                                 <tr><td colspan="8">
                                     <div class="table-state">
                                         <div class="icon">🧑‍💼</div>
-                                        <div>Navegue até esta página para carregar os colaboradores.</div>
+                                        <div>Navegue até esta página para carregar os colaboradores internos.</div>
                                     </div>
                                 </td></tr>
                             </tbody>
@@ -450,7 +559,7 @@
                 </div>
 
                 <div class="colab-form-card">
-                    <h3>Cadastro de colaborador</h3>
+                    <h3>Cadastro de colaborador interno</h3>
                     <div class="colab-form-note">
                         Estrutura idêntica à planilha: STATUS, UF, LOJA, EMPRESA, NOME, SETOR, FUNÇÃO.
                     </div>
@@ -485,7 +594,7 @@
 
                         <div class="form-group">
                             <label>NOME</label>
-                            <input type="text" id="colab-form-nome" placeholder="Nome completo do colaborador" required>
+                            <input type="text" id="colab-form-nome" placeholder="Nome completo do colaborador interno" required>
                         </div>
 
                         <div class="form-row">
@@ -500,7 +609,7 @@
                         </div>
 
                         <div class="cad-actions">
-                            <button type="submit" class="btn-primary" id="colab-submit-btn">Salvar Colaborador</button>
+                            <button type="submit" class="btn-primary" id="colab-submit-btn">Salvar Colaborador Interno</button>
                             <button type="button" class="btn-row" id="colab-cancel-btn" style="display:none">Cancelar</button>
                         </div>
                     </form>
@@ -511,22 +620,22 @@
         <!-- @include pages/usuarios.html -->
         <div class="page" id="page-usuarios">
             <div class="page-header">
-                <h1>Usuários</h1>
-                <p>Gerencie os acessos à plataforma VS TI Hub</p>
+                <h1>Contas de Acesso</h1>
+                <p>Gerencie logins e permissões da plataforma VS TI Hub</p>
             </div>
 
             <div class="usuarios-grid">
                 <!-- Users table -->
                 <div class="usuarios-table-card">
                     <div class="usuarios-table-header">
-                        <h3>Usuários cadastrados</h3>
+                        <h3>Contas de acesso cadastradas</h3>
                         <button class="btn-icon" id="usuarios-refresh-btn">↻ Atualizar</button>
                     </div>
                     <div class="table-wrap" style="border:none;border-radius:0">
                         <table>
                             <thead>
                                 <tr>
-                                    <th>Usuário</th>
+                                    <th>Conta</th>
                                     <th>Tipo / Estrutura</th>
                                     <th>Status</th>
                                     <th>Ações</th>
@@ -546,11 +655,11 @@
 
                 <!-- New user form -->
                 <div class="new-user-card">
-                    <h3>Convidar usuário</h3>
+                    <h3>Criar conta de acesso</h3>
 
                     <div class="invite-notice">
                         <span></span>
-                        <span>Cadastre tipo, setor e cargo para manter o perfil organizacional do usuário.</span>
+                        <span>Cadastre tipo, setor e cargo para manter o perfil organizacional da conta.</span>
                     </div>
 
                     <form id="new-user-form">
@@ -566,7 +675,7 @@
                             <div class="form-group">
                                 <label>Tipo</label>
                                 <select id="new-user-type" required>
-                                    <option value="comum" selected>Usuário comum</option>
+                                    <option value="comum" selected>Conta comum</option>
                                     <option value="adm">Administrador</option>
                                 </select>
                             </div>
@@ -591,11 +700,11 @@
                         <div style="margin-bottom:14px">
                             <span style="font-size:0.7rem;font-weight:600;color:var(--text-soft);display:block;margin-bottom:6px">Perfil</span>
                             <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 13px;font-size:0.75rem;color:var(--text-soft)">
-                                Escolha <span class="role-badge comum">usuário comum</span> para operação diária ou <span class="role-badge admin">adm</span> para gestão completa.
+                                Escolha <span class="role-badge comum">conta comum</span> para operação diária ou <span class="role-badge admin">adm</span> para gestão completa.
                             </div>
                         </div>
 
-                        <button type="submit" class="btn-primary" id="new-user-btn">Criar usuário</button>
+                        <button type="submit" class="btn-primary" id="new-user-btn">Criar conta</button>
 
                         <div class="error-msg" id="new-user-error"></div>
                         <div class="inline-notify" id="new-user-ok"></div>
@@ -661,14 +770,14 @@
                 </button>
             </div>
             <div class="cad-module-hint" id="cad-module-hint">
-                Cadastre setores e cargos usados pelos formulários de usuários e onboarding.
+                Cadastre setores e cargos usados pelos formulários de contas de acesso e onboarding.
             </div>
 
             <div class="cad-grid cad-module-panel active" data-cad-module-panel="organizacional">
                 <div class="cad-card">
                     <div class="cad-card-head">
                         <h3>Setores</h3>
-                        <p>Base organizacional usada na criação de usuários e cargos.</p>
+                        <p>Base organizacional usada na criação de contas de acesso e cargos.</p>
                     </div>
                     <div class="cad-form-shell">
                         <form id="cad-setor-form" class="cad-form">
@@ -947,6 +1056,7 @@
 <script src="js/gerador-ui.js"></script>
 <script src="js/unidades.js"></script>
 <script src="js/etiquetas.js"></script>
+<script src="js/documentacao.js"></script>
 <script src="js/colaboradores.js"></script>
 <script src="js/usuarios.js"></script>
 <script src="js/cadastros.js"></script>

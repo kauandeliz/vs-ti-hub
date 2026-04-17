@@ -17,7 +17,7 @@
     };
 
     const MODULE_HINTS = {
-        organizacional: 'Cadastre setores e cargos usados pelos formulários de usuários e onboarding.',
+        organizacional: 'Cadastre setores e cargos usados pelos formulários de contas de acesso e onboarding.',
         filiais: 'Mantenha filiais, endereços e dados de etiqueta centralizados em um único cadastro.',
         direcionadores: 'Publique e mantenha os cards com links usados na Home e nas páginas de sistemas.',
     };

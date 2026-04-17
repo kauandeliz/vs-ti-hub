@@ -881,6 +881,337 @@
         return { data: { id }, error: null };
     }
 
+    const DOCUMENTOS_BUCKET = 'documentacao';
+    const DOCUMENTO_CATEGORIAS = new Set(['TERMO_RESPONSABILIDADE', 'TUTORIAL_TI', 'TERMO_ASSINADO', 'GERAL']);
+    const MAX_DOCUMENTO_BYTES = 20 * 1024 * 1024;
+
+    function normalizeDocumentoCategoria(value) {
+        const categoria = sanitizeText(value).toUpperCase();
+        if (!DOCUMENTO_CATEGORIAS.has(categoria)) {
+            return { value: null, error: normalizeError('Categoria inválida para o documento.', 'VALIDATION_ERROR') };
+        }
+        return { value: categoria, error: null };
+    }
+
+    function normalizeDocumentoPayload(fields = {}, { partial = false } = {}) {
+        const payload = {};
+
+        if (Object.prototype.hasOwnProperty.call(fields, 'categoria')) {
+            const { value, error } = normalizeDocumentoCategoria(fields.categoria);
+            if (error) return { payload: null, error };
+            payload.categoria = value;
+        }
+
+        if (Object.prototype.hasOwnProperty.call(fields, 'titulo')) {
+            const titulo = sanitizeText(fields.titulo);
+            if (!titulo) {
+                return { payload: null, error: normalizeError('Informe o título do documento.', 'VALIDATION_ERROR') };
+            }
+            payload.titulo = titulo;
+        }
+
+        if (Object.prototype.hasOwnProperty.call(fields, 'descricao')) {
+            payload.descricao = sanitizeText(fields.descricao) || null;
+        }
+
+        if (!partial) {
+            if (!payload.categoria) {
+                return { payload: null, error: normalizeError('Selecione a categoria do documento.', 'VALIDATION_ERROR') };
+            }
+            if (!payload.titulo) {
+                return { payload: null, error: normalizeError('Informe o título do documento.', 'VALIDATION_ERROR') };
+            }
+        }
+
+        return { payload, error: null };
+    }
+
+    function isFileLike(file) {
+        return Boolean(
+            file
+            && typeof file === 'object'
+            && typeof file.name === 'string'
+            && Number.isFinite(file.size)
+        );
+    }
+
+    function sanitizeStorageFileName(fileName) {
+        const normalized = String(fileName || '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^a-zA-Z0-9._-]/g, '_')
+            .replace(/_+/g, '_')
+            .replace(/^_+|_+$/g, '')
+            .slice(-120);
+
+        return normalized || 'arquivo';
+    }
+
+    function buildDocumentoStoragePath(fileName) {
+        const stamp = new Date().toISOString().replace(/[-:.TZ]/g, '');
+        const random = Math.random().toString(36).slice(2, 10);
+        const safeName = sanitizeStorageFileName(fileName);
+        return `${stamp}_${random}_${safeName}`;
+    }
+
+    function normalizeDocumentoFile(file, { required = true } = {}) {
+        if (!isFileLike(file)) {
+            if (required) {
+                return { file: null, error: normalizeError('Selecione um arquivo para o documento.', 'VALIDATION_ERROR') };
+            }
+            return { file: null, error: null };
+        }
+
+        if (file.size <= 0) {
+            return { file: null, error: normalizeError('Arquivo inválido ou vazio.', 'VALIDATION_ERROR') };
+        }
+
+        if (file.size > MAX_DOCUMENTO_BYTES) {
+            return { file: null, error: normalizeError('Arquivo acima de 20 MB. Reduza o tamanho antes de enviar.', 'VALIDATION_ERROR') };
+        }
+
+        return { file, error: null };
+    }
+
+    async function listarDocumentos({ search = '', categoria = '' } = {}) {
+        let query = client
+            .from('catalog_documentacao')
+            .select('*')
+            .order('criado_em', { ascending: false });
+
+        if (sanitizeText(categoria)) {
+            const { value, error } = normalizeDocumentoCategoria(categoria);
+            if (error) {
+                return { data: null, error };
+            }
+            query = query.eq('categoria', value);
+        }
+
+        const term = sanitizeSearchTerm(search);
+        if (term) {
+            query = query.or(`titulo.ilike.%${term}%,descricao.ilike.%${term}%,arquivo_nome.ilike.%${term}%,categoria.ilike.%${term}%`);
+        }
+
+        const { data, error } = await query;
+        if (error) {
+            return {
+                data: null,
+                error: normalizeError(error.message, error.code || 'DB_DOCUMENTO_LIST_ERROR', error),
+            };
+        }
+
+        return { data: data || [], error: null };
+    }
+
+    async function criarDocumento(fields = {}) {
+        const { payload, error: payloadError } = normalizeDocumentoPayload(fields, { partial: false });
+        if (payloadError) {
+            return { data: null, error: payloadError };
+        }
+
+        const { file, error: fileError } = normalizeDocumentoFile(fields.file, { required: true });
+        if (fileError) {
+            return { data: null, error: fileError };
+        }
+
+        const arquivoPath = buildDocumentoStoragePath(file.name);
+        const { error: uploadError } = await client
+            .storage
+            .from(DOCUMENTOS_BUCKET)
+            .upload(arquivoPath, file, {
+                upsert: false,
+                contentType: file.type || 'application/octet-stream',
+            });
+
+        if (uploadError) {
+            return {
+                data: null,
+                error: normalizeError(uploadError.message, uploadError.statusCode || 'STORAGE_UPLOAD_ERROR', uploadError),
+            };
+        }
+
+        const insertPayload = {
+            ...payload,
+            arquivo_nome: file.name,
+            arquivo_path: arquivoPath,
+            arquivo_mime_type: file.type || 'application/octet-stream',
+            arquivo_tamanho_bytes: Number(file.size) || 0,
+        };
+
+        const { data, error } = await client
+            .from('catalog_documentacao')
+            .insert([insertPayload])
+            .select()
+            .single();
+
+        if (error) {
+            await client.storage.from(DOCUMENTOS_BUCKET).remove([arquivoPath]);
+            return {
+                data: null,
+                error: normalizeError(error.message, error.code || 'DB_DOCUMENTO_CREATE_ERROR', error),
+            };
+        }
+
+        return { data, error: null };
+    }
+
+    async function atualizarDocumento(id, fields = {}) {
+        const numericId = Number(id);
+        if (!Number.isFinite(numericId) || numericId <= 0) {
+            return { data: null, error: normalizeError('Documento inválido para atualização.', 'VALIDATION_ERROR') };
+        }
+
+        const { data: currentRow, error: currentError } = await client
+            .from('catalog_documentacao')
+            .select('*')
+            .eq('id', numericId)
+            .single();
+
+        if (currentError || !currentRow) {
+            return {
+                data: null,
+                error: normalizeError(currentError?.message || 'Documento não encontrado.', currentError?.code || 'DB_DOCUMENTO_NOT_FOUND', currentError),
+            };
+        }
+
+        const { payload, error: payloadError } = normalizeDocumentoPayload(fields, { partial: true });
+        if (payloadError) {
+            return { data: null, error: payloadError };
+        }
+
+        let uploadedPath = null;
+        let previousPathToDelete = null;
+
+        const { file, error: fileError } = normalizeDocumentoFile(fields.file, { required: false });
+        if (fileError) {
+            return { data: null, error: fileError };
+        }
+
+        if (file) {
+            uploadedPath = buildDocumentoStoragePath(file.name);
+            const { error: uploadError } = await client
+                .storage
+                .from(DOCUMENTOS_BUCKET)
+                .upload(uploadedPath, file, {
+                    upsert: false,
+                    contentType: file.type || 'application/octet-stream',
+                });
+
+            if (uploadError) {
+                return {
+                    data: null,
+                    error: normalizeError(uploadError.message, uploadError.statusCode || 'STORAGE_UPLOAD_ERROR', uploadError),
+                };
+            }
+
+            payload.arquivo_nome = file.name;
+            payload.arquivo_path = uploadedPath;
+            payload.arquivo_mime_type = file.type || 'application/octet-stream';
+            payload.arquivo_tamanho_bytes = Number(file.size) || 0;
+            previousPathToDelete = sanitizeText(currentRow.arquivo_path) || null;
+        }
+
+        if (!Object.keys(payload).length) {
+            if (uploadedPath) {
+                await client.storage.from(DOCUMENTOS_BUCKET).remove([uploadedPath]);
+            }
+            return { data: null, error: normalizeError('Nenhuma alteração foi informada.', 'VALIDATION_ERROR') };
+        }
+
+        const { data, error } = await client
+            .from('catalog_documentacao')
+            .update(payload)
+            .eq('id', numericId)
+            .select()
+            .single();
+
+        if (error) {
+            if (uploadedPath) {
+                await client.storage.from(DOCUMENTOS_BUCKET).remove([uploadedPath]);
+            }
+            return {
+                data: null,
+                error: normalizeError(error.message, error.code || 'DB_DOCUMENTO_UPDATE_ERROR', error),
+            };
+        }
+
+        if (previousPathToDelete && previousPathToDelete !== uploadedPath) {
+            await client.storage.from(DOCUMENTOS_BUCKET).remove([previousPathToDelete]);
+        }
+
+        return { data, error: null };
+    }
+
+    async function removerDocumento(id) {
+        const numericId = Number(id);
+        if (!Number.isFinite(numericId) || numericId <= 0) {
+            return { data: null, error: normalizeError('Documento inválido para exclusão.', 'VALIDATION_ERROR') };
+        }
+
+        const { data: row, error: rowError } = await client
+            .from('catalog_documentacao')
+            .select('id, arquivo_path')
+            .eq('id', numericId)
+            .single();
+
+        if (rowError || !row) {
+            return {
+                data: null,
+                error: normalizeError(rowError?.message || 'Documento não encontrado.', rowError?.code || 'DB_DOCUMENTO_NOT_FOUND', rowError),
+            };
+        }
+
+        const { error } = await client
+            .from('catalog_documentacao')
+            .delete()
+            .eq('id', numericId);
+
+        if (error) {
+            return {
+                data: null,
+                error: normalizeError(error.message, error.code || 'DB_DOCUMENTO_DELETE_ERROR', error),
+            };
+        }
+
+        let warning = null;
+        const arquivoPath = sanitizeText(row.arquivo_path);
+        if (arquivoPath) {
+            const { error: storageError } = await client
+                .storage
+                .from(DOCUMENTOS_BUCKET)
+                .remove([arquivoPath]);
+
+            if (storageError) {
+                warning = normalizeError(storageError.message, storageError.statusCode || 'STORAGE_DELETE_WARNING', storageError);
+            }
+        }
+
+        return { data: { id: numericId, warning }, error: null };
+    }
+
+    async function gerarUrlDocumento(path, { download = false, expiresIn = 3600 } = {}) {
+        const arquivoPath = sanitizeText(path);
+        if (!arquivoPath) {
+            return { data: null, error: normalizeError('Arquivo não encontrado para visualização.', 'VALIDATION_ERROR') };
+        }
+
+        const ttl = Number.isFinite(expiresIn) && expiresIn > 0 ? Number(expiresIn) : 3600;
+        const options = download ? { download: true } : undefined;
+        const { data, error } = await client
+            .storage
+            .from(DOCUMENTOS_BUCKET)
+            .createSignedUrl(arquivoPath, ttl, options);
+
+        if (error || !data?.signedUrl) {
+            return {
+                data: null,
+                error: normalizeError(error?.message || 'Não foi possível gerar URL assinada do documento.', error?.statusCode || 'STORAGE_SIGNED_URL_ERROR', error),
+            };
+        }
+
+        return { data: { signedUrl: data.signedUrl }, error: null };
+    }
+
     function buildCatalogSnapshot({ setores, cargos, filiais }) {
         const sortedSetores = sortLocaleBR(setores.map((item) => item.nome));
         const setorNomePorId = new Map(setores.map((item) => [item.id, item.nome]));
@@ -1035,6 +1366,13 @@
             removerDirecionador,
             getCatalogSnapshot,
             invalidateCatalogCache,
+        },
+        documentacao: {
+            listar: listarDocumentos,
+            criar: criarDocumento,
+            atualizar: atualizarDocumento,
+            remover: removerDocumento,
+            gerarUrl: gerarUrlDocumento,
         },
         auth: {
             getSessionOrError,

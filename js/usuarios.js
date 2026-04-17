@@ -1,7 +1,7 @@
 ﻿/**
  * usuarios.js
  *
- * Administração de usuários (somente admin).
+ * Administração de contas de acesso (somente admin).
  */
 
 (function bootstrapUsuarios() {
@@ -125,7 +125,7 @@
         resetInviteCargoSelect('Setor primeiro');
         if (passwordInput) passwordInput.value = '';
 
-        showMessage(successBox, `Usuário ${name} criado com sucesso.`);
+        showMessage(successBox, `Conta ${name} criada com sucesso.`);
         await loadUsuarios();
     }
 
@@ -143,7 +143,7 @@
         }
 
         if (!['adm', 'comum'].includes(type)) {
-            return 'Tipo inválido. Use adm ou usuário comum.';
+            return 'Tipo inválido. Use adm ou conta comum.';
         }
 
         return null;
@@ -170,7 +170,7 @@
         if (!button) return;
 
         button.disabled = busy;
-        button.textContent = busy ? 'Criando...' : 'Criar usuário';
+        button.textContent = busy ? 'Criando...' : 'Criar conta';
     }
 
     function clearInviteSelects() {
@@ -311,7 +311,7 @@
     function abrirEdicaoUsuario(userId) {
         const user = state.users.find((item) => item.id === userId);
         if (!user) {
-            showToast('Usuário não encontrado para edição.', 'error');
+            showToast('Conta de acesso não encontrada para edição.', 'error');
             return;
         }
 
@@ -328,7 +328,7 @@
         modal.innerHTML = `
             <div class="modal" style="max-width:560px" onclick="event.stopPropagation()">
                 <div class="modal-header">
-                    <h3>Editar usuário</h3>
+                    <h3>Editar conta de acesso</h3>
                     <button class="modal-close" data-action="close">✕</button>
                 </div>
                 <div class="modal-body">
@@ -344,7 +344,7 @@
                         <div class="form-group">
                             <label>Tipo</label>
                             <select id="edit-user-type">
-                                <option value="comum"${type === 'comum' ? ' selected' : ''}>Usuario comum</option>
+                                <option value="comum"${type === 'comum' ? ' selected' : ''}>Conta comum</option>
                                 <option value="adm"${type === 'adm' ? ' selected' : ''}>Administrador</option>
                             </select>
                         </div>
@@ -394,9 +394,9 @@
                 await executarEdicaoUsuario(modal, userId);
             } catch (error) {
                 const errorBox = modal.querySelector('#edit-user-error');
-                const message = error instanceof Error ? error.message : 'Erro inesperado ao salvar usuário.';
+                const message = error instanceof Error ? error.message : 'Erro inesperado ao salvar a conta.';
                 showMessage(errorBox, message);
-                console.error('Falha ao executar edição de usuário:', error);
+                console.error('Falha ao executar edição de conta de acesso:', error);
             }
         });
 
@@ -511,14 +511,14 @@
         }
 
         modal.remove();
-        showToast('Usuario atualizado com sucesso.', 'success');
+        showToast('Conta de acesso atualizada com sucesso.', 'success');
         await loadUsuarios();
     }
 
     async function desativarUsuario(userId, email) {
         const me = getCurrentUser();
         if (me?.id === userId) {
-            showToast('Não é possível desativar seu próprio usuário.', 'error');
+            showToast('Não é possível desativar sua própria conta.', 'error');
             return;
         }
 
@@ -531,7 +531,7 @@
             return;
         }
 
-        showToast(`Usuário ${email} desativado.`, 'success');
+        showToast(`Conta ${email} desativada.`, 'success');
         await loadUsuarios();
     }
 
@@ -545,7 +545,7 @@
             return;
         }
 
-        showToast(`Usuário ${email} reativado.`, 'success');
+        showToast(`Conta ${email} reativada.`, 'success');
         await loadUsuarios();
     }
 
@@ -697,7 +697,7 @@
         if (!tbody) return;
 
         if (!users.length) {
-            renderUsuariosEmpty('Nenhum usuário cadastrado.');
+            renderUsuariosEmpty('Nenhuma conta de acesso cadastrada.');
             return;
         }
 
@@ -705,9 +705,9 @@
 
         tbody.innerHTML = users.map((user) => {
             const email = user.email || '';
-            const displayName = user.user_metadata?.name || email.split('@')[0] || 'Usuário';
+            const displayName = user.user_metadata?.name || email.split('@')[0] || 'Conta';
             const userType = resolveUserType(user.user_metadata);
-            const userTypeLabel = userType === 'adm' ? 'ADM' : 'Usuário comum';
+            const userTypeLabel = userType === 'adm' ? 'ADM' : 'Conta comum';
             const roleClass = userType === 'adm' ? 'admin' : 'comum';
             const setor = user.user_metadata?.setor || '—';
             const cargo = user.user_metadata?.cargo || '—';
@@ -784,7 +784,7 @@
                 <td colspan="4">
                     <div class="table-state">
                         <div class="spinner"></div>
-                        <div>Carregando usuários...</div>
+                        <div>Carregando contas de acesso...</div>
                     </div>
                 </td>
             </tr>

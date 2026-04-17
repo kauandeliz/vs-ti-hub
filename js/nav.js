@@ -15,8 +15,9 @@
         telecom: 'Telecom',
         unidades: 'Unidades',
         etiquetas: 'Etiquetas',
-        colaboradores: 'Colaboradores',
-        usuarios: 'Usuários',
+        colaboradores: 'Colaboradores Internos',
+        documentacao: 'Documentação',
+        usuarios: 'Contas de Acesso',
         cadastros: 'Cadastros',
     };
 
@@ -96,6 +97,10 @@
 
         if (page === 'colaboradores' && typeof window.onColaboradoresActivate === 'function') {
             window.onColaboradoresActivate();
+        }
+
+        if (page === 'documentacao' && typeof window.onDocumentacaoActivate === 'function') {
+            window.onDocumentacaoActivate();
         }
 
         if (page === 'usuarios' && typeof window.onUsuariosActivate === 'function') {

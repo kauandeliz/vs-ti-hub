@@ -161,6 +161,7 @@
         showApp();
         renderUserWidget(user);
         showAdminNav(isAdmin());
+        showDocumentationNav(true);
         dispatchAuthChanged();
     }
 
@@ -169,6 +170,7 @@
         hideApp();
         clearUserWidget();
         showAdminNav(false);
+        showDocumentationNav(false);
         showLoginScreen();
         dispatchAuthChanged();
     }
@@ -331,6 +333,9 @@
         const rawType = String(user.user_metadata?.type || user.user_metadata?.role || '').toLowerCase();
         const roleLabel = ['adm', 'admin', 'administrador'].includes(rawType) ? 'ADM' : 'Usuário comum';
         const setor = user.user_metadata?.setor ? ` • ${user.user_metadata.setor}` : '';
+        const userManagementButton = isAdmin()
+            ? '<button class="logout-btn" id="sidebar-user-management" title="Gestão de usuários">👥</button>'
+            : '';
 
         const widget = document.createElement('div');
         widget.id = 'sidebar-user-widget';
@@ -341,11 +346,13 @@
                 <div class="user-name">${escapeHtml(displayName)}</div>
                 <div class="user-role">${escapeHtml(roleLabel + setor)}</div>
             </div>
-            <button class="logout-btn" id="sidebar-change-password" title="Alterar senha">🔑</button>
+            <button class="logout-btn" id="sidebar-change-password" title="Redefinir senha">🔑</button>
+            ${userManagementButton}
             <button class="logout-btn" id="sidebar-logout" title="Sair">⏻</button>
         `;
 
         widget.querySelector('#sidebar-change-password')?.addEventListener('click', abrirTrocaSenhaPropria);
+        widget.querySelector('#sidebar-user-management')?.addEventListener('click', abrirGestaoUsuarios);
         widget.querySelector('#sidebar-logout')?.addEventListener('click', handleLogout);
 
         document.querySelector('.sidebar-logo')?.insertAdjacentElement('afterend', widget);
@@ -364,6 +371,13 @@
         });
     }
 
+    function showDocumentationNav(visible) {
+        const docsNav = document.getElementById('nav-documentacao');
+        if (docsNav) {
+            docsNav.style.display = visible ? '' : 'none';
+        }
+    }
+
     function abrirTrocaSenhaPropria() {
         const user = getCurrentUser();
         if (!user) return;
@@ -372,6 +386,18 @@
         if (typeof window.abrirTrocaSenha === 'function') {
             window.abrirTrocaSenha(user.id, name, true);
         }
+    }
+
+    function abrirGestaoUsuarios() {
+        if (!isAdmin()) return;
+
+        const navButton = document.querySelector('.nav-item[data-nav="usuarios"]');
+        if (typeof window.navTo === 'function') {
+            window.navTo('usuarios', navButton || null);
+            return;
+        }
+
+        navButton?.click();
     }
 
     function escapeHtml(value) {
