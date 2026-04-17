@@ -883,6 +883,7 @@
 
     const DOCUMENTOS_BUCKET = 'documentacao';
     const DOCUMENTO_CATEGORIAS = new Set(['TERMO_RESPONSABILIDADE', 'TUTORIAL_TI', 'TERMO_ASSINADO', 'GERAL']);
+    const DOCUMENTO_TIPOS = new Set(['DOCUMENTO', 'PASTA']);
     const MAX_DOCUMENTO_BYTES = 20 * 1024 * 1024;
 
     function normalizeDocumentoCategoria(value) {
@@ -893,8 +894,35 @@
         return { value: categoria, error: null };
     }
 
+    function normalizeDocumentoTipo(value) {
+        const tipo = sanitizeText(value).toUpperCase();
+        if (!DOCUMENTO_TIPOS.has(tipo)) {
+            return { value: null, error: normalizeError('Tipo inválido. Use DOCUMENTO ou PASTA.', 'VALIDATION_ERROR') };
+        }
+        return { value: tipo, error: null };
+    }
+
     function normalizeDocumentoPayload(fields = {}, { partial = false } = {}) {
         const payload = {};
+
+        if (Object.prototype.hasOwnProperty.call(fields, 'tipo')) {
+            const { value, error } = normalizeDocumentoTipo(fields.tipo);
+            if (error) return { payload: null, error };
+            payload.tipo = value;
+        }
+
+        if (Object.prototype.hasOwnProperty.call(fields, 'parentId')) {
+            const rawParent = sanitizeText(fields.parentId);
+            if (!rawParent) {
+                payload.parent_id = null;
+            } else {
+                const parentId = Number(rawParent);
+                if (!Number.isFinite(parentId) || parentId <= 0) {
+                    return { payload: null, error: normalizeError('Pasta pai inválida.', 'VALIDATION_ERROR') };
+                }
+                payload.parent_id = parentId;
+            }
+        }
 
         if (Object.prototype.hasOwnProperty.call(fields, 'categoria')) {
             const { value, error } = normalizeDocumentoCategoria(fields.categoria);
@@ -905,7 +933,7 @@
         if (Object.prototype.hasOwnProperty.call(fields, 'titulo')) {
             const titulo = sanitizeText(fields.titulo);
             if (!titulo) {
-                return { payload: null, error: normalizeError('Informe o título do documento.', 'VALIDATION_ERROR') };
+                return { payload: null, error: normalizeError('Informe o título do item.', 'VALIDATION_ERROR') };
             }
             payload.titulo = titulo;
         }
@@ -914,12 +942,34 @@
             payload.descricao = sanitizeText(fields.descricao) || null;
         }
 
+        if (Object.prototype.hasOwnProperty.call(fields, 'ordem')) {
+            const raw = sanitizeText(fields.ordem);
+            if (!raw) {
+                payload.ordem = 100;
+            } else {
+                const parsed = Number(raw);
+                if (!Number.isFinite(parsed) || !Number.isInteger(parsed) || parsed < 0) {
+                    return { payload: null, error: normalizeError('Ordem inválida. Use inteiro maior ou igual a zero.', 'VALIDATION_ERROR') };
+                }
+                payload.ordem = parsed;
+            }
+        }
+
         if (!partial) {
+            if (!payload.tipo) {
+                payload.tipo = 'DOCUMENTO';
+            }
+
+            if (!payload.titulo) {
+                return { payload: null, error: normalizeError('Informe o título do item.', 'VALIDATION_ERROR') };
+            }
+
+            if (!payload.categoria) {
+                payload.categoria = payload.tipo === 'PASTA' ? 'GERAL' : null;
+            }
+
             if (!payload.categoria) {
                 return { payload: null, error: normalizeError('Selecione a categoria do documento.', 'VALIDATION_ERROR') };
-            }
-            if (!payload.titulo) {
-                return { payload: null, error: normalizeError('Informe o título do documento.', 'VALIDATION_ERROR') };
             }
         }
 
@@ -973,11 +1023,44 @@
         return { file, error: null };
     }
 
+    async function hasDocumentoCycle(recordId, nextParentId) {
+        if (!Number.isFinite(nextParentId) || nextParentId <= 0) {
+            return { hasCycle: false, error: null };
+        }
+
+        const { data, error } = await client
+            .from('catalog_documentacao')
+            .select('id,parent_id');
+
+        if (error) {
+            return {
+                hasCycle: false,
+                error: normalizeError(error.message, error.code || 'DB_DOCUMENTO_CYCLE_CHECK_ERROR', error),
+            };
+        }
+
+        const parentById = new Map((data || []).map((item) => [Number(item.id), item.parent_id ? Number(item.parent_id) : null]));
+        const visited = new Set([Number(recordId)]);
+        let cursor = Number(nextParentId);
+
+        while (Number.isFinite(cursor) && cursor > 0) {
+            if (visited.has(cursor)) {
+                return { hasCycle: true, error: null };
+            }
+            visited.add(cursor);
+            cursor = parentById.get(cursor) || null;
+        }
+
+        return { hasCycle: false, error: null };
+    }
+
     async function listarDocumentos({ search = '', categoria = '' } = {}) {
         let query = client
             .from('catalog_documentacao')
             .select('*')
-            .order('criado_em', { ascending: false });
+            .order('tipo', { ascending: false })
+            .order('ordem', { ascending: true })
+            .order('titulo', { ascending: true });
 
         if (sanitizeText(categoria)) {
             const { value, error } = normalizeDocumentoCategoria(categoria);
@@ -1009,33 +1092,37 @@
             return { data: null, error: payloadError };
         }
 
-        const { file, error: fileError } = normalizeDocumentoFile(fields.file, { required: true });
+        const isFolder = payload.tipo === 'PASTA';
+        const { file, error: fileError } = normalizeDocumentoFile(fields.file, { required: !isFolder });
         if (fileError) {
             return { data: null, error: fileError };
         }
 
-        const arquivoPath = buildDocumentoStoragePath(file.name);
-        const { error: uploadError } = await client
-            .storage
-            .from(DOCUMENTOS_BUCKET)
-            .upload(arquivoPath, file, {
-                upsert: false,
-                contentType: file.type || 'application/octet-stream',
-            });
+        let uploadedPath = null;
+        if (!isFolder && file) {
+            uploadedPath = buildDocumentoStoragePath(file.name);
+            const { error: uploadError } = await client
+                .storage
+                .from(DOCUMENTOS_BUCKET)
+                .upload(uploadedPath, file, {
+                    upsert: false,
+                    contentType: file.type || 'application/octet-stream',
+                });
 
-        if (uploadError) {
-            return {
-                data: null,
-                error: normalizeError(uploadError.message, uploadError.statusCode || 'STORAGE_UPLOAD_ERROR', uploadError),
-            };
+            if (uploadError) {
+                return {
+                    data: null,
+                    error: normalizeError(uploadError.message, uploadError.statusCode || 'STORAGE_UPLOAD_ERROR', uploadError),
+                };
+            }
         }
 
         const insertPayload = {
             ...payload,
-            arquivo_nome: file.name,
-            arquivo_path: arquivoPath,
-            arquivo_mime_type: file.type || 'application/octet-stream',
-            arquivo_tamanho_bytes: Number(file.size) || 0,
+            arquivo_nome: isFolder ? null : file.name,
+            arquivo_path: isFolder ? null : uploadedPath,
+            arquivo_mime_type: isFolder ? null : (file.type || 'application/octet-stream'),
+            arquivo_tamanho_bytes: isFolder ? null : (Number(file.size) || 0),
         };
 
         const { data, error } = await client
@@ -1045,7 +1132,9 @@
             .single();
 
         if (error) {
-            await client.storage.from(DOCUMENTOS_BUCKET).remove([arquivoPath]);
+            if (uploadedPath) {
+                await client.storage.from(DOCUMENTOS_BUCKET).remove([uploadedPath]);
+            }
             return {
                 data: null,
                 error: normalizeError(error.message, error.code || 'DB_DOCUMENTO_CREATE_ERROR', error),
@@ -1070,13 +1159,35 @@
         if (currentError || !currentRow) {
             return {
                 data: null,
-                error: normalizeError(currentError?.message || 'Documento não encontrado.', currentError?.code || 'DB_DOCUMENTO_NOT_FOUND', currentError),
+                error: normalizeError(currentError?.message || 'Item não encontrado.', currentError?.code || 'DB_DOCUMENTO_NOT_FOUND', currentError),
             };
         }
 
         const { payload, error: payloadError } = normalizeDocumentoPayload(fields, { partial: true });
         if (payloadError) {
             return { data: null, error: payloadError };
+        }
+
+        if (Object.prototype.hasOwnProperty.call(payload, 'parent_id')) {
+            const nextParentId = payload.parent_id;
+            if (Number.isFinite(nextParentId) && nextParentId === numericId) {
+                return { data: null, error: normalizeError('A pasta pai não pode ser o próprio item.', 'VALIDATION_ERROR') };
+            }
+
+            const { hasCycle, error: cycleError } = await hasDocumentoCycle(numericId, nextParentId);
+            if (cycleError) {
+                return { data: null, error: cycleError };
+            }
+            if (hasCycle) {
+                return { data: null, error: normalizeError('Movimento inválido: essa pasta geraria ciclo na árvore.', 'VALIDATION_ERROR') };
+            }
+        }
+
+        const nextTipo = payload.tipo || String(currentRow.tipo || 'DOCUMENTO').toUpperCase();
+        const isFolder = nextTipo === 'PASTA';
+
+        if (isFolder && Object.prototype.hasOwnProperty.call(fields, 'file') && isFileLike(fields.file)) {
+            return { data: null, error: normalizeError('Pastas não aceitam upload de arquivo.', 'VALIDATION_ERROR') };
         }
 
         let uploadedPath = null;
@@ -1087,7 +1198,7 @@
             return { data: null, error: fileError };
         }
 
-        if (file) {
+        if (!isFolder && file) {
             uploadedPath = buildDocumentoStoragePath(file.name);
             const { error: uploadError } = await client
                 .storage
@@ -1109,6 +1220,21 @@
             payload.arquivo_mime_type = file.type || 'application/octet-stream';
             payload.arquivo_tamanho_bytes = Number(file.size) || 0;
             previousPathToDelete = sanitizeText(currentRow.arquivo_path) || null;
+        }
+
+        if (isFolder) {
+            payload.arquivo_nome = null;
+            payload.arquivo_path = null;
+            payload.arquivo_mime_type = null;
+            payload.arquivo_tamanho_bytes = null;
+            previousPathToDelete = sanitizeText(currentRow.arquivo_path) || null;
+        }
+
+        if (!isFolder && !file && !sanitizeText(currentRow.arquivo_path)) {
+            if (uploadedPath) {
+                await client.storage.from(DOCUMENTOS_BUCKET).remove([uploadedPath]);
+            }
+            return { data: null, error: normalizeError('Documento sem arquivo. Envie um arquivo para continuar.', 'VALIDATION_ERROR') };
         }
 
         if (!Object.keys(payload).length) {
@@ -1145,48 +1271,79 @@
     async function removerDocumento(id) {
         const numericId = Number(id);
         if (!Number.isFinite(numericId) || numericId <= 0) {
-            return { data: null, error: normalizeError('Documento inválido para exclusão.', 'VALIDATION_ERROR') };
+            return { data: null, error: normalizeError('Item inválido para exclusão.', 'VALIDATION_ERROR') };
         }
 
-        const { data: row, error: rowError } = await client
+        const { data: allRows, error: listError } = await client
             .from('catalog_documentacao')
-            .select('id, arquivo_path')
-            .eq('id', numericId)
-            .single();
+            .select('id,parent_id,arquivo_path');
 
-        if (rowError || !row) {
+        if (listError) {
             return {
                 data: null,
-                error: normalizeError(rowError?.message || 'Documento não encontrado.', rowError?.code || 'DB_DOCUMENTO_NOT_FOUND', rowError),
+                error: normalizeError(listError.message, listError.code || 'DB_DOCUMENTO_LIST_DELETE_ERROR', listError),
             };
         }
 
-        const { error } = await client
+        const rows = allRows || [];
+        const byParent = new Map();
+        rows.forEach((row) => {
+            const key = row.parent_id ? Number(row.parent_id) : 0;
+            if (!byParent.has(key)) byParent.set(key, []);
+            byParent.get(key).push(row);
+        });
+
+        const idsToDelete = [];
+        const stack = [numericId];
+        const visited = new Set();
+
+        while (stack.length) {
+            const currentId = stack.pop();
+            if (!Number.isFinite(currentId) || visited.has(currentId)) continue;
+            visited.add(currentId);
+            idsToDelete.push(currentId);
+
+            const children = byParent.get(currentId) || [];
+            children.forEach((child) => {
+                const childId = Number(child.id);
+                if (Number.isFinite(childId)) stack.push(childId);
+            });
+        }
+
+        if (!idsToDelete.length) {
+            return { data: null, error: normalizeError('Item não encontrado para exclusão.', 'DB_DOCUMENTO_NOT_FOUND') };
+        }
+
+        const filePathsToDelete = rows
+            .filter((row) => idsToDelete.includes(Number(row.id)))
+            .map((row) => sanitizeText(row.arquivo_path))
+            .filter(Boolean);
+
+        const { error: deleteError } = await client
             .from('catalog_documentacao')
             .delete()
-            .eq('id', numericId);
+            .in('id', idsToDelete);
 
-        if (error) {
+        if (deleteError) {
             return {
                 data: null,
-                error: normalizeError(error.message, error.code || 'DB_DOCUMENTO_DELETE_ERROR', error),
+                error: normalizeError(deleteError.message, deleteError.code || 'DB_DOCUMENTO_DELETE_ERROR', deleteError),
             };
         }
 
         let warning = null;
-        const arquivoPath = sanitizeText(row.arquivo_path);
-        if (arquivoPath) {
+        if (filePathsToDelete.length) {
             const { error: storageError } = await client
                 .storage
                 .from(DOCUMENTOS_BUCKET)
-                .remove([arquivoPath]);
+                .remove(filePathsToDelete);
 
             if (storageError) {
                 warning = normalizeError(storageError.message, storageError.statusCode || 'STORAGE_DELETE_WARNING', storageError);
             }
         }
 
-        return { data: { id: numericId, warning }, error: null };
+        return { data: { id: numericId, removidos: idsToDelete.length, warning }, error: null };
     }
 
     async function gerarUrlDocumento(path, { download = false, expiresIn = 3600 } = {}) {

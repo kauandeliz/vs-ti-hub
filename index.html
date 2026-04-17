@@ -392,16 +392,14 @@
         <div class="page" id="page-documentacao">
             <div class="page-header">
                 <h1>Documentação</h1>
-                <p>CRUD de documentos de TI com visualização, download e histórico de atualização.</p>
+                <p>Biblioteca em cards com pastas, árvore de navegação e visualização de documentos.</p>
             </div>
 
             <div class="docs-layout">
-                <div class="docs-table-card">
-                    <div class="docs-table-header">
-                        <h3>Documentos cadastrados</h3>
-                        <button class="btn-icon" id="docs-refresh-btn">↻ Atualizar</button>
+                <aside class="docs-tree-card">
+                    <div class="docs-tree-header">
+                        <h3>Árvore de Pastas</h3>
                     </div>
-
                     <div class="docs-toolbar">
                         <div class="search-wrap">
                             <span class="search-icon"></span>
@@ -419,43 +417,61 @@
                             <option value="TERMO_ASSINADO">Termo Assinado</option>
                             <option value="GERAL">Documentação Geral</option>
                         </select>
-                        <div class="docs-summary" id="docs-summary">Carregue os documentos para ver os indicadores.</div>
+                    </div>
+                    <div class="docs-tree-root" id="docs-tree-root">
+                        <div class="table-state">
+                            <div class="spinner"></div>
+                            <div>Carregando árvore...</div>
+                        </div>
+                    </div>
+                </aside>
+
+                <div class="docs-content-card">
+                    <div class="docs-content-header">
+                        <h3>Conteúdo</h3>
+                        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                            <button class="btn-icon" id="docs-go-root-btn">Raiz</button>
+                            <button class="btn-icon" id="docs-go-up-btn">Subir</button>
+                            <button class="btn-icon" id="docs-refresh-btn">↻ Atualizar</button>
+                        </div>
                     </div>
 
-                    <div class="table-wrap" style="border:none;border-radius:0;margin-bottom:0">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>CATEGORIA</th>
-                                    <th>DOCUMENTO</th>
-                                    <th>ARQUIVO</th>
-                                    <th>ATUALIZAÇÃO</th>
-                                    <th>AÇÕES</th>
-                                </tr>
-                            </thead>
-                            <tbody id="docs-tbody">
-                                <tr><td colspan="5">
-                                    <div class="table-state">
-                                        <div class="icon">📚</div>
-                                        <div>Navegue até esta página para carregar os documentos.</div>
-                                    </div>
-                                </td></tr>
-                            </tbody>
-                        </table>
-                    </div>
+                    <div class="docs-breadcrumb" id="docs-breadcrumb">/</div>
+                    <div class="docs-summary" id="docs-summary">Carregue os documentos para ver os indicadores.</div>
 
-                    <div id="docs-pagination" class="pagination"></div>
+                    <div class="docs-cards-grid" id="docs-cards-grid">
+                        <div class="table-state">
+                            <div class="spinner"></div>
+                            <div>Carregando cards...</div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="docs-form-card">
-                    <h3>Cadastro de documento</h3>
+                    <h3>Cadastro de item</h3>
                     <div class="docs-form-note">
-                        Use este espaço para manter termos de responsabilidade, tutoriais de TI, termos assinados e materiais gerais.
+                        Crie pastas para organizar a árvore e documentos para armazenar os arquivos.
                     </div>
                     <div class="docs-form-permission" id="docs-form-permission"></div>
 
                     <form id="docs-form">
                         <input type="hidden" id="docs-id">
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Tipo</label>
+                                <select id="docs-form-tipo" required>
+                                    <option value="DOCUMENTO" selected>Documento</option>
+                                    <option value="PASTA">Pasta</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Pasta pai</label>
+                                <select id="docs-form-parent">
+                                    <option value="">Raiz</option>
+                                </select>
+                            </div>
+                        </div>
 
                         <div class="form-group">
                             <label>Categoria</label>
@@ -470,7 +486,7 @@
 
                         <div class="form-group">
                             <label>Título</label>
-                            <input type="text" id="docs-form-titulo" placeholder="Ex: Termo de responsabilidade - Notebook" required>
+                            <input type="text" id="docs-form-titulo" placeholder="Ex: Termo de responsabilidade - Notebook / Pasta Contratos" required>
                         </div>
 
                         <div class="form-group">
@@ -478,7 +494,7 @@
                             <textarea id="docs-form-descricao" placeholder="Resumo rápido do conteúdo do documento..."></textarea>
                         </div>
 
-                        <div class="form-group">
+                        <div class="form-group" id="docs-file-group">
                             <label>Arquivo</label>
                             <input
                                 type="file"

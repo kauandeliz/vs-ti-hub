@@ -167,18 +167,29 @@ CREATE TABLE IF NOT EXISTS public.catalog_direcionadores (
 
 CREATE TABLE IF NOT EXISTS public.catalog_documentacao (
     id BIGSERIAL PRIMARY KEY,
+    tipo TEXT NOT NULL DEFAULT 'DOCUMENTO',
+    parent_id BIGINT REFERENCES public.catalog_documentacao(id) ON DELETE CASCADE,
+    ordem INTEGER NOT NULL DEFAULT 100,
     categoria TEXT NOT NULL,
     titulo TEXT NOT NULL,
     descricao TEXT,
-    arquivo_nome TEXT NOT NULL,
-    arquivo_path TEXT NOT NULL UNIQUE,
+    arquivo_nome TEXT,
+    arquivo_path TEXT UNIQUE,
     arquivo_mime_type TEXT,
     arquivo_tamanho_bytes BIGINT,
     criado_por UUID REFERENCES auth.users(id),
     criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT catalog_documentacao_tipo_chk CHECK (tipo IN ('DOCUMENTO', 'PASTA')),
+    CONSTRAINT catalog_documentacao_parent_chk CHECK (parent_id IS NULL OR parent_id <> id),
     CONSTRAINT catalog_documentacao_categoria_chk CHECK (categoria IN ('TERMO_RESPONSABILIDADE', 'TUTORIAL_TI', 'TERMO_ASSINADO', 'GERAL')),
-    CONSTRAINT catalog_documentacao_arquivo_tamanho_chk CHECK (arquivo_tamanho_bytes IS NULL OR arquivo_tamanho_bytes >= 0)
+    CONSTRAINT catalog_documentacao_ordem_chk CHECK (ordem >= 0),
+    CONSTRAINT catalog_documentacao_arquivo_tamanho_chk CHECK (arquivo_tamanho_bytes IS NULL OR arquivo_tamanho_bytes >= 0),
+    CONSTRAINT catalog_documentacao_tipo_payload_chk CHECK (
+        (tipo = 'PASTA' AND arquivo_nome IS NULL AND arquivo_path IS NULL AND arquivo_mime_type IS NULL AND arquivo_tamanho_bytes IS NULL)
+        OR
+        (tipo = 'DOCUMENTO' AND arquivo_nome IS NOT NULL AND arquivo_path IS NOT NULL)
+    )
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_filiais_codigo_unique
@@ -202,6 +213,12 @@ ON public.catalog_documentacao (categoria, criado_em DESC);
 
 CREATE INDEX IF NOT EXISTS idx_catalog_documentacao_titulo_trgm
 ON public.catalog_documentacao USING gin (titulo gin_trgm_ops);
+
+CREATE INDEX IF NOT EXISTS idx_catalog_documentacao_parent_ordem_titulo
+ON public.catalog_documentacao (parent_id, ordem, titulo);
+
+CREATE INDEX IF NOT EXISTS idx_catalog_documentacao_tipo_parent
+ON public.catalog_documentacao (tipo, parent_id);
 
 CREATE OR REPLACE FUNCTION public.touch_updated_at()
 RETURNS TRIGGER
@@ -862,6 +879,6 @@ COMMENT ON TABLE public.catalog_setores IS 'Cadastro de setores para o Gerador d
 COMMENT ON TABLE public.catalog_cargos IS 'Cadastro de cargos vinculados a setores (CRUD)';
 COMMENT ON TABLE public.filiais IS 'Cadastro de filiais/unidades e base para cidades/bairros e etiquetas';
 COMMENT ON TABLE public.catalog_direcionadores IS 'Cards direcionadores com link, descrição e imagem (CRUD admin)';
-COMMENT ON TABLE public.catalog_documentacao IS 'Documentos internos de TI com categoria, metadados e vínculo ao arquivo no bucket documentacao';
+COMMENT ON TABLE public.catalog_documentacao IS 'Biblioteca de documentação com árvore de pastas (tipo/parent_id) e vínculo opcional de arquivo no bucket documentacao';
 
 COMMIT;

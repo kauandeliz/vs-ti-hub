@@ -1,7 +1,7 @@
 /**
  * documentacao.js
  *
- * CRUD e visualização de documentos internos.
+ * Biblioteca documental em cards com árvore de pastas.
  */
 
 (function bootstrapDocumentacao() {
@@ -14,6 +14,11 @@
         GERAL: 'Documentação Geral',
     };
 
+    const TYPE_LABELS = {
+        DOCUMENTO: 'Documento',
+        PASTA: 'Pasta',
+    };
+
     const INLINE_EXTENSIONS = new Set(['pdf', 'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg', 'txt', 'csv']);
     const MAX_DOCUMENT_BYTES = 20 * 1024 * 1024;
 
@@ -21,22 +26,29 @@
         initialized: false,
         loading: false,
         records: [],
-        page: 1,
-        pageSize: 12,
+        currentFolderId: null,
         search: '',
         category: '',
+        byId: new Map(),
+        childrenByParent: new Map(),
     };
 
     function initDocumentacao() {
         if (state.initialized) return;
 
         document.getElementById('docs-refresh-btn')?.addEventListener('click', loadDocumentacao);
-        document.getElementById('docs-search')?.addEventListener('input', debounce(handleSearchInput, 300));
+        document.getElementById('docs-search')?.addEventListener('input', debounce(handleSearchInput, 250));
         document.getElementById('docs-filter-categoria')?.addEventListener('change', handleCategoryFilterChange);
+        document.getElementById('docs-go-root-btn')?.addEventListener('click', () => setCurrentFolder(null));
+        document.getElementById('docs-go-up-btn')?.addEventListener('click', goUpFolder);
+
+        document.getElementById('docs-tree-root')?.addEventListener('click', handleTreeClick);
+        document.getElementById('docs-breadcrumb')?.addEventListener('click', handleBreadcrumbClick);
+        document.getElementById('docs-cards-grid')?.addEventListener('click', handleCardsClick);
+
         document.getElementById('docs-form')?.addEventListener('submit', handleFormSubmit);
         document.getElementById('docs-cancel-btn')?.addEventListener('click', resetForm);
-        document.getElementById('docs-tbody')?.addEventListener('click', handleTableClick);
-        document.getElementById('docs-pagination')?.addEventListener('click', handlePaginationClick);
+        document.getElementById('docs-form-tipo')?.addEventListener('change', syncFormTypeUI);
 
         document.addEventListener('app:auth-changed', () => {
             syncFormAccess();
@@ -67,16 +79,60 @@
         await loadDocumentacao();
     }
 
-    function handleSearchInput(event) {
-        state.search = event.target.value || '';
-        state.page = 1;
-        loadDocumentacao();
+    function normalizeParentId(rawValue) {
+        const numeric = Number(rawValue);
+        return Number.isFinite(numeric) && numeric > 0 ? numeric : null;
     }
 
-    function handleCategoryFilterChange(event) {
-        state.category = event.target.value || '';
-        state.page = 1;
-        loadDocumentacao();
+    function normalizeTipo(rawValue) {
+        const tipo = String(rawValue || '').trim().toUpperCase();
+        return tipo === 'PASTA' ? 'PASTA' : 'DOCUMENTO';
+    }
+
+    function sortRecords(records) {
+        return [...records].sort((a, b) => {
+            const tipoA = normalizeTipo(a.tipo);
+            const tipoB = normalizeTipo(b.tipo);
+            if (tipoA !== tipoB) {
+                return tipoA === 'PASTA' ? -1 : 1;
+            }
+
+            const ordemA = Number.isFinite(Number(a.ordem)) ? Number(a.ordem) : 100;
+            const ordemB = Number.isFinite(Number(b.ordem)) ? Number(b.ordem) : 100;
+            if (ordemA !== ordemB) return ordemA - ordemB;
+
+            return String(a.titulo || '').localeCompare(String(b.titulo || ''), 'pt-BR');
+        });
+    }
+
+    function rebuildIndexes() {
+        const byId = new Map();
+        const childrenByParent = new Map();
+
+        state.records.forEach((record) => {
+            const id = Number(record.id);
+            if (!Number.isFinite(id) || id <= 0) return;
+
+            byId.set(id, record);
+            const parentId = normalizeParentId(record.parent_id);
+            const key = parentId === null ? 'root' : String(parentId);
+            if (!childrenByParent.has(key)) {
+                childrenByParent.set(key, []);
+            }
+            childrenByParent.get(key).push(record);
+        });
+
+        childrenByParent.forEach((items, key) => {
+            childrenByParent.set(key, sortRecords(items));
+        });
+
+        state.byId = byId;
+        state.childrenByParent = childrenByParent;
+    }
+
+    function getChildren(parentId) {
+        const key = parentId === null ? 'root' : String(parentId);
+        return state.childrenByParent.get(key) || [];
     }
 
     async function loadDocumentacao() {
@@ -87,50 +143,157 @@
 
         const api = window.App?.api?.documentacao;
         if (!api) {
-            renderTableError('API de documentação indisponível.');
-            setSummaryText('API de documentação indisponível.');
+            renderGeneralError('API de documentação indisponível.');
             return;
         }
 
         if (state.loading) return;
         state.loading = true;
-        renderTableLoading();
+        renderLoadingState();
 
-        const { data, error } = await api.listar({
-            search: state.search,
-            categoria: state.category,
-        });
-
+        const { data, error } = await api.listar();
         state.loading = false;
 
         if (error) {
-            renderTableError(error.message);
-            setSummaryText('Falha ao carregar documentos.');
+            renderGeneralError(error.message);
             return;
         }
 
-        state.records = data || [];
-        const totalPages = getTotalPages();
-        if (state.page > totalPages) {
-            state.page = totalPages;
+        state.records = Array.isArray(data) ? data : [];
+        rebuildIndexes();
+
+        if (state.currentFolderId !== null && !state.byId.has(state.currentFolderId)) {
+            state.currentFolderId = null;
         }
 
-        renderSummary();
-        renderTable();
+        renderAll();
+        syncParentSelect();
+        syncGoUpButton();
     }
 
-    function renderSummary() {
-        const total = state.records.length;
-        const termosResponsabilidade = state.records.filter((item) => item.categoria === 'TERMO_RESPONSABILIDADE').length;
-        const tutoriais = state.records.filter((item) => item.categoria === 'TUTORIAL_TI').length;
-        const termosAssinados = state.records.filter((item) => item.categoria === 'TERMO_ASSINADO').length;
+    function renderLoadingState() {
+        const treeRoot = document.getElementById('docs-tree-root');
+        const cardsGrid = document.getElementById('docs-cards-grid');
+        if (treeRoot) {
+            treeRoot.innerHTML = `
+                <div class="table-state">
+                    <div class="spinner"></div>
+                    <div>Carregando árvore...</div>
+                </div>
+            `;
+        }
+        if (cardsGrid) {
+            cardsGrid.innerHTML = `
+                <div class="table-state">
+                    <div class="spinner"></div>
+                    <div>Carregando cards...</div>
+                </div>
+            `;
+        }
+    }
 
-        let summary = `${total} documentos • ${termosResponsabilidade} termos de responsabilidade • ${tutoriais} tutoriais`;
-        if (termosAssinados > 0) {
-            summary += ` • ${termosAssinados} termos assinados`;
+    function renderGeneralError(message) {
+        const html = `
+            <div class="table-state">
+                <div class="icon">⚠️</div>
+                <div>${escapeHtml(message)}</div>
+            </div>
+        `;
+
+        const treeRoot = document.getElementById('docs-tree-root');
+        const cardsGrid = document.getElementById('docs-cards-grid');
+        if (treeRoot) treeRoot.innerHTML = html;
+        if (cardsGrid) cardsGrid.innerHTML = html;
+
+        setSummaryText('Falha ao carregar a documentação.');
+        setBreadcrumbText('/');
+        syncGoUpButton();
+    }
+
+    function renderAuthRequired() {
+        renderGeneralError('Faça login para acessar a documentação.');
+    }
+
+    function renderAll() {
+        renderTree();
+        renderBreadcrumb();
+        renderSummary();
+        renderCards();
+        syncGoUpButton();
+    }
+
+    function renderTree() {
+        const root = document.getElementById('docs-tree-root');
+        if (!root) return;
+
+        const rootFolders = getChildren(null).filter((item) => normalizeTipo(item.tipo) === 'PASTA');
+        const activeRootClass = state.currentFolderId === null ? 'active' : '';
+
+        root.innerHTML = `
+            <ul class="docs-tree-list root">
+                <li class="docs-tree-item">
+                    <button class="docs-tree-btn ${activeRootClass}" data-action="tree-open" data-id="">
+                        <span>🗂️</span>
+                        <span>Raiz</span>
+                    </button>
+                </li>
+                ${rootFolders.map((folder) => renderTreeNode(folder, new Set())).join('')}
+            </ul>
+        `;
+    }
+
+    function renderTreeNode(folder, visited) {
+        const folderId = Number(folder.id);
+        if (!Number.isFinite(folderId) || visited.has(folderId)) {
+            return '';
         }
 
-        setSummaryText(summary);
+        const nextVisited = new Set(visited);
+        nextVisited.add(folderId);
+
+        const childrenFolders = getChildren(folderId).filter((item) => normalizeTipo(item.tipo) === 'PASTA');
+        const activeClass = state.currentFolderId === folderId ? 'active' : '';
+
+        return `
+            <li class="docs-tree-item">
+                <button class="docs-tree-btn ${activeClass}" data-action="tree-open" data-id="${folderId}">
+                    <span>📁</span>
+                    <span>${escapeHtml(folder.titulo || 'Pasta')}</span>
+                </button>
+                ${childrenFolders.length ? `
+                    <ul class="docs-tree-list">
+                        ${childrenFolders.map((child) => renderTreeNode(child, nextVisited)).join('')}
+                    </ul>
+                ` : ''}
+            </li>
+        `;
+    }
+
+    function renderBreadcrumb() {
+        const breadcrumb = document.getElementById('docs-breadcrumb');
+        if (!breadcrumb) return;
+
+        const chain = [];
+        const visited = new Set();
+        let cursor = state.currentFolderId;
+
+        while (Number.isFinite(cursor) && cursor > 0 && !visited.has(cursor)) {
+            visited.add(cursor);
+            const record = state.byId.get(cursor);
+            if (!record) break;
+            chain.unshift({ id: String(record.id), label: record.titulo || 'Pasta' });
+            cursor = normalizeParentId(record.parent_id);
+        }
+
+        const items = [{ id: '', label: 'Raiz' }, ...chain];
+        breadcrumb.innerHTML = items.map((item, index) => `
+            <span class="crumb" data-action="crumb-open" data-id="${escapeHtmlAttribute(item.id)}">${escapeHtml(item.label)}</span>${index < items.length - 1 ? ' / ' : ''}
+        `).join('');
+    }
+
+    function setBreadcrumbText(text) {
+        const breadcrumb = document.getElementById('docs-breadcrumb');
+        if (breadcrumb) breadcrumb.textContent = text;
     }
 
     function setSummaryText(text) {
@@ -138,180 +301,302 @@
         if (summary) summary.textContent = text;
     }
 
-    function getTotalPages() {
-        return Math.max(1, Math.ceil(state.records.length / state.pageSize));
+    function renderSummary() {
+        const currentItems = getVisibleChildren();
+        const folders = currentItems.filter((item) => normalizeTipo(item.tipo) === 'PASTA').length;
+        const docs = currentItems.length - folders;
+
+        let message = `${currentItems.length} itens visíveis • ${folders} pastas • ${docs} documentos`;
+        if (state.search) {
+            message += ` • filtro: "${state.search}"`;
+        }
+        setSummaryText(message);
     }
 
-    function renderTable() {
-        const tbody = document.getElementById('docs-tbody');
-        if (!tbody) return;
-
-        const start = (state.page - 1) * state.pageSize;
-        const rows = state.records.slice(start, start + state.pageSize);
-        const canManage = hasAdminAccess();
-
-        if (!rows.length) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="5">
-                        <div class="table-state">
-                            <div class="icon">📄</div>
-                            <div>Nenhum documento encontrado.</div>
-                        </div>
-                    </td>
-                </tr>
-            `;
-            renderPagination();
-            return;
-        }
-
-        tbody.innerHTML = rows.map((item) => `
-            <tr>
-                <td>
-                    <span class="doc-category-badge">${escapeHtml(getCategoryLabel(item.categoria))}</span>
-                </td>
-                <td>
-                    <div class="doc-title-cell">
-                        <strong>${escapeHtml(item.titulo || 'Sem título')}</strong>
-                        <span>${escapeHtml(item.descricao || 'Sem descrição')}</span>
-                    </div>
-                </td>
-                <td>
-                    <div class="doc-file-cell">
-                        <strong>${escapeHtml(item.arquivo_nome || '—')}</strong>
-                        <span>${escapeHtml(formatFileSize(item.arquivo_tamanho_bytes))}</span>
-                    </div>
-                </td>
-                <td>${escapeHtml(formatDateTime(item.atualizado_em || item.criado_em))}</td>
-                <td>
-                    <div class="row-actions">
-                        <button class="btn-row primary" data-action="preview" data-id="${item.id}">Visualizar</button>
-                        <button class="btn-row" data-action="download" data-id="${item.id}">Baixar</button>
-                        ${canManage ? `<button class="btn-row" data-action="edit" data-id="${item.id}">Editar</button>` : ''}
-                        ${canManage ? `<button class="btn-row danger" data-action="delete" data-id="${item.id}" data-title="${escapeHtmlAttribute(item.titulo || '')}">Excluir</button>` : ''}
-                    </div>
-                </td>
-            </tr>
-        `).join('');
-
-        renderPagination();
+    function getVisibleChildren() {
+        const currentChildren = getChildren(state.currentFolderId);
+        return currentChildren.filter((item) => matchesFilters(item));
     }
 
-    function renderPagination() {
-        const container = document.getElementById('docs-pagination');
-        if (!container) return;
-
-        const totalPages = getTotalPages();
-        if (totalPages <= 1) {
-            container.innerHTML = '';
-            return;
+    function matchesFilters(item) {
+        const tipo = normalizeTipo(item.tipo);
+        if (state.category && tipo === 'DOCUMENTO') {
+            const categoria = String(item.categoria || '').toUpperCase();
+            if (categoria !== state.category) return false;
         }
 
-        const parts = [];
-        parts.push(`<button class="page-btn" data-page="${state.page - 1}" ${state.page === 1 ? 'disabled' : ''}>‹</button>`);
-        for (let i = 1; i <= totalPages; i += 1) {
-            const edge = i === 1 || i === totalPages;
-            const nearby = Math.abs(i - state.page) <= 2;
-            if (edge || nearby) {
-                parts.push(`<button class="page-btn ${i === state.page ? 'active' : ''}" data-page="${i}">${i}</button>`);
-            } else if (Math.abs(i - state.page) === 3) {
-                parts.push('<span style="color:var(--text-muted);padding:0 4px">…</span>');
+        if (!state.search) return true;
+        const term = String(state.search || '').trim().toLowerCase();
+        if (!term) return true;
+
+        if (tipo === 'PASTA') {
+            return folderHasSearchMatch(item, term, new Map());
+        }
+
+        return textContains(item, term);
+    }
+
+    function textContains(item, term) {
+        const haystack = [
+            item.titulo,
+            item.descricao,
+            item.arquivo_nome,
+            getCategoryLabel(item.categoria),
+        ].map((value) => String(value || '').toLowerCase()).join(' ');
+
+        return haystack.includes(term);
+    }
+
+    function folderHasSearchMatch(folder, term, memo) {
+        const folderId = Number(folder.id);
+        if (memo.has(folderId)) return memo.get(folderId);
+
+        const selfMatch = textContains(folder, term);
+        if (selfMatch) {
+            memo.set(folderId, true);
+            return true;
+        }
+
+        const children = getChildren(folderId);
+        for (const child of children) {
+            const tipo = normalizeTipo(child.tipo);
+            if (tipo === 'PASTA' && folderHasSearchMatch(child, term, memo)) {
+                memo.set(folderId, true);
+                return true;
+            }
+            if (tipo === 'DOCUMENTO' && textContains(child, term)) {
+                memo.set(folderId, true);
+                return true;
             }
         }
-        parts.push(`<button class="page-btn" data-page="${state.page + 1}" ${state.page === totalPages ? 'disabled' : ''}>›</button>`);
-        container.innerHTML = parts.join('');
+
+        memo.set(folderId, false);
+        return false;
     }
 
-    function renderTableLoading() {
-        const tbody = document.getElementById('docs-tbody');
-        if (!tbody) return;
+    function renderCards() {
+        const cardsGrid = document.getElementById('docs-cards-grid');
+        if (!cardsGrid) return;
 
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="5">
-                    <div class="table-state">
-                        <div class="spinner"></div>
-                        <div>Carregando documentos...</div>
+        const items = getVisibleChildren();
+        if (!items.length) {
+            cardsGrid.innerHTML = `
+                <div class="table-state">
+                    <div class="icon">📂</div>
+                    <div>Nenhum item encontrado nesta pasta.</div>
+                </div>
+            `;
+            return;
+        }
+
+        cardsGrid.innerHTML = items.map((item) => {
+            const tipo = normalizeTipo(item.tipo);
+            return tipo === 'PASTA' ? renderFolderCard(item) : renderDocumentCard(item);
+        }).join('');
+    }
+
+    function renderFolderCard(item) {
+        const folderId = Number(item.id);
+        const childCount = getChildren(folderId).length;
+        const canManage = hasAdminAccess();
+
+        return `
+            <article class="doc-card folder">
+                <div class="doc-card-head">
+                    <div class="doc-card-icon">📁</div>
+                    <div>
+                        <div class="doc-card-title">${escapeHtml(item.titulo || 'Pasta')}</div>
+                        <span class="doc-category-badge">Pasta</span>
                     </div>
-                </td>
-            </tr>
+                </div>
+                <div class="doc-card-desc">${escapeHtml(item.descricao || 'Pasta para organizar documentos e subpastas.')}</div>
+                <div class="doc-card-meta">
+                    ${childCount} item(ns) • Atualização ${escapeHtml(formatDateTime(item.atualizado_em || item.criado_em))}
+                </div>
+                <div class="doc-card-actions">
+                    <button class="btn-row primary" data-action="open-folder" data-id="${item.id}">Abrir</button>
+                    ${canManage ? `<button class="btn-row" data-action="edit-item" data-id="${item.id}">Editar</button>` : ''}
+                    ${canManage ? `<button class="btn-row danger" data-action="delete-item" data-id="${item.id}" data-title="${escapeHtmlAttribute(item.titulo || '')}">Excluir</button>` : ''}
+                </div>
+            </article>
         `;
     }
 
-    function renderTableError(message) {
-        const tbody = document.getElementById('docs-tbody');
-        if (!tbody) return;
+    function renderDocumentCard(item) {
+        const canManage = hasAdminAccess();
+        const category = getCategoryLabel(item.categoria);
+        const icon = getDocumentIcon(item);
 
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="5">
-                    <div class="table-state">
-                        <div class="icon">⚠️</div>
-                        <div>${escapeHtml(message)}</div>
+        return `
+            <article class="doc-card">
+                <div class="doc-card-head">
+                    <div class="doc-card-icon">${escapeHtml(icon)}</div>
+                    <div>
+                        <div class="doc-card-title">${escapeHtml(item.titulo || 'Documento')}</div>
+                        <span class="doc-category-badge">${escapeHtml(category)}</span>
                     </div>
-                </td>
-            </tr>
+                </div>
+                <div class="doc-card-desc">${escapeHtml(item.descricao || 'Documento sem descrição cadastrada.')}</div>
+                <div class="doc-card-meta">
+                    ${escapeHtml(item.arquivo_nome || 'Arquivo sem nome')} • ${escapeHtml(formatFileSize(item.arquivo_tamanho_bytes))}<br>
+                    Atualização ${escapeHtml(formatDateTime(item.atualizado_em || item.criado_em))}
+                </div>
+                <div class="doc-card-actions">
+                    <button class="btn-row primary" data-action="preview-item" data-id="${item.id}">Visualizar</button>
+                    <button class="btn-row" data-action="download-item" data-id="${item.id}">Baixar</button>
+                    ${canManage ? `<button class="btn-row" data-action="edit-item" data-id="${item.id}">Editar</button>` : ''}
+                    ${canManage ? `<button class="btn-row danger" data-action="delete-item" data-id="${item.id}" data-title="${escapeHtmlAttribute(item.titulo || '')}">Excluir</button>` : ''}
+                </div>
+            </article>
         `;
     }
 
-    function renderAuthRequired() {
-        renderTableError('Faça login para acessar os documentos.');
-        setSummaryText('Faça login para acessar os documentos.');
+    function getDocumentIcon(item) {
+        const name = String(item.arquivo_nome || '').toLowerCase();
+        if (name.endsWith('.pdf')) return '📄';
+        if (name.endsWith('.doc') || name.endsWith('.docx')) return '📝';
+        if (name.endsWith('.xls') || name.endsWith('.xlsx') || name.endsWith('.csv')) return '📊';
+        if (name.endsWith('.ppt') || name.endsWith('.pptx')) return '📈';
+        if (name.endsWith('.png') || name.endsWith('.jpg') || name.endsWith('.jpeg') || name.endsWith('.webp')) return '🖼️';
+        return '📎';
     }
 
-    async function handleTableClick(event) {
+    function handleTreeClick(event) {
+        const target = event.target.closest('[data-action="tree-open"]');
+        if (!target) return;
+        setCurrentFolder(normalizeParentId(target.dataset.id));
+    }
+
+    function handleBreadcrumbClick(event) {
+        const target = event.target.closest('[data-action="crumb-open"]');
+        if (!target) return;
+        setCurrentFolder(normalizeParentId(target.dataset.id));
+    }
+
+    async function handleCardsClick(event) {
         const button = event.target.closest('[data-action][data-id]');
         if (!button) return;
 
+        const action = button.dataset.action;
         const id = Number(button.dataset.id);
         if (!Number.isFinite(id)) return;
 
-        if (button.dataset.action === 'preview') {
+        if (action === 'open-folder') {
+            setCurrentFolder(id);
+            return;
+        }
+
+        if (action === 'preview-item') {
             await visualizarDocumento(id, { forceDownload: false });
             return;
         }
 
-        if (button.dataset.action === 'download') {
+        if (action === 'download-item') {
             await visualizarDocumento(id, { forceDownload: true });
             return;
         }
 
         if (!hasAdminAccess()) {
-            showToast('Apenas administradores podem editar ou excluir documentos.', 'error');
+            showToast('Apenas administradores podem alterar itens da documentação.', 'error');
             return;
         }
 
-        if (button.dataset.action === 'edit') {
+        if (action === 'edit-item') {
             fillFormForEdit(id);
             return;
         }
 
-        if (button.dataset.action === 'delete') {
-            const title = button.dataset.title || 'este documento';
-            const ok = window.confirm(`Excluir ${title}?`);
-            if (!ok) return;
-
-            const { data, error } = await window.App.api.documentacao.remover(id);
-            if (error) {
-                showToast(error.message, 'error');
-                return;
-            }
-
-            if (data?.warning?.message) {
-                showToast(`Documento removido, mas houve falha ao excluir o arquivo: ${data.warning.message}`, 'error');
-            } else {
-                showToast('Documento removido.', 'success');
-            }
-
-            resetForm();
-            await loadDocumentacao();
+        if (action === 'delete-item') {
+            await handleDeleteItem(id, button.dataset.title || 'este item');
         }
     }
 
+    async function handleDeleteItem(id, title) {
+        const descendants = collectDescendantIds(id);
+        const extraText = descendants.length > 1
+            ? ` Isso também removerá ${descendants.length - 1} item(ns) filho(s).`
+            : '';
+
+        const confirmed = window.confirm(`Excluir ${title}?${extraText}`);
+        if (!confirmed) return;
+
+        const { data, error } = await window.App.api.documentacao.remover(id);
+        if (error) {
+            showToast(error.message, 'error');
+            return;
+        }
+
+        if (data?.warning?.message) {
+            showToast(`Item removido, mas houve falha ao excluir alguns arquivos: ${data.warning.message}`, 'error');
+        } else {
+            showToast('Item removido com sucesso.', 'success');
+        }
+
+        resetForm();
+        await loadDocumentacao();
+    }
+
+    function collectDescendantIds(startId) {
+        const ids = [];
+        const stack = [startId];
+        const visited = new Set();
+
+        while (stack.length) {
+            const current = Number(stack.pop());
+            if (!Number.isFinite(current) || visited.has(current)) continue;
+            visited.add(current);
+            ids.push(current);
+
+            const children = getChildren(current);
+            children.forEach((child) => {
+                const childId = Number(child.id);
+                if (Number.isFinite(childId)) stack.push(childId);
+            });
+        }
+
+        return ids;
+    }
+
+    function handleSearchInput(event) {
+        state.search = String(event.target.value || '').trim();
+        renderSummary();
+        renderCards();
+    }
+
+    function handleCategoryFilterChange(event) {
+        state.category = String(event.target.value || '').trim().toUpperCase();
+        renderSummary();
+        renderCards();
+    }
+
+    function setCurrentFolder(folderId) {
+        state.currentFolderId = normalizeParentId(folderId);
+        renderAll();
+        syncParentSelect();
+        syncGoUpButton();
+    }
+
+    function syncGoUpButton() {
+        const upButton = document.getElementById('docs-go-up-btn');
+        if (!upButton) return;
+        upButton.disabled = state.currentFolderId === null;
+    }
+
+    function goUpFolder() {
+        if (state.currentFolderId === null) return;
+        const current = state.byId.get(state.currentFolderId);
+        setCurrentFolder(normalizeParentId(current?.parent_id));
+    }
+
     async function visualizarDocumento(id, { forceDownload = false } = {}) {
-        const record = state.records.find((item) => item.id === id);
+        const record = state.byId.get(Number(id));
         if (!record) {
-            showToast('Documento não encontrado para visualização.', 'error');
+            showToast('Item não encontrado para visualização.', 'error');
+            return;
+        }
+
+        if (normalizeTipo(record.tipo) === 'PASTA') {
+            setCurrentFolder(Number(record.id));
             return;
         }
 
@@ -336,7 +621,7 @@
             return;
         }
 
-        abrirModalPreview(record, data.signedUrl);
+        openPreviewModal(record, data.signedUrl);
     }
 
     function canRenderInline(mimeType, fileName) {
@@ -349,7 +634,7 @@
         return INLINE_EXTENSIONS.has(extension);
     }
 
-    function abrirModalPreview(record, signedUrl) {
+    function openPreviewModal(record, signedUrl) {
         const existing = document.getElementById('docs-preview-modal');
         if (existing) existing.remove();
 
@@ -383,21 +668,14 @@
         document.body.appendChild(modal);
 
         const close = () => modal.remove();
-
         modal.addEventListener('click', (event) => {
-            if (event.target === modal) {
-                close();
-            }
+            if (event.target === modal) close();
         });
 
-        modal.querySelectorAll('[data-action="close"]').forEach((button) => {
-            button.addEventListener('click', close);
-        });
-
+        modal.querySelectorAll('[data-action="close"]').forEach((btn) => btn.addEventListener('click', close));
         modal.querySelector('[data-action="open-tab"]')?.addEventListener('click', () => {
             window.open(signedUrl, '_blank', 'noopener');
         });
-
         modal.querySelector('[data-action="download"]')?.addEventListener('click', async () => {
             await visualizarDocumento(record.id, { forceDownload: true });
         });
@@ -407,48 +685,46 @@
         event.preventDefault();
 
         if (!hasAdminAccess()) {
-            showToast('Apenas administradores podem cadastrar documentos.', 'error');
+            showToast('Apenas administradores podem cadastrar ou editar itens.', 'error');
             return;
         }
 
         const payload = collectFormData();
         const id = Number(document.getElementById('docs-id')?.value || 0);
-        const validation = validatePayload(payload, { requireFile: !(id > 0) });
-        if (validation) {
-            showToast(validation, 'error');
+        const currentRecord = id > 0 ? state.byId.get(id) : null;
+
+        const validationError = validatePayload(payload, {
+            requireFile: payload.tipo === 'DOCUMENTO' && (!currentRecord || !currentRecord.arquivo_path),
+        });
+        if (validationError) {
+            showToast(validationError, 'error');
             return;
         }
 
         setSubmitBusy(true);
 
         const api = window.App.api.documentacao;
-        const { data, error } = id > 0
+        const response = id > 0
             ? await api.atualizar(id, payload)
             : await api.criar(payload);
 
         setSubmitBusy(false);
 
-        if (error) {
-            showToast(error.message, 'error');
+        if (response.error) {
+            showToast(response.error.message, 'error');
             return;
         }
 
-        showToast(id > 0 ? 'Documento atualizado.' : 'Documento cadastrado.', 'success');
+        showToast(id > 0 ? 'Item atualizado.' : 'Item cadastrado.', 'success');
         resetForm();
         await loadDocumentacao();
-
-        if (data?.id) {
-            const refreshedRecord = state.records.find((item) => item.id === data.id);
-            if (refreshedRecord && isDocumentacaoActive()) {
-                const rowButton = document.querySelector(`[data-action="preview"][data-id="${refreshedRecord.id}"]`);
-                rowButton?.focus();
-            }
-        }
     }
 
     function collectFormData() {
         const fileInput = document.getElementById('docs-form-arquivo');
         return {
+            tipo: document.getElementById('docs-form-tipo')?.value || 'DOCUMENTO',
+            parentId: document.getElementById('docs-form-parent')?.value || '',
             categoria: document.getElementById('docs-form-categoria')?.value || '',
             titulo: document.getElementById('docs-form-titulo')?.value || '',
             descricao: document.getElementById('docs-form-descricao')?.value || '',
@@ -457,20 +733,29 @@
     }
 
     function validatePayload(payload, { requireFile = true } = {}) {
+        const tipo = normalizeTipo(payload.tipo);
         const categoria = String(payload.categoria || '').trim().toUpperCase();
         const titulo = String(payload.titulo || '').trim();
         const file = payload.file;
 
-        if (!CATEGORY_LABELS[categoria]) {
-            return 'Selecione uma categoria válida para o documento.';
+        if (!titulo) {
+            return 'Informe o título do item.';
         }
 
-        if (!titulo) {
-            return 'Informe o título do documento.';
+        if (!TYPE_LABELS[tipo]) {
+            return 'Tipo inválido para cadastro.';
+        }
+
+        if (!CATEGORY_LABELS[categoria]) {
+            return 'Selecione uma categoria válida.';
+        }
+
+        if (tipo === 'PASTA') {
+            return null;
         }
 
         if (requireFile && !file) {
-            return 'Selecione um arquivo para cadastro.';
+            return 'Selecione um arquivo para cadastro do documento.';
         }
 
         if (file && Number(file.size) > MAX_DOCUMENT_BYTES) {
@@ -481,31 +766,42 @@
     }
 
     function fillFormForEdit(id) {
-        const record = state.records.find((item) => item.id === id);
+        const record = state.byId.get(Number(id));
         if (!record) {
-            showToast('Documento não encontrado para edição.', 'error');
+            showToast('Item não encontrado para edição.', 'error');
             return;
         }
 
         setValue('docs-id', String(record.id));
-        setValue('docs-form-categoria', record.categoria || '');
+        setValue('docs-form-tipo', normalizeTipo(record.tipo));
+        setValue('docs-form-parent', record.parent_id ? String(record.parent_id) : '');
+        setValue('docs-form-categoria', record.categoria || 'GERAL');
         setValue('docs-form-titulo', record.titulo || '');
         setValue('docs-form-descricao', record.descricao || '');
         setValue('docs-form-arquivo', '');
 
         const currentFile = document.getElementById('docs-current-file');
         if (currentFile) {
-            currentFile.textContent = `Arquivo atual: ${record.arquivo_nome || 'sem nome'}`;
-            currentFile.style.display = 'block';
+            if (normalizeTipo(record.tipo) === 'DOCUMENTO' && record.arquivo_nome) {
+                currentFile.textContent = `Arquivo atual: ${record.arquivo_nome}`;
+                currentFile.style.display = 'block';
+            } else {
+                currentFile.textContent = '';
+                currentFile.style.display = 'none';
+            }
         }
 
-        setText('docs-submit-btn', 'Atualizar Documento');
+        syncParentSelect(record.id);
+        syncFormTypeUI();
+        setText('docs-submit-btn', 'Atualizar Item');
         toggleDisplay('docs-cancel-btn', true);
         document.getElementById('docs-form-titulo')?.focus();
     }
 
     function resetForm() {
         setValue('docs-id', '');
+        setValue('docs-form-tipo', 'DOCUMENTO');
+        setValue('docs-form-parent', state.currentFolderId ? String(state.currentFolderId) : '');
         setValue('docs-form-categoria', '');
         setValue('docs-form-titulo', '');
         setValue('docs-form-descricao', '');
@@ -517,9 +813,73 @@
             currentFile.style.display = 'none';
         }
 
-        setText('docs-submit-btn', 'Salvar Documento');
+        setText('docs-submit-btn', 'Salvar Item');
         toggleDisplay('docs-cancel-btn', false);
+        syncParentSelect();
+        syncFormTypeUI();
         syncFormAccess();
+    }
+
+    function syncParentSelect(editingId = null) {
+        const select = document.getElementById('docs-form-parent');
+        if (!select) return;
+
+        const previousValue = select.value;
+        const descendants = editingId ? new Set(collectDescendantIds(editingId)) : new Set();
+
+        select.innerHTML = '<option value="">Raiz</option>';
+        appendFolderOptions(select, null, 0, descendants);
+
+        const defaultValue = editingId
+            ? (state.byId.get(editingId)?.parent_id ? String(state.byId.get(editingId).parent_id) : '')
+            : (state.currentFolderId ? String(state.currentFolderId) : '');
+
+        const candidate = previousValue || defaultValue;
+        if (candidate && Array.from(select.options).some((option) => option.value === candidate)) {
+            select.value = candidate;
+            return;
+        }
+
+        select.value = defaultValue && Array.from(select.options).some((option) => option.value === defaultValue)
+            ? defaultValue
+            : '';
+    }
+
+    function appendFolderOptions(select, parentId, depth, excludedIds, visited = new Set()) {
+        const folders = getChildren(parentId).filter((item) => normalizeTipo(item.tipo) === 'PASTA');
+        folders.forEach((folder) => {
+            const folderId = Number(folder.id);
+            if (excludedIds.has(folderId)) return;
+            if (visited.has(folderId)) return;
+            visited.add(folderId);
+
+            const prefix = depth > 0 ? `${'— '.repeat(depth)}` : '';
+            select.add(new Option(`${prefix}${folder.titulo}`, String(folderId)));
+            appendFolderOptions(select, folderId, depth + 1, excludedIds, visited);
+        });
+    }
+
+    function syncFormTypeUI() {
+        const tipo = normalizeTipo(document.getElementById('docs-form-tipo')?.value);
+        const fileGroup = document.getElementById('docs-file-group');
+        const categorySelect = document.getElementById('docs-form-categoria');
+        const fileInput = document.getElementById('docs-form-arquivo');
+
+        const isFolder = tipo === 'PASTA';
+        if (fileGroup) {
+            fileGroup.style.display = isFolder ? 'none' : '';
+        }
+
+        if (categorySelect) {
+            if (isFolder && !categorySelect.value) {
+                categorySelect.value = 'GERAL';
+            }
+            categorySelect.disabled = isFolder || !hasAdminAccess();
+        }
+
+        if (fileInput) {
+            fileInput.disabled = isFolder || !hasAdminAccess();
+        }
     }
 
     function syncFormAccess() {
@@ -529,8 +889,8 @@
 
         if (permissionNote) {
             permissionNote.textContent = isAdminUser
-                ? 'Você possui permissão para criar, editar e excluir documentos.'
-                : 'Somente administradores podem alterar documentos. Visualização e download seguem disponíveis.';
+                ? 'Você possui permissão para criar, editar e excluir pastas e documentos.'
+                : 'Modo leitura: você pode navegar em pastas, visualizar e baixar documentos.';
             permissionNote.classList.toggle('restricted', !isAdminUser);
         }
 
@@ -540,36 +900,27 @@
             if (element.id === 'docs-cancel-btn' && element.style.display === 'none') return;
             element.disabled = !isAdminUser;
         });
+
+        syncFormTypeUI();
     }
 
     function setSubmitBusy(busy) {
-        const submitButton = document.getElementById('docs-submit-btn');
-        if (!submitButton) return;
+        const submit = document.getElementById('docs-submit-btn');
+        if (!submit) return;
 
-        submitButton.disabled = busy;
+        submit.disabled = busy;
         if (busy) {
-            submitButton.textContent = 'Salvando...';
+            submit.textContent = 'Salvando...';
             return;
         }
 
         const id = Number(document.getElementById('docs-id')?.value || 0);
-        submitButton.textContent = id > 0 ? 'Atualizar Documento' : 'Salvar Documento';
-    }
-
-    function handlePaginationClick(event) {
-        const button = event.target.closest('[data-page]');
-        if (!button) return;
-
-        const next = Number(button.dataset.page);
-        if (!Number.isFinite(next)) return;
-        if (next < 1 || next > getTotalPages()) return;
-
-        state.page = next;
-        renderTable();
+        submit.textContent = id > 0 ? 'Atualizar Item' : 'Salvar Item';
     }
 
     function getCategoryLabel(value) {
-        return CATEGORY_LABELS[String(value || '').toUpperCase()] || 'Categoria';
+        const key = String(value || '').toUpperCase();
+        return CATEGORY_LABELS[key] || 'Categoria';
     }
 
     function formatFileSize(rawValue) {
@@ -597,23 +948,19 @@
     }
 
     function setValue(id, value) {
-        const element = document.getElementById(id);
-        if (element) {
-            element.value = value;
-        }
+        const el = document.getElementById(id);
+        if (el) el.value = value;
     }
 
     function setText(id, text) {
-        const element = document.getElementById(id);
-        if (element) {
-            element.textContent = text;
-        }
+        const el = document.getElementById(id);
+        if (el) el.textContent = text;
     }
 
     function toggleDisplay(id, visible) {
-        const element = document.getElementById(id);
-        if (!element) return;
-        element.style.display = visible ? '' : 'none';
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.style.display = visible ? '' : 'none';
     }
 
     function showToast(message, type = 'success') {
@@ -621,7 +968,6 @@
             window.showToast(message, type);
             return;
         }
-
         if (type === 'error') {
             console.error(message);
         } else {
@@ -655,4 +1001,3 @@
 
     document.addEventListener('DOMContentLoaded', initDocumentacao);
 })();
-
