@@ -259,3 +259,8 @@
         grid-template-columns: 1fr;
     }
 }
+
+.landing-shortcut-icon {
+    font-size: 1.5rem;
+    line-height: 1;
+}
