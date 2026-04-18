@@ -1,0 +1,271 @@
+BEGIN;
+
+CREATE TABLE IF NOT EXISTS public.catalog_linhas (
+    id BIGSERIAL PRIMARY KEY,
+    loja TEXT NOT NULL,
+    usuario TEXT NOT NULL,
+    dpto TEXT NOT NULL,
+    cargo TEXT NOT NULL,
+    ddd CHAR(2) NOT NULL,
+    linha TEXT NOT NULL UNIQUE,
+    tipo TEXT NOT NULL DEFAULT 'simCard',
+    criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT catalog_linhas_ddd_chk CHECK (ddd ~ '^[0-9]{2}$'),
+    CONSTRAINT catalog_linhas_linha_chk CHECK (regexp_replace(linha, '[^0-9]', '', 'g') ~ '^[0-9]{8,}$'),
+    CONSTRAINT catalog_linhas_tipo_chk CHECK (tipo IN ('simCard', 'E-SIM'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_catalog_linhas_loja_usuario
+ON public.catalog_linhas (loja, usuario);
+
+CREATE INDEX IF NOT EXISTS idx_catalog_linhas_tipo_ddd
+ON public.catalog_linhas (tipo, ddd);
+
+DROP TRIGGER IF EXISTS trg_touch_catalog_linhas_updated_at ON public.catalog_linhas;
+CREATE TRIGGER trg_touch_catalog_linhas_updated_at
+BEFORE UPDATE ON public.catalog_linhas
+FOR EACH ROW
+EXECUTE FUNCTION public.touch_updated_at();
+
+INSERT INTO public.catalog_linhas (loja, usuario, dpto, cargo, ddd, linha, tipo)
+VALUES
+    ('DF', '(HYUNDAI)', 'LOG', 'MOTORISTA', '61', '996235861', 'simCard'),
+    ('RJ', '?', '?', '?', '21', '971077069', 'simCard'),
+    ('RJ', '?', '?', '?', '21', '995638257', 'simCard'),
+    ('PR', 'ADRIANE', 'COM', 'ATENDIMENTO', '41', '997621144', 'simCard'),
+    ('SP', 'AELSON', 'COM', 'AUXILIAR TECNICO COMERCIAL', '11', '996050440', 'simCard'),
+    ('RS', 'ALESSSANDRA DEA', 'COM', 'EXECUTIVO DE CONTAS', '51', '982109988', 'simCard'),
+    ('SP', 'ALEX', 'LOG', 'COORDENADOR OPERACIONAL DE LOGÍSTICA', '11', '952720965', 'simCard'),
+    ('SP', 'ALEXANDRE SOARES', 'COM', 'GERENTE DE PROJETOS E ILUMINAÇÃO', '11', '986321159', 'simCard'),
+    ('SP', 'ALINE CRISTINA GOMES', 'COM', 'EXECUTIVO DE CONTAS', '11', '976711283', 'simCard'),
+    ('RJ', 'ALINE SANTOS / EDUARDO SILVA', 'LOG', 'ASSISTENTE DOCUMENT FISCAL', '21', '970368270', 'simCard'),
+    ('PR', 'AMANDA LEAL', 'COM', 'ASSISTENTE DE COMPRAS', '41', '984947812', 'simCard'),
+    ('PR', 'AMANDA PIMENTEL', 'RH', 'ASSISTENTE DE DEPARTAMENTO PESSOAL', '41', '991732181', 'simCard'),
+    ('GO', 'ANDRÉ SANTOS// FIAT DUCATO', 'LOG', 'MOTORISTA', '62', '999227361', 'simCard'),
+    ('GO', 'ANDREA RODRIGUES', 'COM', 'ANALISTA COMERCIAL', '62', '998186370', 'simCard'),
+    ('PR', 'ANDREIA ALMEIDA', 'FIN', 'ANALISTA DE CRÉDITO E COBRANÇA', '41', '996737556', 'simCard'),
+    ('PR', 'ANDRESSA CHAVES', 'MKT', 'DESIGN', '41', '992092834', 'simCard'),
+    ('PR', 'MARIA IMPORTAÇÃO', 'LOG', 'ASSISTENTE DE IMPORTAÇÃO', '41', '991074134', 'simCard'),
+    ('SP', 'ANTONIO CELETE', 'COM', 'GERENTE DE MÁQUINAS INDUSTRIAIS', '11', '944522277', 'simCard'),
+    ('SC', 'AQUILES JUNIOR', 'COM', 'VENDEDOR EXTERNO PJ', '47', '999615072', 'simCard'),
+    ('SP', 'ARIANE', 'LOG', 'AUXILIAR DE LOGISTICA', '11', '947739021', 'simCard'),
+    ('PR', 'BRAZ PEREIRA', 'COM', 'COORDENADOR DE VENDAS', '41', '996970781', 'simCard'),
+    ('SP', 'BRUNO BOTAN PLOMBON', 'COM', 'EXECUTIVO DE CONTAS', '11', '995630522', 'simCard'),
+    ('SP', 'CAROLINA CORREIA DA SILVA', 'COM', 'ASSISTENTE DE VENDAS', '11', '940366284', 'simCard'),
+    ('SP', 'CAROLINE FERREIRA', 'COM', 'ASSISTENTE DE VENDAS JR', '11', '975636205', 'simCard'),
+    ('PR', 'CAROLINE PEDROSO', 'COM', 'GERENTE ADMINISTRATIVA DE VENDAS', '41', '996873304', 'simCard'),
+    ('PR', 'CÁSSILA ALVES', 'COM', 'ASSISTENTE COMERCIAL', '41', '998626663', 'simCard'),
+    ('PR', 'CELIA FONTOLAN', 'FIN', 'GERENTE ADMINISTRATIVO FINANCEIRO', '41', '996970843', 'simCard'),
+    ('RJ', 'CHIRLEY TAVARES', 'COM', 'GERENTE ADMINISTRATIVA DE VENDAS', '21', '983564600', 'simCard'),
+    ('GO', 'CLAUDIA NUNES', 'COM', 'COORDENADOR DE VENDAS', '62', '996266211', 'simCard'),
+    ('SP', 'CLAUDIO CACERES', 'COM', 'EXECUTIVO DE VENDA DE EQUIPAMENTOS', '11', '912980558', 'simCard'),
+    ('SP', 'DANIELA SOUZA', 'COM', 'EXECUTIVA DE VENDAS PL', '11', '930278876', 'simCard'),
+    ('SP', 'DANIELLE PESSOA/FELIPE PATRICIO', 'COM', 'AUXILIAR DE DOC FISCAL', '11', '943358785', 'simCard'),
+    ('DF', 'DANILO BARROS', 'LOG', 'LÍDER DE EXPEDIÇÃO', '61', '996346393', 'simCard'),
+    ('MT', 'DANILO NUNES', 'COM', 'EXECUTIVO DE NEGÓCIOS', '65', '998149414', 'simCard'),
+    ('PR', 'DANRARA', 'COM', 'ASSISTENTE DE VENDAS', '41', '996130434', 'simCard'),
+    ('PR', 'DAYANNE CAMILA SILVA', 'FIN', 'ANALISTA DE CONTAS A PAGAR', '41', '991240856', 'simCard'),
+    ('RJ', 'DÉBORA OLIVEIRA', 'COM', 'EXECUTIVO DE CONTAS', '21', '983564645', 'simCard'),
+    ('PR', 'DIOVANA RIBEIRO VAZ', 'LOG', 'FATURAMENTO', '41', '991763893', 'simCard'),
+    ('RJ', 'DUCATO, BCP0238 (RICARDO VIANA)', 'LOG', 'MOTORISTA', '21', '976948519', 'simCard'),
+    ('SP', 'EDMAR DA SILVA', 'LOG', 'ENCARREGADO DE LOGISTICA', '11', '976615575', 'simCard'),
+    ('RJ', 'EDSON PASCOAL', 'COM', 'VENDEDOR EXTERNO', '21', '964385190', 'simCard'),
+    ('PR', 'ELAINE KULKA', 'RH', 'ANALISTA DE DEPARTAMENTO PESSOAL', '41', '987914877', 'simCard'),
+    ('SC', 'ELIANE DA SILVA MENEZES', 'COM', 'EXECUTIVO DE CONTAS', '48', '999830499', 'simCard'),
+    ('PR', 'ELIANE SANTOS', 'COM', 'EXECUTIVO DE NEGÍCOS JR', '41', '991417792', 'simCard'),
+    ('PR', 'EQUIPE DE LOG (CIC)', 'LOG', 'COMPARTILHADO', '41', '984385523', 'simCard'),
+    ('RS', 'ERICA EMERENCIANO', 'COM', 'EXECUTIVO DE CONTAS', '51', '998470048', 'simCard'),
+    ('PR', 'MARCELO HAMULAK', 'LOG', 'SUPERVISOR DE LOGISTICA', '41', '998620515', 'simCard'),
+    ('PR', 'ESTAG TI', 'SISAUD', 'AUXILIAR ADMINISTRATIVO DE SISTEMAS', '41', '991975933', 'simCard'),
+    ('RJ', 'ESTEVÃO BORGES', 'COM', 'EXECUTIVO DE NEGÓCIOS', '21', '969230637', 'simCard'),
+    ('SC', 'ESTOQUE', 'X', 'X', '47', '991483577', 'simCard'),
+    ('RS', 'ESTOQUE', 'X', 'X', '51', '982109955', 'simCard'),
+    ('RS', 'ESTOQUE', 'X', 'X', '51', '992025510', 'simCard'),
+    ('GO', 'ESTOQUE', 'X', 'X', '62', '981500188', 'simCard'),
+    ('GO', 'ESTOQUE', 'X', 'X', '62', '991966890', 'simCard'),
+    ('SP', 'ESTOQUE', 'X', 'X', '11', '975259833', 'simCard'),
+    ('RJ', 'ESTOQUE', 'X', 'X', '21', '997829160', 'simCard'),
+    ('GO', 'EXPEDIÇÃO', 'LOG', 'COMPARTILHADO', '62', '996345716', 'simCard'),
+    ('SP', 'FELIPE OLIVEIRA', 'COM', 'EXECUTIVO DE CONTAS SR', '11', '912168028', 'simCard'),
+    ('RJ', 'FELIPE REBELLO', 'COM', 'TÉCNICO MANUTENÇÃO DE MÁQUINAS', '21', '983564666', 'simCard'),
+    ('GO', 'FERNANDA FERREIRA', 'COM', 'EXECUTIVO DE CONTAS', '62', '992002180', 'simCard'),
+    ('SP', 'FERNANDO GIACOMEL', 'COM', 'TÉCNICO MANUTENÇÃO DE MÁQUINAS', '11', '917525229', 'simCard'),
+    ('GO', 'FERNANDO RIBEIRO', 'LOG', 'ENCARREGADO DE LOGISTICA', '62', '981500177', 'simCard'),
+    ('GO', 'FERNANDO ROCHA', 'COM', 'EXECUTIVO DE NEGÓCIOS', '62', '991946024', 'simCard'),
+    ('GO', 'FERNANDO ROCHA', 'COM', 'EXECUTIVO DE NEGÓCIOS', '62', '996877708', 'simCard'),
+    ('SC', 'FIAT DUCATO', 'LOG', 'MOTORISTA', '48', '996243000', 'simCard'),
+    ('DF', 'FIORINO', 'LOG', 'MOTORISTA', '61', '992042702', 'simCard'),
+    ('PR', 'FLAVIA LAIANI DE LARA', 'COM', 'ASSISTENTE DE VENDAS', '41', '991556509', 'simCard'),
+    ('PR', 'FRANCIANE PINTO DE CAMARGO', 'FIN', 'ASSISTENTE DE CRÉDITO E COBRANÇA', '41', '992782718', 'simCard'),
+    ('PR', 'FRANCIELY DE SOUSA', 'COM', 'EXECUTIVO DE CONTAS', '41', '987063590', 'simCard'),
+    ('SC', 'FRANCIELY DE SOUSA', 'COM', 'EXECUTIVO DE CONTAS', '47', '992201434', 'simCard'),
+    ('GO', 'FRANCISCO DA CRUZ SILVA', 'LOG', 'MOTORISTA', '62', '999817669', 'simCard'),
+    ('SP', 'FRANCISCO DAS CHAGAS ARAUJO', 'LOG', 'MOTORISTA', '11', '976520783', 'simCard'),
+    ('SP', 'GABRIEL ALENCAR', 'COM', 'ASSISTENTE DE VENDAS', '11', '982661913', 'simCard'),
+    ('SC', 'GABRIEL DA SILVA', 'LOG', 'ASSISTENTE DE LOGISTICA', '47', '991362166', 'simCard'),
+    ('RJ', 'GABRIEL DO COUTO GOMES', 'COM', 'EXECUTIVO DE CONTAS', '21', '981530028', 'simCard'),
+    ('MG', 'GABRIEL RICHARD ANASTACIO SILVA', 'LOG', 'ASSISTENTE DE LOGISTICA', '34', '984123335', 'simCard'),
+    ('GO', 'GELIENE SILVA', 'COM', 'EXECUTIVO DE CONTAS', '62', '991951268', 'simCard'),
+    ('MG', 'GEOVANNE SILVEIRA', 'COM', 'EXECUTIVO DE VENDA DE EQUIPAMENTOS', '34', '984366545', 'simCard'),
+    ('SC', 'GIANCARLO CARIOLATO', 'COM', 'TÉCNICO MANUTENÇÃO DE MÁQUINAS', '47', '992111296', 'simCard'),
+    ('RS', 'GUSTAVO MUZZEL', 'COM', 'EXECUTIVO DE NEGÓCIOS', '51', '995734285', 'simCard'),
+    ('PR', 'GUSTAVO PAULINO', 'COM', 'EXECUTIVO DE VENDA DE EQUIPAMENTOS', '41', '984947875', 'simCard'),
+    ('PR', 'HALIANDRA RODRIGUES', 'COM', 'ASSISTENTE DE VENDAS LABELS PL', '41', '998534600', 'simCard'),
+    ('RS', 'HENRIQUE CORREA JOSE', 'FIN', 'EXECUTIVO DE NEGOCIOS PL', '51', '991970996', 'simCard'),
+    ('PR', 'HUGO AGUIAR', 'DIR', 'SÓCIO', '41', '996970835', 'simCard'),
+    ('SC', 'IAGO DIAS', 'LOG', 'MOTORISTA', '47', '992295623', 'simCard'),
+    ('GO', 'ISABELLA NOGUEIRA', 'COM', 'EXECUTIVO DE CONTAS', '62', '981310509', 'simCard'),
+    ('GO', 'ITALO MELO', 'COM', 'AUXILIAR ADMINISTRATIVO (APRENDIZ)', '62', '982693131', 'simCard'),
+    ('RJ', 'JADSOM DAVI DA SILVA CASCARDO', 'COM', 'EXECUTIVO DE CONTAS', '21', '998725954', 'simCard'),
+    ('PR', 'JANAINA GOMES DE SÁ', 'COM', 'EXECUTIVO DE CONTAS', '41', '987064842', 'simCard'),
+    ('PR', 'JAQUELINE SOUZA', 'MKT', 'ANALISTA DE MARKETING PL', '41', '987915007', 'simCard'),
+    ('PR', 'JAQUELYNE CARDOSO', 'COM', 'EXECUTIVO DE ATENDIMENTO JR', '41', '984386240', 'simCard'),
+    ('SP', 'JEFFERSON MARTINS RIBEIRO', 'COM', 'AUXILIAR TÉCNICO ELETRONICO', '11', '976450553', 'simCard'),
+    ('PR', 'JESSICA CAMARGO', 'RH', 'ASSISTENTE DE RECURSOS HUMANOS', '41', '996732382', 'simCard'),
+    ('PR', 'JESSICA SODA', 'COM', 'EXECUTIVO DE VENDA DE EQUIPAMENTOS', '41', '998624013', 'simCard'),
+    ('PR', 'JOÃO AGUIAR', 'DIR', 'CEO', '41', '996970838', 'simCard'),
+    ('SP', 'JOHNNY CERQUEIRA', 'COM', 'EXECUTIVO DE CONTAS', '11', '976385264', 'simCard'),
+    ('RS', 'JONATAS SILVA DOS SANTOS', 'LOG', 'MOTORISTA', '51', '982109922', 'simCard'),
+    ('SC', 'JOSE MACIEL', 'COM', 'EXECUTIVO DE CONTAS SR', '47', '992262755', 'simCard'),
+    ('RS', 'JOSE MACIEL', 'COM', 'EXECUTIVO DE CONTAS SR', '51', '998465707', 'simCard'),
+    ('SC', 'JOSE SOUZA', 'LOG', 'LÍDER DE EXPEDIÇÃO REGIONAL SC', '47', '988270958', 'simCard'),
+    ('PR', 'JOSUE COSTA', 'COM', 'EXECUTIVO DE NEGÓCIOS', '41', '999933247', 'simCard'),
+    ('SP', 'JOYCE DA SILVA NASCIMENTO', 'COM', 'EXECUTIVO DE CONTAS', '11', '940365175', 'simCard'),
+    ('PR', 'JULIA GABRIELLA PIMENTEL DOS SANTOS', 'FIN', 'ASSISTENTE FINANCEIRO DE CONTAS A PAGAR', '41', '992669264', 'simCard'),
+    ('MG', 'JULIANA FONTENELE', 'COM', 'EXECUTIVO DE NEGÓCIOS', '34', '999168477', 'simCard'),
+    ('GO', 'KAMILLA SALDANHA', 'COM', 'AUXILIAR ADMINISTRATIVO', '62', '981500178', 'simCard'),
+    ('SP', 'KAUAN SILVA DE SOUZA', 'LOG', 'AUXILIAR DE LOGISTICA', '11', '954730382', 'simCard'),
+    ('GO', 'KELWIS BARROS', 'COM', 'TÉCNICO MANUTENÇÃO DE MÁQUINAS', '62', '996002362', 'simCard'),
+    ('MG', 'KENYA LIMA', 'COM', 'GERENTE DE MÁQUINAS', '31', '984133491', 'simCard'),
+    ('PR', 'KEREN EZEQUIEL', 'FIN', 'ASSISTENTE DE CONTAS A RECEBER', '41', '996970834', 'simCard'),
+    ('PR', 'KEVIN SILVA', 'COM', 'EXECUTIVO DE CONTAS', '41', '996970622', 'simCard'),
+    ('PR', 'KLEITON', 'LOG', 'MOTORISTA', '41', '984560586', 'simCard'),
+    ('RJ', 'LARISSA OLIVEIRA', 'COM', 'ASSISTENTE DE VENDAS', '21', '993672694', 'simCard'),
+    ('SP', 'LEANDRO DOS SANTOS SILVA', 'COM', 'EXECUTIVO DE CONTAS', '11', '940365176', 'simCard'),
+    ('PR', 'LEANDRO NAVES', 'LOG', 'SUPERVISOR DE LOGISTICA', '41', '987065557', 'simCard'),
+    ('GO', 'LEANDRO ROCHA', 'LOG', 'ENCARREGADO DE LOGÍSTICA', '62', '999515121', 'simCard'),
+    ('PR', 'LINCOLN HARTMANN', 'SISAUD', 'GERENTE DE SISTEMAS E NORMATIZAÇÃO', '41', '996970626', 'simCard'),
+    ('PR', 'LOGÍSTICA CENTRAL', 'LOG', 'ASSISTENTE DE COMPRAS', '41', '996970841', 'E-SIM'),
+    ('PR', 'LOGISTICA PR', 'LOG', 'COMPARTILHADO', '41', '998623113', 'simCard'),
+    ('SP', 'LOGISTICA SP', 'LOG', 'COMPARTILHADO', '11', '947377125', 'simCard'),
+    ('PR', 'LUCAS NICHALS', 'SISAUD', 'ANALISTA DE SISTEMAS JR', '41', '991315035', 'simCard'),
+    ('GO', 'LUCAS OLIVEIRA', 'LOG', 'MOTORISTA', '62', '998186332', 'simCard'),
+    ('SP', 'LUCIANA VIDAL', 'COM', 'ANALISTA ADMINISTRATIVO', '11', '930924943', 'simCard'),
+    ('PR', 'LUISA MARTINS', 'COM', 'EXECUTIVO DE VENDA DE EQUIPAMENTOS', '41', '992361569', 'simCard'),
+    ('GO', 'LUIZ EDUARDO', 'COM', 'ASSISTENTE DE VENDAS', '62', '996411760', 'simCard'),
+    ('SP', 'LUIZA RAMOS', 'COM', 'ASSISTENTE DE VENDAS', '11', '912957577', 'simCard'),
+    ('SP', 'MAISA PAVAN', 'COM', 'AUXILIAR ADMINISTRATIVO', '11', '911528027', 'simCard'),
+    ('RJ', 'MARCELA OLIVEIRA DA SILVA', 'COM', 'EXECUTIVO DE CONTAS', '21', '964383941', 'simCard'),
+    ('PR', 'MARCELO FONTES', 'COM', 'GERENTE DE NEGÓCIOS LABELS', '41', '999933045', 'simCard'),
+    ('GO', 'MARIA GABRIELA', 'COM', 'ASSISTENTE DE VENDAS', '62', '998729711', 'simCard'),
+    ('GO', 'MARILEUSA ROCHA', 'COM', 'EXECUTIVO DE NEGÓCIOS', '62', '981500179', 'simCard'),
+    ('RJ', 'MARYANA FRANCO', 'COM', 'COORDENADOR DE VENDAS', '21', '983564646', 'simCard'),
+    ('PR', 'MAYCON OLIVEIRA', 'COM', 'ANALISTA DE INTELIGÊNCIA DE MER', '41', '991257040', 'simCard'),
+    ('SC', 'MICHAEL LACERDA', 'COM', 'CONSULTOR DE VENDAS', '48', '991360975', 'simCard'),
+    ('PR', 'MICHELLE SANTA CLARA', 'FIN', 'COORDENADOR DE CONTAS A RECEBER', '41', '987055727', 'simCard'),
+    ('SP', 'MILTON FERREIRA AGUIAR JUNIOR', 'COM', 'EXECUTIVO DE NEGOCIOS PL', '11', '963888877', 'simCard'),
+    ('PR', 'NILTON EDGAR CORDEIRO', 'LOG', 'MOTORISTA', '41', '992333880', 'simCard'),
+    ('PR', 'FRANCIELY DE SOUSA', 'COM', 'EXECUTIVO DE CONTAS', '41', '984389654', 'simCard'),
+    ('PR', 'PATRICIA DIAS DA SILVA', 'FIN', 'ANALISTA DE CRÉDITO E COBRANÇA', '41', '996732928', 'simCard'),
+    ('PR', 'PATRICIA SANTOS', 'FIN', 'AUXILIAR FINANCEIRO', '41', '996731204', 'simCard'),
+    ('PR', 'PAULO HUBNER', 'DIR', 'CEO', '41', '984965297', 'E-SIM'),
+    ('PR', 'PAULO HUBNER', 'DIR', 'CEO', '41', '996970769', 'simCard'),
+    ('GO', 'PAULO JESUS', 'COM', 'EXECUTIVO DE CONTAS', '62', '992015269', 'simCard'),
+    ('GO', 'POLLYANA SANTANA', 'COM', 'EXECUTIVO DE CONTAS', '62', '981500116', 'simCard'),
+    ('PR', 'PRISCILA HUBNER', 'MKT', 'GERENTE DE PROJETOS', '41', '996970784', 'simCard'),
+    ('PR', 'RAFAEL AZEVEDO', 'COM', 'COORDENADOR TÉCNICO', '41', '996970785', 'simCard'),
+    ('RJ', 'RAFAEL TOURINO AS MOREIRA', 'COM', 'EXECUTIVO DE NEGÓCIOS', '21', '993653976', 'simCard'),
+    ('SP', 'RAPHAEL FERREIRA', 'COM', 'EXECUTIVO DE CONTAS', '11', '934058377', 'simCard'),
+    ('RS', 'REGIS ALVARES', 'LOG', 'ASSISTENTE DE LOGISTICA', '51', '982109977', 'simCard'),
+    ('GO', 'RESERVADO MKT CTBA', 'MKT', 'MKT', '62', '982854123', 'simCard'),
+    ('RS', 'ROBERT LACERDA', 'LOG', 'LÍDER DE EXPEDIÇÃO', '51', '998257893', 'simCard'),
+    ('PR', 'ROBSON FERREIRA', 'COM', 'EXECUTIVO DE ATENDIMENTO', '41', '999883381', 'simCard'),
+    ('RJ', 'RODIZIO EQUIPE', 'COM', 'COMERCIAL GERAL', '21', '993624896', 'simCard'),
+    ('RJ', 'RODRIGO SANTOS DA SILVA', 'LOG', 'ENCARREGADO DE LOGISTICA', '21', '975976088', 'simCard'),
+    ('RJ', 'ROGERIO ALMEIDA DOS SANTOS', 'LOG', 'ASSISTENTE DE LOGISTICA', '21', '993638266', 'simCard'),
+    ('PR', 'RONALDO WALTRICH DOS SANTOS', 'LOG', 'ASSISTENTE DE LOGISTICA', '41', '996737064', 'simCard'),
+    ('SP', 'RONIE AUGUSTO DA SILVA NETO', 'COM', 'EXECUTIVO DE NEGÓCIOS', '11', '940366299', 'simCard'),
+    ('PR', 'ROSILENE GUIMARÃES', 'COM', 'EXECUTIVO DE CONTAS LABELS', '41', '997621920', 'simCard'),
+    ('GO', 'SANY WHATNEY SANTOS', 'COM', 'EXECUTIVO DE CONTAS', '62', '998335651', 'simCard'),
+    ('PR', 'SHAYENE DOS SANTOS DIAS', 'FIN', 'ASSISTENTE FINANCEIRO DE CONTAS A PAGAR', '41', '992345403', 'simCard'),
+    ('PR', 'SIDIMAR OLIVEIRA', 'COM', 'EXECUTIVO DE NEGÓCIOS', '44', '999640024', 'simCard'),
+    ('SP', 'TAIS LOURDES DE OLIVEIRA MAGALHAES', 'COM', 'COORDENADOR DE VENDAS EQUIPAMENTOS', '11', '940293576', 'simCard'),
+    ('SP', 'TALISSA MEDEIROS', 'COM', 'ANALISTA COMERCIAL PL', '11', '917397934', 'simCard'),
+    ('RJ', 'THAÍS SOUZA', 'COM', 'AUXILIAR ADMINISTRATIVO', '21', '983564647', 'simCard'),
+    ('PR', 'THAYME AMARAL', 'COM', 'EXECUTIVO DE ATENDIMENTO', '41', '984388936', 'simCard'),
+    ('PR', 'THAYSI CHRISTENSON DE OLIVEIRA', 'FIN', 'ASSISTENTE DE CONTAS A RECEBER', '41', '996970623', 'simCard'),
+    ('RJ', 'THIAGO RIBEIRO PIMENTEL', 'COM', 'EXECUTIVO DE CONTAS', '21', '981530042', 'simCard'),
+    ('RJ', 'THIAGO SIMOES RIBEIRO DE SOUZA', 'LOG', 'MOTORISTA JR', '21', '983564567', 'simCard'),
+    ('DF', 'TIAGO SOUZA', 'LOG', 'ASSISTENTE DE LOGÍSTICA JR', '61', '999823353', 'simCard'),
+    ('RJ', 'UBIRATAN SANTOS', 'COM', 'TÉCNICO MANUTENÇÃO DE MÁQUINAS', '21', '970264061', 'simCard'),
+    ('PR', 'VANDELI AMORIM RIBEIRO', 'COM', 'EXECCUTIVO DE CONTAS', '41', '996970820', 'simCard'),
+    ('PR', 'VANESSA MAESTRELLI MEDEIROS', 'RH', 'COORDENADOR DE RECURSOS HUMANOS', '41', '987049730', 'simCard'),
+    ('SP', 'VER', 'VER', 'VER', '11', '912681512', 'simCard'),
+    ('PR', 'VER (ALE DEA- TABLET)', 'X', 'X', '41', '997622112', 'simCard'),
+    ('PR', 'VER (JOSUE- TABLET)', 'X', 'X', '41', '997622288', 'simCard'),
+    ('PR', 'VANDERLEI CEO', 'DIR', 'CEO', '41', '997621900', 'simCard'),
+    ('PR', 'VICTOR DE FARIA SIQUEIRA', 'COM', 'AUXILIAR TÉCNICO ELETRONICO', '41', '987146083', 'simCard'),
+    ('GO', 'VINICIUS FIGUEREDO', 'COM', 'EXECUTIVO DE NEGÓCIO', '62', '999788765', 'simCard'),
+    ('PR', 'VINICIUS HUBNER', 'COM', 'EXECUTIVO DE CONTAS', '41', '987913780', 'simCard'),
+    ('GO', 'VINICIUS MELO', 'DIR', 'SÓCIO', '62', '996572184', 'simCard'),
+    ('PR', 'VINICIUS MELO (DADOS)', 'DIR', 'SÓCIO', '41', '998620809', 'simCard'),
+    ('SP', 'VIVIANE MARINO', 'COM', 'ASSISTENTE TECNICO COMERCIAL', '11', '982662016', 'simCard'),
+    ('MG', 'WELLINGTON ALCANTARA', 'LOG', 'COORDENADOR OPERACIONAL DE LOGÍSTICA', '34', '984059678', 'simCard'),
+    ('SP', 'WELLINGTON FERREIRA/CARLOS FRANCA', 'COM', 'APRENDIZ EM ASSISTENTE ADMINISTRATIVO', '11', '940366283', 'simCard'),
+    ('GO', 'WERICK DE OLIVEIRA', 'COM', 'EXECUTIVO DE NEGÓCIOS', '62', '981242898', 'simCard'),
+    ('SC', 'WLADIMIR', 'LOG', 'ASSISTENTE DE LOGISTICA', '47', '992256277', 'simCard'),
+    ('PR', 'ESTOQUE TI', 'LOG', 'DISPONÍVEL', '41', '987115848', 'simCard'),
+    ('PR', 'YANNI CASTRO', 'COM', 'APRENDIZ', '41', '992456933', 'simCard'),
+    ('RJ', 'PRISCILA HUBNER (IA - WHATSAPP)', 'MKT', 'GERENTE DE PROJETOS', '21', '99363-8266', 'E-SIM'),
+    ('PR', 'PORTARIA HUGO', 'X', 'X', '41', '991550749', 'simCard'),
+    ('PR', 'LARYSSA MAGALHAES', 'COM', 'EXECUTIVO DE CONTAS', '41', '985299664', 'simCard'),
+    ('PR', 'VANESSA RAMOS', 'COM', 'EXECUTIVO DE CONTAS', '41', '985252652', 'E-SIM')
+ON CONFLICT (linha) DO UPDATE
+SET
+    loja = EXCLUDED.loja,
+    usuario = EXCLUDED.usuario,
+    dpto = EXCLUDED.dpto,
+    cargo = EXCLUDED.cargo,
+    ddd = EXCLUDED.ddd,
+    tipo = EXCLUDED.tipo,
+    atualizado_em = NOW();
+
+ALTER TABLE public.catalog_linhas ENABLE ROW LEVEL SECURITY;
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.catalog_linhas TO authenticated;
+GRANT USAGE, SELECT ON SEQUENCE public.catalog_linhas_id_seq TO authenticated;
+
+DROP POLICY IF EXISTS catalog_linhas_select_authenticated ON public.catalog_linhas;
+DROP POLICY IF EXISTS catalog_linhas_write_admin ON public.catalog_linhas;
+DROP POLICY IF EXISTS catalog_linhas_update_admin ON public.catalog_linhas;
+DROP POLICY IF EXISTS catalog_linhas_delete_admin ON public.catalog_linhas;
+
+CREATE POLICY catalog_linhas_select_authenticated
+ON public.catalog_linhas
+FOR SELECT
+TO authenticated
+USING (TRUE);
+
+CREATE POLICY catalog_linhas_write_admin
+ON public.catalog_linhas
+FOR INSERT
+TO authenticated
+WITH CHECK (public.is_admin());
+
+CREATE POLICY catalog_linhas_update_admin
+ON public.catalog_linhas
+FOR UPDATE
+TO authenticated
+USING (public.is_admin())
+WITH CHECK (public.is_admin());
+
+CREATE POLICY catalog_linhas_delete_admin
+ON public.catalog_linhas
+FOR DELETE
+TO authenticated
+USING (public.is_admin());
+
+COMMENT ON TABLE public.catalog_linhas IS 'Cadastro de linhas telefonicas corporativas (CRUD admin e consulta autenticada).';
+
+COMMIT;

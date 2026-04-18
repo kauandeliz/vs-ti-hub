@@ -14,6 +14,7 @@
         corporativo: 'Corporativo',
         telecom: 'Telecom',
         unidades: 'Unidades',
+        linhas: 'Linhas',
         colaboradores: 'Colaboradores Internos',
         documentacao: 'Documentação',
         usuarios: 'Contas de Acesso',
@@ -140,6 +141,10 @@
 
         if (page === 'unidades' && typeof window.onUnidadesActivate === 'function') {
             window.onUnidadesActivate();
+        }
+
+        if (page === 'linhas' && typeof window.onLinhasActivate === 'function') {
+            window.onLinhasActivate();
         }
     }
 

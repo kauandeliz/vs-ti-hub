@@ -1,0 +1,119 @@
+        <div class="page" id="page-linhas">
+            <div class="page-header">
+                <h1>Linhas</h1>
+                <p>Cadastro de linhas telefônicas corporativas.</p>
+            </div>
+
+            <div class="linhas-layout">
+                <div class="linhas-table-card">
+                    <div class="linhas-table-header">
+                        <h3>Linhas cadastradas</h3>
+                        <div class="linhas-header-actions">
+                            <button class="btn-icon" id="linhas-new-btn" style="display:none">Cadastrar</button>
+                            <button class="btn-icon" id="linhas-refresh-btn">↻ Atualizar</button>
+                        </div>
+                    </div>
+
+                    <div class="linhas-toolbar">
+                        <div class="search-wrap">
+                            <span class="search-icon"></span>
+                            <input
+                                type="text"
+                                id="linhas-search"
+                                placeholder="Buscar por loja, usuário, dpto, cargo, DDD, linha ou tipo..."
+                                style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px 8px 32px;color:var(--text);font-family:var(--font);font-size:0.8rem;outline:none;"
+                            >
+                        </div>
+                        <div class="linhas-summary" id="linhas-summary">Carregue as linhas para ver os indicadores.</div>
+                    </div>
+
+                    <div class="table-wrap" style="border:none;border-radius:0;margin-bottom:0">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>LOJA</th>
+                                    <th>USUÁRIO</th>
+                                    <th>DPTO</th>
+                                    <th>CARGO</th>
+                                    <th>DDD</th>
+                                    <th>LINHA</th>
+                                    <th>TIPO</th>
+                                    <th>AÇÕES</th>
+                                </tr>
+                            </thead>
+                            <tbody id="linhas-tbody">
+                                <tr><td colspan="8">
+                                    <div class="table-state">
+                                        <div class="icon">📱</div>
+                                        <div>Navegue até esta página para carregar as linhas.</div>
+                                    </div>
+                                </td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div id="linhas-pagination" class="pagination"></div>
+                </div>
+            </div>
+
+            <div class="modal-backdrop linhas-crud-modal" id="linhas-modal" hidden>
+                <div class="modal" style="max-width:860px" onclick="event.stopPropagation()">
+                    <div class="modal-header">
+                        <h3>Cadastro de Linha</h3>
+                        <button class="modal-close" data-action="close-linhas-modal" aria-label="Fechar">✕</button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="linhas-form">
+                            <input type="hidden" id="linhas-id">
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>LOJA</label>
+                                    <input type="text" id="linhas-form-loja" placeholder="Ex: PR" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>USUÁRIO</label>
+                                    <input type="text" id="linhas-form-usuario" placeholder="Nome do usuário" required>
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>DPTO</label>
+                                    <input type="text" id="linhas-form-dpto" placeholder="Ex: COM" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>CARGO</label>
+                                    <input type="text" id="linhas-form-cargo" placeholder="Cargo do usuário" required>
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>DDD</label>
+                                    <input type="text" id="linhas-form-ddd" placeholder="Ex: 41" maxlength="2" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>LINHA</label>
+                                    <input type="text" id="linhas-form-linha" placeholder="Ex: 999999999" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>TIPO</label>
+                                    <select id="linhas-form-tipo" required>
+                                        <option value="simCard" selected>simCard</option>
+                                        <option value="E-SIM">E-SIM</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="cad-actions">
+                                <button type="button" class="btn-row" data-action="close-linhas-modal">Fechar</button>
+                                <button type="button" class="btn-row" id="linhas-cancel-btn" style="display:none">Cancelar edição</button>
+                                <button type="submit" class="btn-primary" id="linhas-submit-btn">Salvar Linha</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+

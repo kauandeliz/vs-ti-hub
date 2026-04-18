@@ -681,6 +681,153 @@
         return { data: { id }, error: null };
     }
 
+    function normalizeLinhaTipo(value) {
+        const normalized = sanitizeText(value).toLowerCase();
+        if (normalized === 'simcard') return 'simCard';
+        if (normalized === 'e-sim' || normalized === 'esim') return 'E-SIM';
+        return null;
+    }
+
+    function normalizeLinhaPayload(fields = {}, { partial = false } = {}) {
+        const payload = {};
+
+        const requiredTextFields = ['loja', 'usuario', 'dpto', 'cargo', 'linha'];
+        requiredTextFields.forEach((field) => {
+            if (!Object.prototype.hasOwnProperty.call(fields, field)) return;
+            const value = sanitizeText(fields[field]);
+            if (!value) {
+                payload[field] = null;
+                return;
+            }
+            payload[field] = value;
+        });
+
+        if (Object.prototype.hasOwnProperty.call(fields, 'ddd')) {
+            const ddd = sanitizeText(fields.ddd).replace(/\D+/g, '');
+            if (!/^\d{2}$/.test(ddd)) {
+                return { payload: null, error: normalizeError('DDD inválido. Use 2 dígitos.', 'VALIDATION_ERROR') };
+            }
+            payload.ddd = ddd;
+        }
+
+        if (Object.prototype.hasOwnProperty.call(fields, 'linha')) {
+            const linha = sanitizeText(fields.linha);
+            const digits = linha.replace(/\D+/g, '');
+            if (!/^\d{8,}$/.test(digits)) {
+                return { payload: null, error: normalizeError('Linha inválida. Informe apenas números.', 'VALIDATION_ERROR') };
+            }
+            payload.linha = linha;
+        }
+
+        if (Object.prototype.hasOwnProperty.call(fields, 'tipo')) {
+            const tipo = normalizeLinhaTipo(fields.tipo);
+            if (!tipo) {
+                return { payload: null, error: normalizeError('Tipo inválido. Use simCard ou E-SIM.', 'VALIDATION_ERROR') };
+            }
+            payload.tipo = tipo;
+        }
+
+        if (!partial) {
+            const required = ['loja', 'usuario', 'dpto', 'cargo', 'ddd', 'linha', 'tipo'];
+            for (const field of required) {
+                if (!payload[field]) {
+                    return { payload: null, error: normalizeError(`Campo obrigatório: ${field}.`, 'VALIDATION_ERROR') };
+                }
+            }
+        }
+
+        return { payload, error: null };
+    }
+
+    async function listarLinhas({ search = '' } = {}) {
+        let query = client
+            .from('catalog_linhas')
+            .select('*')
+            .order('loja', { ascending: true })
+            .order('usuario', { ascending: true })
+            .order('linha', { ascending: true });
+
+        const term = sanitizeSearchTerm(search);
+        if (term) {
+            query = query.or(`loja.ilike.%${term}%,usuario.ilike.%${term}%,dpto.ilike.%${term}%,cargo.ilike.%${term}%,ddd.ilike.%${term}%,linha.ilike.%${term}%,tipo.ilike.%${term}%`);
+        }
+
+        const { data, error } = await query;
+        if (error) {
+            return {
+                data: null,
+                error: normalizeError(error.message, error.code || 'DB_LINHAS_LIST_ERROR', error),
+            };
+        }
+
+        return { data: data || [], error: null };
+    }
+
+    async function criarLinha(fields = {}) {
+        const { payload, error: payloadError } = normalizeLinhaPayload(fields, { partial: false });
+        if (payloadError) {
+            return { data: null, error: payloadError };
+        }
+
+        const { data, error } = await client
+            .from('catalog_linhas')
+            .insert([payload])
+            .select()
+            .single();
+
+        if (error) {
+            return {
+                data: null,
+                error: normalizeError(error.message, error.code || 'DB_LINHAS_CREATE_ERROR', error),
+            };
+        }
+
+        return { data, error: null };
+    }
+
+    async function atualizarLinha(id, fields = {}) {
+        const { payload, error: payloadError } = normalizeLinhaPayload(fields, { partial: true });
+        if (payloadError) {
+            return { data: null, error: payloadError };
+        }
+
+        if (!Object.keys(payload).length) {
+            return { data: null, error: normalizeError('Nenhuma alteração foi informada.', 'VALIDATION_ERROR') };
+        }
+
+        const { data, error } = await client
+            .from('catalog_linhas')
+            .update(payload)
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (error) {
+            return {
+                data: null,
+                error: normalizeError(error.message, error.code || 'DB_LINHAS_UPDATE_ERROR', error),
+            };
+        }
+
+        return { data, error: null };
+    }
+
+    async function removerLinha(id) {
+        const { error } = await client
+            .from('catalog_linhas')
+            .delete()
+            .eq('id', id);
+
+        if (error) {
+            return {
+                data: null,
+                error: normalizeError(error.message, error.code || 'DB_LINHAS_DELETE_ERROR', error),
+            };
+        }
+
+        return { data: { id }, error: null };
+    }
+
     const DIRECIONADOR_AREAS = new Set(['home', 'helpdesk', 'corporativo', 'telecom']);
 
     function normalizeDirecionadorArea(area) {
@@ -1487,6 +1634,12 @@
             criar: criarColaborador,
             atualizar: atualizarColaborador,
             remover: removerColaborador,
+        },
+        linhas: {
+            listar: listarLinhas,
+            criar: criarLinha,
+            atualizar: atualizarLinha,
+            remover: removerLinha,
         },
         admin: {
             listUsers,
