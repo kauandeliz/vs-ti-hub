@@ -1,0 +1,152 @@
+        <div class="page" id="page-cad-estrutura">
+            <div class="page-header">
+                <h1>Cadastros: Estrutura Organizacional</h1>
+                <p>Gestao centralizada de setores e cargos.</p>
+            </div>
+
+            <div class="cad-page-actions">
+                <button class="btn-icon" data-nav="cadastros">← Voltar para Cadastros</button>
+            </div>
+
+            <div class="cad-toolbar">
+                <div class="cad-summary" id="cad-estrutura-summary">Carregue os cadastros para ver os indicadores.</div>
+                <button class="btn-icon" id="cad-estrutura-refresh-btn">↻ Atualizar</button>
+            </div>
+
+            <div class="cad-kpi-grid cad-kpi-grid-2">
+                <div class="cad-kpi-card">
+                    <span>Setores ativos</span>
+                    <strong id="cad-kpi-setores">—</strong>
+                </div>
+                <div class="cad-kpi-card">
+                    <span>Cargos ativos</span>
+                    <strong id="cad-kpi-cargos">—</strong>
+                </div>
+            </div>
+
+            <div class="cad-grid">
+                <div class="cad-card">
+                    <div class="cad-card-head cad-card-head-inline">
+                        <div>
+                            <h3>Setores</h3>
+                            <p>Base organizacional usada na criacao de contas de acesso e cargos.</p>
+                        </div>
+                        <button class="btn-icon cad-head-btn" id="cad-open-setor-modal">Cadastrar</button>
+                    </div>
+
+                    <div class="table-wrap cad-table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Setor</th>
+                                    <th>Status</th>
+                                    <th>Cargos</th>
+                                    <th>Acoes</th>
+                                </tr>
+                            </thead>
+                            <tbody id="cad-setor-tbody">
+                                <tr><td colspan="4">
+                                    <div class="table-state">
+                                        <div class="icon"></div>
+                                        <div>Navegue ate esta pagina para carregar.</div>
+                                    </div>
+                                </td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="cad-card">
+                    <div class="cad-card-head cad-card-head-inline">
+                        <div>
+                            <h3>Cargos</h3>
+                            <p>Defina os cargos vinculados aos setores ja cadastrados.</p>
+                        </div>
+                        <button class="btn-icon cad-head-btn" id="cad-open-cargo-modal">Cadastrar</button>
+                    </div>
+
+                    <div class="table-wrap cad-table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Cargo</th>
+                                    <th>Setor</th>
+                                    <th>Status</th>
+                                    <th>Acoes</th>
+                                </tr>
+                            </thead>
+                            <tbody id="cad-cargo-tbody">
+                                <tr><td colspan="4">
+                                    <div class="table-state">
+                                        <div class="icon"></div>
+                                        <div>Navegue ate esta pagina para carregar.</div>
+                                    </div>
+                                </td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-backdrop cad-crud-modal" id="cad-setor-modal" hidden>
+                <div class="modal cad-modal" style="max-width:460px" onclick="event.stopPropagation()">
+                    <div class="modal-header">
+                        <h3>Cadastro de Setor</h3>
+                        <button class="modal-close" data-action="close-cad-modal" aria-label="Fechar">✕</button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="cad-setor-form" class="cad-form cad-modal-form">
+                            <input type="hidden" id="cad-setor-id">
+                            <div class="form-group">
+                                <label>Nome do setor</label>
+                                <input type="text" id="cad-setor-nome" placeholder="Ex: Comercial" required>
+                            </div>
+                            <label class="cad-checkbox">
+                                <input type="checkbox" id="cad-setor-ativo" checked>
+                                <span>Ativo</span>
+                            </label>
+                            <div class="cad-actions">
+                                <button type="button" class="btn-row" data-action="close-cad-modal">Fechar</button>
+                                <button type="button" class="btn-row" id="cad-setor-cancel" style="display:none">Cancelar edicao</button>
+                                <button type="submit" class="btn-primary" id="cad-setor-submit">Salvar Setor</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-backdrop cad-crud-modal" id="cad-cargo-modal" hidden>
+                <div class="modal cad-modal" style="max-width:560px" onclick="event.stopPropagation()">
+                    <div class="modal-header">
+                        <h3>Cadastro de Cargo</h3>
+                        <button class="modal-close" data-action="close-cad-modal" aria-label="Fechar">✕</button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="cad-cargo-form" class="cad-form cad-modal-form">
+                            <input type="hidden" id="cad-cargo-id">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Setor</label>
+                                    <select id="cad-cargo-setor" required>
+                                        <option value="">Selecione...</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Nome do cargo</label>
+                                    <input type="text" id="cad-cargo-nome" placeholder="Ex: Assistente" required>
+                                </div>
+                            </div>
+                            <label class="cad-checkbox">
+                                <input type="checkbox" id="cad-cargo-ativo" checked>
+                                <span>Ativo</span>
+                            </label>
+                            <div class="cad-actions">
+                                <button type="button" class="btn-row" data-action="close-cad-modal">Fechar</button>
+                                <button type="button" class="btn-row" id="cad-cargo-cancel" style="display:none">Cancelar edicao</button>
+                                <button type="submit" class="btn-primary" id="cad-cargo-submit">Salvar Cargo</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>

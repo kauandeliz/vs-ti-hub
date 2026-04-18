@@ -1,0 +1,127 @@
+        <div class="page" id="page-cad-filiais">
+            <div class="page-header">
+                <h1>Cadastros: Filiais</h1>
+                <p>Cadastro completo de unidades com endereco e dados de etiqueta.</p>
+            </div>
+
+            <div class="cad-page-actions">
+                <button class="btn-icon" data-nav="cadastros">← Voltar para Cadastros</button>
+            </div>
+
+            <div class="cad-toolbar">
+                <div class="cad-summary" id="cad-filiais-summary">Carregue as filiais para ver os indicadores.</div>
+                <button class="btn-icon" id="cad-filiais-refresh-btn">↻ Atualizar</button>
+            </div>
+
+            <div class="cad-kpi-grid cad-kpi-grid-1">
+                <div class="cad-kpi-card">
+                    <span>Filiais ativas</span>
+                    <strong id="cad-kpi-filiais">—</strong>
+                </div>
+            </div>
+
+            <div class="cad-grid">
+                <div class="cad-card cad-card-wide">
+                    <div class="cad-card-head cad-card-head-inline">
+                        <div>
+                            <h3>Filiais</h3>
+                            <p>Cadastro completo de unidades com endereco, identificacao e uso em etiquetas.</p>
+                        </div>
+                        <button class="btn-icon cad-head-btn" id="cad-open-filial-modal">Cadastrar</button>
+                    </div>
+
+                    <div class="table-wrap cad-table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Filial</th>
+                                    <th>UF</th>
+                                    <th>Cidade</th>
+                                    <th>Bairro</th>
+                                    <th>Gestao</th>
+                                </tr>
+                            </thead>
+                            <tbody id="cad-filial-tbody">
+                                <tr><td colspan="5">
+                                    <div class="table-state">
+                                        <div class="icon"></div>
+                                        <div>Navegue ate esta pagina para carregar.</div>
+                                    </div>
+                                </td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-backdrop cad-crud-modal" id="cad-filial-modal" hidden>
+                <div class="modal cad-modal" style="max-width:860px" onclick="event.stopPropagation()">
+                    <div class="modal-header">
+                        <h3>Cadastro de Filial</h3>
+                        <button class="modal-close" data-action="close-cad-modal" aria-label="Fechar">✕</button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="cad-filial-form" class="cad-form cad-modal-form">
+                            <input type="hidden" id="cad-filial-id">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Codigo</label>
+                                    <input type="number" id="cad-filial-codigo" placeholder="Ex: 11">
+                                </div>
+                                <div class="form-group">
+                                    <label>Nome da filial</label>
+                                    <input type="text" id="cad-filial-nome" placeholder="Ex: Curitiba (Matriz)" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>UF</label>
+                                    <input type="text" id="cad-filial-uf" maxlength="2" placeholder="PR" required>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Cidade</label>
+                                    <input type="text" id="cad-filial-cidade" placeholder="Curitiba" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Bairro</label>
+                                    <input type="text" id="cad-filial-bairro" placeholder="Jardim Botanico" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Numero</label>
+                                    <input type="text" id="cad-filial-numero" placeholder="185" required>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Endereco</label>
+                                    <input type="text" id="cad-filial-endereco" placeholder="Rua Sao Joaquim" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>CNPJ</label>
+                                    <input type="text" id="cad-filial-cnpj" placeholder="00.000.000/0000-00">
+                                </div>
+                                <div class="form-group">
+                                    <label>CEP</label>
+                                    <input type="text" id="cad-filial-cep" placeholder="80000-000">
+                                </div>
+                            </div>
+                            <div class="cad-checkbox-row">
+                                <label class="cad-checkbox">
+                                    <input type="checkbox" id="cad-filial-etiqueta" checked>
+                                    <span>Usar em etiquetas</span>
+                                </label>
+                                <label class="cad-checkbox">
+                                    <input type="checkbox" id="cad-filial-ativo" checked>
+                                    <span>Ativa</span>
+                                </label>
+                            </div>
+                            <div class="cad-actions">
+                                <button type="button" class="btn-row" data-action="close-cad-modal">Fechar</button>
+                                <button type="button" class="btn-row" id="cad-filial-cancel" style="display:none">Cancelar edicao</button>
+                                <button type="submit" class="btn-primary" id="cad-filial-submit">Salvar Filial</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>

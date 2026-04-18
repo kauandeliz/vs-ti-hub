@@ -41,7 +41,7 @@
         document.getElementById('cad-link-form')?.addEventListener('submit', handleLinkSubmit);
         document.getElementById('cad-link-cancel')?.addEventListener('click', resetLinkForm);
         document.getElementById('cad-link-tbody')?.addEventListener('click', handleLinkTableClick);
-        document.getElementById('cad-refresh-btn')?.addEventListener('click', () => {
+        document.getElementById('cad-dir-refresh-btn')?.addEventListener('click', () => {
             if (isAdmin()) {
                 loadAdminCards();
             }
@@ -49,7 +49,7 @@
         });
 
         document.addEventListener('app:auth-changed', () => {
-            if (isCadastrosActive()) {
+            if (isCadDirecionadoresActive()) {
                 if (isAdmin()) {
                     loadAdminCards();
                 } else {
@@ -63,8 +63,8 @@
         loadPublicCards();
     }
 
-    function isCadastrosActive() {
-        return document.getElementById('page-cadastros')?.classList.contains('active');
+    function isCadDirecionadoresActive() {
+        return document.getElementById('page-cad-direcionadores')?.classList.contains('active');
     }
 
     function hasAuthenticatedUser() {
@@ -515,7 +515,7 @@
             return;
         }
 
-        if (page === 'cadastros') {
+        if (page === 'cad-direcionadores') {
             if (isAdmin()) {
                 loadAdminCards();
             } else {

@@ -1,0 +1,106 @@
+        <div class="page" id="page-cad-direcionadores">
+            <div class="page-header">
+                <h1>Cadastros: Cards Direcionadores</h1>
+                <p>Gerencie os cards e links exibidos na Home e paginas de sistemas.</p>
+            </div>
+
+            <div class="cad-page-actions">
+                <button class="btn-icon" data-nav="cadastros">← Voltar para Cadastros</button>
+            </div>
+
+            <div class="cad-toolbar">
+                <div class="cad-summary">Gerencie cards e links de navegacao da plataforma.</div>
+                <button class="btn-icon" id="cad-dir-refresh-btn">↻ Atualizar</button>
+            </div>
+
+            <div class="cad-grid">
+                <div class="cad-card cad-card-wide">
+                    <div class="cad-card-head cad-card-head-inline">
+                        <div>
+                            <h3>Cards Direcionadores</h3>
+                            <p>Gerencie os cards exibidos na Home e nas areas de sistemas.</p>
+                        </div>
+                        <button class="btn-icon cad-head-btn" id="cad-open-link-modal">Cadastrar</button>
+                    </div>
+
+                    <div class="table-wrap cad-table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Area</th>
+                                    <th>Card</th>
+                                    <th>Link</th>
+                                    <th>Status</th>
+                                    <th>Acoes</th>
+                                </tr>
+                            </thead>
+                            <tbody id="cad-link-tbody">
+                                <tr><td colspan="5">
+                                    <div class="table-state">
+                                        <div class="icon"></div>
+                                        <div>Navegue ate esta pagina para carregar.</div>
+                                    </div>
+                                </td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-backdrop cad-crud-modal" id="cad-link-modal" hidden>
+                <div class="modal cad-modal" style="max-width:860px" onclick="event.stopPropagation()">
+                    <div class="modal-header">
+                        <h3>Cadastro de Card Direcionador</h3>
+                        <button class="modal-close" data-action="close-cad-modal" aria-label="Fechar">✕</button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="cad-link-form" class="cad-form cad-modal-form">
+                            <input type="hidden" id="cad-link-id">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Area</label>
+                                    <select id="cad-link-area" required>
+                                        <option value="" selected disabled>Selecione...</option>
+                                        <option value="home">Home</option>
+                                        <option value="helpdesk">Helpdesk</option>
+                                        <option value="corporativo">Corporativo</option>
+                                        <option value="telecom">Telecom</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Nome do card</label>
+                                    <input type="text" id="cad-link-nome" placeholder="Ex: Helpdesk VinilSul" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Ordem</label>
+                                    <input type="number" id="cad-link-ordem" min="0" step="1" value="100">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Link</label>
+                                    <input type="url" id="cad-link-url" placeholder="https://..." required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Foto do card (URL)</label>
+                                    <input type="url" id="cad-link-imagem" placeholder="https://..." required>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Descricao</label>
+                                <input type="text" id="cad-link-descricao" placeholder="Ex: GLPI Service Desk - interno" required>
+                            </div>
+                            <label class="cad-checkbox">
+                                <input type="checkbox" id="cad-link-ativo" checked>
+                                <span>Ativo</span>
+                            </label>
+                            <div class="cad-actions">
+                                <button type="button" class="btn-row" data-action="close-cad-modal">Fechar</button>
+                                <button type="button" class="btn-row" id="cad-link-cancel" style="display:none">Cancelar edicao</button>
+                                <button type="submit" class="btn-primary" id="cad-link-submit">Salvar Card</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>

@@ -19,6 +19,9 @@
         documentacao: 'Documentação',
         usuarios: 'Contas de Acesso',
         cadastros: 'Cadastros',
+        'cad-estrutura': 'Cadastros • Estrutura',
+        'cad-filiais': 'Cadastros • Filiais',
+        'cad-direcionadores': 'Cadastros • Direcionadores',
     };
 
     let currentPage = 'home';
@@ -32,7 +35,14 @@
         });
 
         document.addEventListener('app:auth-changed', (event) => {
-            if (!event.detail?.isAdmin && (currentPage === 'usuarios' || currentPage === 'cadastros' || currentPage === 'colaboradores')) {
+            if (!event.detail?.isAdmin && (
+                currentPage === 'usuarios' ||
+                currentPage === 'cadastros' ||
+                currentPage === 'colaboradores' ||
+                currentPage === 'cad-estrutura' ||
+                currentPage === 'cad-filiais' ||
+                currentPage === 'cad-direcionadores'
+            )) {
                 const homeBtn = document.querySelector('.nav-item[data-nav="home"]');
                 navTo('home', homeBtn || null);
             }
@@ -78,13 +88,15 @@
         document.querySelectorAll('.nav-item').forEach((node) => node.classList.remove('active'));
 
         pageElement.classList.add('active');
-        if (element) {
-            element.classList.add('active');
+
+        let navElement = element;
+        if (!navElement && ['cad-estrutura', 'cad-filiais', 'cad-direcionadores'].includes(page)) {
+            navElement = document.getElementById('nav-cadastros');
+        }
+        if (navElement) {
+            navElement.classList.add('active');
         }
 
-        if (page === 'cadastros' && options.cadModule && typeof window.setCadastrosModule === 'function') {
-            window.setCadastrosModule(options.cadModule);
-        }
         if (page === 'documentacao' && typeof window.setDocumentacaoMode === 'function') {
             window.setDocumentacaoMode(options.docsMode || 'consulta');
         }
@@ -128,6 +140,14 @@
 
         if (page === 'cadastros' && typeof window.onCadastrosActivate === 'function') {
             window.onCadastrosActivate();
+        }
+
+        if (page === 'cad-estrutura' && typeof window.onCadEstruturaActivate === 'function') {
+            window.onCadEstruturaActivate();
+        }
+
+        if (page === 'cad-filiais' && typeof window.onCadFiliaisActivate === 'function') {
+            window.onCadFiliaisActivate();
         }
 
         if (page === 'unidades' && typeof window.onUnidadesActivate === 'function') {

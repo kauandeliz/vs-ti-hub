@@ -21,6 +21,9 @@
         'pages/colaboradores.html',
         'pages/usuarios.html',
         'pages/cadastros.html',
+        'pages/cad-estrutura.html',
+        'pages/cad-filiais.html',
+        'pages/cad-direcionadores.html',
     ];
 
     function loadPartialSync(path) {
@@ -91,4 +94,3 @@
         },
     }));
 })();
-
