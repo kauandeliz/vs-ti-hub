@@ -13,8 +13,16 @@
     'use strict';
 
     const MIN_PASSWORD_LENGTH = 8;
+    const INACTIVITY_TIMEOUT_MS = 40 * 60 * 1000;
+    const INACTIVITY_ACTIVITY_THROTTLE_MS = 5000;
+    const INACTIVITY_LOGOUT_MESSAGE = 'Sessão encerrada por inatividade após 40 minutos.';
+
     let currentUser = null;
     let authSubscription = null;
+    let inactivityTimer = null;
+    let lastActivityAt = 0;
+    let inactivityListenersBound = false;
+    let pendingSignOutReason = null;
 
     function getCurrentUser() {
         return currentUser;
@@ -33,6 +41,78 @@
         }));
     }
 
+    function bindInactivityListeners() {
+        if (inactivityListenersBound) return;
+
+        const passiveOpts = { passive: true };
+        window.addEventListener('pointerdown', handleUserActivity, passiveOpts);
+        window.addEventListener('mousemove', handleUserActivity, passiveOpts);
+        window.addEventListener('keydown', handleUserActivity);
+        window.addEventListener('scroll', handleUserActivity, passiveOpts);
+        window.addEventListener('touchstart', handleUserActivity, passiveOpts);
+        window.addEventListener('focus', handleUserActivity);
+        document.addEventListener('visibilitychange', handleUserActivity);
+        inactivityListenersBound = true;
+    }
+
+    function startInactivityMonitor({ reset = false } = {}) {
+        bindInactivityListeners();
+        if (reset || !lastActivityAt) {
+            lastActivityAt = Date.now();
+        }
+        scheduleInactivityLogout();
+    }
+
+    function stopInactivityMonitor() {
+        if (inactivityTimer) {
+            clearTimeout(inactivityTimer);
+            inactivityTimer = null;
+        }
+        lastActivityAt = 0;
+    }
+
+    function scheduleInactivityLogout() {
+        if (inactivityTimer) {
+            clearTimeout(inactivityTimer);
+            inactivityTimer = null;
+        }
+
+        if (!currentUser) return;
+
+        const elapsedMs = Date.now() - lastActivityAt;
+        const remainingMs = INACTIVITY_TIMEOUT_MS - elapsedMs;
+
+        if (remainingMs <= 0) {
+            void handleInactivityTimeout();
+            return;
+        }
+
+        inactivityTimer = setTimeout(() => {
+            void handleInactivityTimeout();
+        }, remainingMs);
+    }
+
+    function handleUserActivity(event) {
+        if (!currentUser) return;
+
+        if (event?.type === 'visibilitychange' && document.visibilityState !== 'visible') {
+            return;
+        }
+
+        const now = Date.now();
+        if (now - lastActivityAt < INACTIVITY_ACTIVITY_THROTTLE_MS) {
+            return;
+        }
+
+        lastActivityAt = now;
+        scheduleInactivityLogout();
+    }
+
+    async function handleInactivityTimeout() {
+        if (!currentUser) return;
+        await handleLogout({ reason: 'inactivity' });
+    }
+
     async function initAuth() {
         showLoginScreen();
 
@@ -47,11 +127,11 @@
             showLoginError('Falha de conexão ao validar sessão.');
         }
 
-        const { data, error } = _supabase.auth.onAuthStateChange(async (_event, session) => {
+        const { data, error } = _supabase.auth.onAuthStateChange(async (event, session) => {
             if (session?.user) {
                 await onSignedIn(session.user);
             } else {
-                onSignedOut();
+                onSignedOut(pendingSignOutReason || event || 'auth-state');
             }
         });
 
@@ -145,33 +225,49 @@
         }
     }
 
-    async function handleLogout() {
+    async function handleLogout(options = {}) {
+        const reason = typeof options?.reason === 'string' && options.reason
+            ? options.reason
+            : 'manual';
+        pendingSignOutReason = reason;
+
         try {
             await _supabase.auth.signOut();
         } catch {
             // no-op: o fluxo abaixo garante reset local
         }
 
-        onSignedOut();
+        onSignedOut(reason);
     }
 
     async function onSignedIn(user) {
+        const previousUserId = currentUser?.id || '';
+        const isSameUser = previousUserId && previousUserId === user?.id;
+
         currentUser = user;
+        pendingSignOutReason = null;
         hideLoginScreen();
         showApp();
         renderUserWidget(user);
         showAdminNav(isAdmin());
         showDocumentationNav(true);
+        startInactivityMonitor({ reset: !isSameUser });
         dispatchAuthChanged();
     }
 
-    function onSignedOut() {
+    function onSignedOut(reason = 'manual') {
+        const effectiveReason = pendingSignOutReason || reason || 'manual';
+        pendingSignOutReason = null;
         currentUser = null;
+        stopInactivityMonitor();
         hideApp();
         clearUserWidget();
         showAdminNav(false);
         showDocumentationNav(false);
         showLoginScreen();
+        if (effectiveReason === 'inactivity') {
+            showLoginError(INACTIVITY_LOGOUT_MESSAGE);
+        }
         dispatchAuthChanged();
     }
 
@@ -423,6 +519,7 @@
 
     document.addEventListener('DOMContentLoaded', initAuth);
     window.addEventListener('beforeunload', () => {
+        stopInactivityMonitor();
         authSubscription?.unsubscribe?.();
     });
 })();
