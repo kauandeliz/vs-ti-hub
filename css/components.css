@@ -258,59 +258,6 @@ tbody tr:hover td {
     font-family: var(--mono);
 }
 
-/* ─── ETIQUETAS ───────────────────────────────────── */
-.labels-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(308px, 1fr));
-    gap: 11px;
-}
-
-.label-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 15px;
-    position: relative;
-    transition: border-color 0.2s;
-}
-
-.label-card:hover { border-color: var(--border-hover); }
-
-.label-title {
-    font-size: 0.62rem;
-    font-weight: 700;
-    color: var(--accent);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    margin-bottom: 8px;
-}
-
-.label-body {
-    font-size: 0.68rem;
-    line-height: 1.6;
-    color: var(--text-soft);
-    font-family: var(--mono);
-}
-
-.copy-btn {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    color: var(--text-muted);
-    padding: 3px 8px;
-    border-radius: 5px;
-    font-size: 0.55rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.15s;
-    font-family: var(--font);
-}
-
-.copy-btn:hover         { border-color: var(--accent2); color: var(--accent2); }
-.copy-btn.copied        { border-color: var(--accent2); color: var(--accent2); background: rgba(56, 217, 169, 0.08); }
-
 /* ─── GLOBAL FEEDBACK ─────────────────────────────── */
 .app-toast-stack {
     position: fixed;

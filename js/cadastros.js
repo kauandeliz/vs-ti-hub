@@ -325,7 +325,6 @@
             })
             .map((filial) => {
                 const codigo = Number.isFinite(filial.codigo) ? filial.codigo : '—';
-                const etiqueta = filial.usa_etiqueta ? '✓' : '—';
                 return `
                     <tr>
                         <td>
@@ -336,7 +335,6 @@
                         <td>${escapeHtml(filial.cidade || '—')}</td>
                         <td>${escapeHtml(filial.bairro || '—')}</td>
                         <td>
-                            <span style="font-size:0.7rem;color:var(--text-soft)">Etiqueta: ${etiqueta}</span><br>
                             ${renderStatusPill(filial.ativo)}
                             <div class="row-actions" style="margin-top:6px">
                                 <button class="btn-row primary" data-action="edit-filial" data-id="${filial.id}">Editar</button>
@@ -549,7 +547,6 @@
             numero: document.getElementById('cad-filial-numero')?.value || '',
             cnpj: document.getElementById('cad-filial-cnpj')?.value || '',
             cep: document.getElementById('cad-filial-cep')?.value || '',
-            usaEtiqueta: Boolean(document.getElementById('cad-filial-etiqueta')?.checked),
             ativo: Boolean(document.getElementById('cad-filial-ativo')?.checked),
         };
 
@@ -587,7 +584,6 @@
             'cad-filial-cep',
         ].forEach((id) => setValue(id, ''));
 
-        setChecked('cad-filial-etiqueta', true);
         setChecked('cad-filial-ativo', true);
         setText('cad-filial-submit', 'Salvar Filial');
         toggleDisplay('cad-filial-cancel', false);
@@ -616,7 +612,6 @@
             setValue('cad-filial-numero', filial.numero || '');
             setValue('cad-filial-cnpj', filial.cnpj || '');
             setValue('cad-filial-cep', filial.cep || '');
-            setChecked('cad-filial-etiqueta', Boolean(filial.usa_etiqueta));
             setChecked('cad-filial-ativo', Boolean(filial.ativo));
             setText('cad-filial-submit', 'Atualizar Filial');
             toggleDisplay('cad-filial-cancel', true);
@@ -678,17 +673,13 @@
         modal.hidden = true;
     }
 
-    function openFilialCreateModal(preset = {}) {
+    function openFilialCreateModal() {
         if (!isAdmin()) {
             notify('Acesso restrito a administradores.', 'error');
             return false;
         }
 
         resetFilialForm();
-
-        if (Object.prototype.hasOwnProperty.call(preset, 'usaEtiqueta')) {
-            setChecked('cad-filial-etiqueta', Boolean(preset.usaEtiqueta));
-        }
 
         openCadModal('cad-filial-modal');
         setTimeout(() => document.getElementById('cad-filial-nome')?.focus(), 30);

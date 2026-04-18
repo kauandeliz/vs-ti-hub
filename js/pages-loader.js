@@ -16,7 +16,6 @@
         'pages/corporativo.html',
         'pages/telecom.html',
         'pages/unidades.html',
-        'pages/etiquetas.html',
         'pages/documentacao.html',
         'pages/colaboradores.html',
         'pages/usuarios.html',

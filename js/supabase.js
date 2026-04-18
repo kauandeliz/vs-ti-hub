@@ -571,10 +571,6 @@
             payload.uf = uf || null;
         }
 
-        if (Object.prototype.hasOwnProperty.call(fields, 'usaEtiqueta')) {
-            payload.usa_etiqueta = Boolean(fields.usaEtiqueta);
-        }
-
         if (Object.prototype.hasOwnProperty.call(fields, 'ativo')) {
             payload.ativo = Boolean(fields.ativo);
         }
@@ -595,7 +591,7 @@
         return { payload, error: null };
     }
 
-    async function listarFiliais({ apenasAtivos = false, apenasEtiqueta = null } = {}) {
+    async function listarFiliais({ apenasAtivos = false } = {}) {
         let query = client
             .from('filiais')
             .select('*')
@@ -604,10 +600,6 @@
 
         if (apenasAtivos) {
             query = query.eq('ativo', true);
-        }
-
-        if (apenasEtiqueta === true) {
-            query = query.eq('usa_etiqueta', true);
         }
 
         const { data, error } = await query;

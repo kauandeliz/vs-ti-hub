@@ -121,28 +121,8 @@
                 return;
             }
 
-            if (area === 'home') {
-                container.innerHTML = cards.map(renderHomeCard).join('');
-                return;
-            }
-
             container.innerHTML = cards.map(renderExternalCard).join('');
         });
-    }
-
-    function renderHomeCard(card) {
-        return `
-            <a href="${escapeHtmlAttribute(card.link)}" target="_blank" rel="noopener noreferrer" class="tool-card">
-                <div class="card-banner">
-                    <img src="${escapeHtmlAttribute(card.imagem_url)}" alt="${escapeHtmlAttribute(card.nome)}" loading="lazy">
-                </div>
-                <div class="card-body">
-                    <h3>${escapeHtml(card.nome)}</h3>
-                    <p>${escapeHtml(card.descricao || '')}</p>
-                </div>
-                <div class="card-footer">Acessar</div>
-            </a>
-        `;
     }
 
     function renderExternalCard(card) {

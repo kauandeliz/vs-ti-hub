@@ -14,7 +14,6 @@
         corporativo: 'Corporativo',
         telecom: 'Telecom',
         unidades: 'Unidades',
-        etiquetas: 'Etiquetas',
         colaboradores: 'Colaboradores Internos',
         documentacao: 'Documentação',
         usuarios: 'Contas de Acesso',
@@ -142,10 +141,6 @@
         if (page === 'unidades' && typeof window.onUnidadesActivate === 'function') {
             window.onUnidadesActivate();
         }
-
-        if (page === 'etiquetas' && typeof window.onEtiquetasActivate === 'function') {
-            window.onEtiquetasActivate();
-        }
     }
 
     function toggleSidebar() {
@@ -158,7 +153,7 @@
         const activePage = document.querySelector('.page.active');
         if (!activePage) return;
 
-        const cards = activePage.querySelectorAll('.tool-card, .external-card, .shortcut-card, .label-card');
+        const cards = activePage.querySelectorAll('.tool-card, .external-card, .shortcut-card');
         const rows = activePage.querySelectorAll('tbody tr');
 
         if (!term) {
