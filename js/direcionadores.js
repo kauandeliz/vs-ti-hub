@@ -38,6 +38,7 @@
             openCardCreateModal();
         });
         document.addEventListener('click', handleCardCreateClick);
+        document.addEventListener('click', handlePublicCardActionClick);
         bindLinkModal();
 
         document.getElementById('cad-link-form')?.addEventListener('submit', handleLinkSubmit);
@@ -134,16 +135,38 @@
     }
 
     function renderExternalCard(card) {
+        const id = Number(card.id);
+        if (!isAdmin()) {
+            return `
+                <a href="${escapeHtmlAttribute(card.link)}" target="_blank" rel="noopener noreferrer" class="external-card">
+                    <div class="external-card-image">
+                        <img src="${escapeHtmlAttribute(card.imagem_url)}" alt="${escapeHtmlAttribute(card.nome)}" loading="lazy">
+                    </div>
+                    <div class="external-card-content">
+                        <div class="external-card-title">${escapeHtml(card.nome)}</div>
+                        <div class="external-card-desc">${escapeHtml(card.descricao || '')}</div>
+                    </div>
+                </a>
+            `;
+        }
+
         return `
-            <a href="${escapeHtmlAttribute(card.link)}" target="_blank" rel="noopener noreferrer" class="external-card">
-                <div class="external-card-image">
-                    <img src="${escapeHtmlAttribute(card.imagem_url)}" alt="${escapeHtmlAttribute(card.nome)}" loading="lazy">
+            <article class="external-card external-card-manage">
+                <a href="${escapeHtmlAttribute(card.link)}" target="_blank" rel="noopener noreferrer" class="external-card-link">
+                    <div class="external-card-image">
+                        <img src="${escapeHtmlAttribute(card.imagem_url)}" alt="${escapeHtmlAttribute(card.nome)}" loading="lazy">
+                    </div>
+                    <div class="external-card-content">
+                        <div class="external-card-title">${escapeHtml(card.nome)}</div>
+                        <div class="external-card-desc">${escapeHtml(card.descricao || '')}</div>
+                    </div>
+                </a>
+                <div class="external-card-actions">
+                    <button class="btn-row primary" data-action="edit-public-card" data-id="${Number.isFinite(id) ? id : ''}">
+                        Editar card
+                    </button>
                 </div>
-                <div class="external-card-content">
-                    <div class="external-card-title">${escapeHtml(card.nome)}</div>
-                    <div class="external-card-desc">${escapeHtml(card.descricao || '')}</div>
-                </div>
-            </a>
+            </article>
         `;
     }
 
@@ -357,18 +380,7 @@
             const card = state.adminCards.find((item) => item.id === id);
             if (!card) return;
 
-            setValue('cad-link-id', String(card.id));
-            setValue('cad-link-area', card.area || '');
-            setValue('cad-link-nome', card.nome || '');
-            setValue('cad-link-descricao', card.descricao || '');
-            setValue('cad-link-url', card.link || '');
-            setValue('cad-link-imagem', card.imagem_url || '');
-            setValue('cad-link-ordem', Number.isFinite(card.ordem) ? String(card.ordem) : '100');
-            setChecked('cad-link-ativo', Boolean(card.ativo));
-            setText('cad-link-submit', 'Atualizar Card');
-            toggleDisplay('cad-link-cancel', true);
-            openLinkModal();
-            setTimeout(() => document.getElementById('cad-link-nome')?.focus(), 30);
+            openCardEditModal(card);
             return;
         }
 
@@ -447,6 +459,50 @@
         openCardCreateModal(area);
     }
 
+    async function handlePublicCardActionClick(event) {
+        const button = event.target.closest('[data-action="edit-public-card"][data-id]');
+        if (!button) return;
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        if (!isAdmin()) {
+            notify('Acesso restrito a administradores.', 'error');
+            return;
+        }
+
+        const id = Number(button.dataset.id);
+        if (!Number.isFinite(id)) return;
+
+        const cached = state.publicCards.find((item) => item.id === id)
+            || state.adminCards.find((item) => item.id === id);
+        if (cached) {
+            openCardEditModal(cached);
+            return;
+        }
+
+        const api = window.App?.api?.catalog;
+        if (!api) {
+            notify('API de cards indisponível.', 'error');
+            return;
+        }
+
+        const { data, error } = await api.listarDirecionadores({ apenasAtivos: false });
+        if (error) {
+            notify(error.message, 'error');
+            return;
+        }
+
+        state.adminCards = sortCards(data || []);
+        const card = state.adminCards.find((item) => item.id === id);
+        if (!card) {
+            notify('Card não encontrado para edição.', 'error');
+            return;
+        }
+
+        openCardEditModal(card);
+    }
+
     function openCardCreateModal(area = '') {
         if (!isAdmin()) {
             notify('Acesso restrito a administradores.', 'error');
@@ -458,6 +514,28 @@
             setValue('cad-link-area', area);
         }
 
+        openLinkModal();
+        setTimeout(() => document.getElementById('cad-link-nome')?.focus(), 30);
+        return true;
+    }
+
+    function openCardEditModal(card) {
+        if (!card) return false;
+        if (!isAdmin()) {
+            notify('Acesso restrito a administradores.', 'error');
+            return false;
+        }
+
+        setValue('cad-link-id', String(card.id));
+        setValue('cad-link-area', card.area || '');
+        setValue('cad-link-nome', card.nome || '');
+        setValue('cad-link-descricao', card.descricao || '');
+        setValue('cad-link-url', card.link || '');
+        setValue('cad-link-imagem', card.imagem_url || '');
+        setValue('cad-link-ordem', Number.isFinite(card.ordem) ? String(card.ordem) : '100');
+        setChecked('cad-link-ativo', Boolean(card.ativo));
+        setText('cad-link-submit', 'Atualizar Card');
+        toggleDisplay('cad-link-cancel', true);
         openLinkModal();
         setTimeout(() => document.getElementById('cad-link-nome')?.focus(), 30);
         return true;

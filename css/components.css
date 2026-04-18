@@ -160,6 +160,31 @@
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
 }
 
+.external-card-link {
+    color: inherit;
+    text-decoration: none;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    flex: 1;
+}
+
+.external-card-manage {
+    min-height: 236px;
+}
+
+.external-card-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 0 12px 12px;
+}
+
+.external-card-actions .btn-row {
+    font-size: 0.62rem;
+    padding: 4px 9px;
+}
+
 .external-card-image {
     height: 110px;
     background: #fff;

@@ -612,21 +612,7 @@
             const filial = state.filiais.find((item) => item.id === id);
             if (!filial) return;
 
-            setValue('cad-filial-id', String(filial.id));
-            setValue('cad-filial-codigo', Number.isFinite(filial.codigo) ? String(filial.codigo) : '');
-            setValue('cad-filial-nome', filial.nome || '');
-            setValue('cad-filial-uf', filial.uf || '');
-            setValue('cad-filial-cidade', filial.cidade || '');
-            setValue('cad-filial-bairro', filial.bairro || '');
-            setValue('cad-filial-endereco', filial.endereco || '');
-            setValue('cad-filial-numero', filial.numero || '');
-            setValue('cad-filial-cnpj', filial.cnpj || '');
-            setValue('cad-filial-cep', filial.cep || '');
-            setChecked('cad-filial-ativo', Boolean(filial.ativo));
-            setText('cad-filial-submit', 'Atualizar Filial');
-            toggleDisplay('cad-filial-cancel', true);
-            openCadModal('cad-filial-modal');
-            setTimeout(() => document.getElementById('cad-filial-nome')?.focus(), 30);
+            openFilialEditModal(filial);
             return;
         }
 
@@ -694,6 +680,46 @@
         openCadModal('cad-filial-modal');
         setTimeout(() => document.getElementById('cad-filial-nome')?.focus(), 30);
         return true;
+    }
+
+    function openFilialEditModal(filialInput) {
+        if (!isAdmin()) {
+            notify('Acesso restrito a administradores.', 'error');
+            return false;
+        }
+
+        const filial = resolveFilialForEdit(filialInput);
+        if (!filial) {
+            notify('Filial não encontrada para edição.', 'error');
+            return false;
+        }
+
+        setValue('cad-filial-id', String(filial.id));
+        setValue('cad-filial-codigo', Number.isFinite(filial.codigo) ? String(filial.codigo) : '');
+        setValue('cad-filial-nome', filial.nome || '');
+        setValue('cad-filial-uf', filial.uf || '');
+        setValue('cad-filial-cidade', filial.cidade || '');
+        setValue('cad-filial-bairro', filial.bairro || '');
+        setValue('cad-filial-endereco', filial.endereco || '');
+        setValue('cad-filial-numero', filial.numero || '');
+        setValue('cad-filial-cnpj', filial.cnpj || '');
+        setValue('cad-filial-cep', filial.cep || '');
+        setChecked('cad-filial-ativo', Boolean(filial.ativo));
+        setText('cad-filial-submit', 'Atualizar Filial');
+        toggleDisplay('cad-filial-cancel', true);
+        openCadModal('cad-filial-modal');
+        setTimeout(() => document.getElementById('cad-filial-nome')?.focus(), 30);
+        return true;
+    }
+
+    function resolveFilialForEdit(filialInput) {
+        if (filialInput && typeof filialInput === 'object') {
+            return filialInput;
+        }
+
+        const id = Number(filialInput);
+        if (!Number.isFinite(id)) return null;
+        return state.filiais.find((item) => item.id === id) || null;
     }
 
     function setCreateButtonsDisabled(disabled) {
@@ -770,6 +796,7 @@
     window.onCadEstruturaActivate = onCadEstruturaActivate;
     window.onCadFiliaisActivate = onCadFiliaisActivate;
     window.openFilialCreateModal = openFilialCreateModal;
+    window.openFilialEditModal = openFilialEditModal;
     window.loadCadastros = loadCadastros;
 
     document.addEventListener('DOMContentLoaded', initCadastros);
