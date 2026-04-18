@@ -69,14 +69,6 @@
             return clickedElement;
         }
 
-        const cadModule = clickedElement.dataset.cadModuleTarget || '';
-        if (page === 'cadastros' && cadModule) {
-            const moduleButton = document.querySelector(`.nav-item[data-nav="${page}"][data-cad-module-target="${cadModule}"]`);
-            if (moduleButton) {
-                return moduleButton;
-            }
-        }
-
         return document.querySelector(`.nav-item[data-nav="${page}"]`) || null;
     }
 
@@ -89,10 +81,7 @@
 
         pageElement.classList.add('active');
 
-        let navElement = element;
-        if (!navElement && ['cad-estrutura', 'cad-filiais', 'cad-direcionadores'].includes(page)) {
-            navElement = document.getElementById('nav-cadastros');
-        }
+        const navElement = element;
         if (navElement) {
             navElement.classList.add('active');
         }
