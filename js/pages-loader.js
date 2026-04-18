@@ -11,6 +11,7 @@
 
     const PAGE_PARTIALS = [
         'pages/home.html',
+        'pages/dashboards.html',
         'pages/gerador.html',
         'pages/helpdesk.html',
         'pages/corporativo.html',

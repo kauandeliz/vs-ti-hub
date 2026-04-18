@@ -9,6 +9,7 @@
 
     const PAGE_LABELS = {
         home: 'Home',
+        dashboards: 'Dashboards',
         gerador: 'Gerador de Acessos VS',
         helpdesk: 'Helpdesk',
         corporativo: 'Corporativo',
@@ -115,6 +116,10 @@
             window.initHomeOnActivate();
         }
 
+        if (page === 'dashboards' && typeof window.onDashboardsActivate === 'function') {
+            window.onDashboardsActivate();
+        }
+
         if (page === 'colaboradores' && typeof window.onColaboradoresActivate === 'function') {
             window.onColaboradoresActivate();
         }
@@ -158,7 +163,7 @@
         const activePage = document.querySelector('.page.active');
         if (!activePage) return;
 
-        const cards = activePage.querySelectorAll('.tool-card, .external-card, .shortcut-card');
+        const cards = activePage.querySelectorAll('.tool-card, .external-card, .shortcut-card, .dash-chart-card, .dash-report-card, .dash-kpi-card');
         const rows = activePage.querySelectorAll('tbody tr');
 
         if (!term) {

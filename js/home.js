@@ -16,11 +16,31 @@
         return 'Bom dia';
     }
 
+    function getFirstNameFromUser(user) {
+        if (!user) return 'usuário';
+
+        const rawName = String(user.user_metadata?.name || '').trim();
+        if (rawName) {
+            const first = rawName.split(/\s+/).find(Boolean);
+            if (first) return first;
+        }
+
+        const emailName = String(user.email || '').split('@')[0].trim();
+        if (emailName) {
+            const first = emailName.split(/[._\-\s]+/).find(Boolean);
+            if (first) return first;
+        }
+
+        return 'usuário';
+    }
+
     function updateLandingGreeting() {
         const el = document.getElementById('landingGreeting');
         if (!el) return;
 
-        el.textContent = `${getGreetingLabel()}, equipe VS`;
+        const user = typeof window.getCurrentUser === 'function' ? window.getCurrentUser() : null;
+        const firstName = getFirstNameFromUser(user);
+        el.textContent = `${getGreetingLabel()}, ${firstName}`;
     }
 
     function updateLandingCurrentTime() {

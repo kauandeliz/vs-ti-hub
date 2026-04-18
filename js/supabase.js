@@ -323,6 +323,17 @@
         return [...values].sort((a, b) => String(a).localeCompare(String(b), 'pt-BR'));
     }
 
+    const DASHBOARD_REPORT_ORIGIN_DIMENSIONS = Object.freeze({
+        colaboradores: new Set(['status', 'uf', 'setor', 'funcao', 'empresa', 'loja']),
+        filiais: new Set(['status', 'uf', 'cidade', 'bairro', 'codigo']),
+        linhas: new Set(['tipo', 'loja', 'dpto', 'cargo', 'ddd']),
+        documentacao: new Set(['categoria', 'tipo', 'localizacao', 'extensao']),
+        direcionadores: new Set(['area', 'status']),
+        usuarios: new Set(['status', 'tipo', 'setor', 'cargo']),
+    });
+
+    const DASHBOARD_REPORT_VISUAL_OPTIONS = new Set(['bar', 'line', 'doughnut', 'polarArea']);
+
     function invalidateCatalogCache() {
         catalogSnapshotCache = null;
         catalogSnapshotCachedAt = 0;
@@ -826,6 +837,232 @@
         }
 
         return { data: { id }, error: null };
+    }
+
+    function normalizeDashboardReportOrigin(value) {
+        const normalized = sanitizeText(value).toLowerCase();
+        if (!Object.prototype.hasOwnProperty.call(DASHBOARD_REPORT_ORIGIN_DIMENSIONS, normalized)) {
+            return { value: null, error: normalizeError('Origem de dados invalida para relatorio.', 'VALIDATION_ERROR') };
+        }
+        return { value: normalized, error: null };
+    }
+
+    function normalizeDashboardReportVisual(value) {
+        const normalized = sanitizeText(value);
+        if (!DASHBOARD_REPORT_VISUAL_OPTIONS.has(normalized)) {
+            return { value: null, error: normalizeError('Visualizacao invalida para relatorio.', 'VALIDATION_ERROR') };
+        }
+        return { value: normalized, error: null };
+    }
+
+    function isDashboardDimensionValid(origin, dimension) {
+        const normalizedOrigin = sanitizeText(origin).toLowerCase();
+        const normalizedDimension = sanitizeText(dimension).toLowerCase();
+        const allowed = DASHBOARD_REPORT_ORIGIN_DIMENSIONS[normalizedOrigin];
+        return Boolean(allowed && allowed.has(normalizedDimension));
+    }
+
+    function normalizeDashboardReportPayload(fields = {}, { partial = false } = {}) {
+        const payload = {};
+
+        if (Object.prototype.hasOwnProperty.call(fields, 'nome')) {
+            const nome = sanitizeText(fields.nome);
+            if (!nome) {
+                return { payload: null, error: normalizeError('Informe o nome do relatorio.', 'VALIDATION_ERROR') };
+            }
+            payload.nome = nome;
+        }
+
+        if (Object.prototype.hasOwnProperty.call(fields, 'descricao')) {
+            payload.descricao = sanitizeText(fields.descricao) || null;
+        }
+
+        if (Object.prototype.hasOwnProperty.call(fields, 'origem')) {
+            const { value, error } = normalizeDashboardReportOrigin(fields.origem);
+            if (error) return { payload: null, error };
+            payload.origem = value;
+        }
+
+        if (Object.prototype.hasOwnProperty.call(fields, 'dimensao')) {
+            const dimensao = sanitizeText(fields.dimensao).toLowerCase();
+            if (!dimensao) {
+                return { payload: null, error: normalizeError('Selecione a dimensao do relatorio.', 'VALIDATION_ERROR') };
+            }
+            payload.dimensao = dimensao;
+        }
+
+        if (Object.prototype.hasOwnProperty.call(fields, 'visualizacao')) {
+            const { value, error } = normalizeDashboardReportVisual(fields.visualizacao);
+            if (error) return { payload: null, error };
+            payload.visualizacao = value;
+        }
+
+        if (Object.prototype.hasOwnProperty.call(fields, 'limite')) {
+            const parsed = Number(sanitizeText(fields.limite));
+            if (!Number.isFinite(parsed) || !Number.isInteger(parsed) || parsed < 3 || parsed > 20) {
+                return { payload: null, error: normalizeError('Limite invalido. Use inteiro entre 3 e 20.', 'VALIDATION_ERROR') };
+            }
+            payload.limite = parsed;
+        }
+
+        if (Object.prototype.hasOwnProperty.call(fields, 'ordem')) {
+            const parsed = Number(sanitizeText(fields.ordem));
+            if (!Number.isFinite(parsed) || !Number.isInteger(parsed) || parsed < 0) {
+                return { payload: null, error: normalizeError('Ordem invalida. Use inteiro maior ou igual a zero.', 'VALIDATION_ERROR') };
+            }
+            payload.ordem = parsed;
+        }
+
+        if (Object.prototype.hasOwnProperty.call(fields, 'ativo')) {
+            payload.ativo = Boolean(fields.ativo);
+        }
+
+        if (!partial) {
+            const requiredFields = ['nome', 'origem', 'dimensao', 'visualizacao'];
+            for (const key of requiredFields) {
+                if (!payload[key]) {
+                    return { payload: null, error: normalizeError(`Campo obrigatorio: ${key}.`, 'VALIDATION_ERROR') };
+                }
+            }
+
+            if (!Object.prototype.hasOwnProperty.call(payload, 'limite')) {
+                payload.limite = 8;
+            }
+            if (!Object.prototype.hasOwnProperty.call(payload, 'ordem')) {
+                payload.ordem = 100;
+            }
+            if (!Object.prototype.hasOwnProperty.call(payload, 'ativo')) {
+                payload.ativo = true;
+            }
+        }
+
+        return { payload, error: null };
+    }
+
+    async function listarDashboardRelatorios({ apenasAtivos = false } = {}) {
+        let query = client
+            .from('catalog_dashboard_relatorios')
+            .select('*')
+            .order('ordem', { ascending: true })
+            .order('nome', { ascending: true });
+
+        if (apenasAtivos) {
+            query = query.eq('ativo', true);
+        }
+
+        const { data, error } = await query;
+        if (error) {
+            return {
+                data: null,
+                error: normalizeError(error.message, error.code || 'DB_DASH_REPORT_LIST_ERROR', error),
+            };
+        }
+
+        return { data: data || [], error: null };
+    }
+
+    async function criarDashboardRelatorio(fields = {}) {
+        const { payload, error: payloadError } = normalizeDashboardReportPayload(fields, { partial: false });
+        if (payloadError) {
+            return { data: null, error: payloadError };
+        }
+
+        if (!isDashboardDimensionValid(payload.origem, payload.dimensao)) {
+            return {
+                data: null,
+                error: normalizeError('Dimensao invalida para a origem selecionada.', 'VALIDATION_ERROR'),
+            };
+        }
+
+        const { data, error } = await client
+            .from('catalog_dashboard_relatorios')
+            .insert([payload])
+            .select()
+            .single();
+
+        if (error) {
+            return {
+                data: null,
+                error: normalizeError(error.message, error.code || 'DB_DASH_REPORT_CREATE_ERROR', error),
+            };
+        }
+
+        return { data, error: null };
+    }
+
+    async function atualizarDashboardRelatorio(id, fields = {}) {
+        const reportId = Number(id);
+        if (!Number.isFinite(reportId) || reportId <= 0) {
+            return { data: null, error: normalizeError('Relatorio invalido para atualizacao.', 'VALIDATION_ERROR') };
+        }
+
+        const { payload, error: payloadError } = normalizeDashboardReportPayload(fields, { partial: true });
+        if (payloadError) {
+            return { data: null, error: payloadError };
+        }
+
+        if (!Object.keys(payload).length) {
+            return { data: null, error: normalizeError('Nenhuma alteracao foi informada.', 'VALIDATION_ERROR') };
+        }
+
+        const { data: current, error: currentError } = await client
+            .from('catalog_dashboard_relatorios')
+            .select('id,origem,dimensao')
+            .eq('id', reportId)
+            .single();
+
+        if (currentError || !current) {
+            return {
+                data: null,
+                error: normalizeError(currentError?.message || 'Relatorio nao encontrado.', currentError?.code || 'DB_DASH_REPORT_NOT_FOUND', currentError),
+            };
+        }
+
+        const nextOrigin = payload.origem || current.origem;
+        const nextDimension = payload.dimensao || current.dimensao;
+        if (!isDashboardDimensionValid(nextOrigin, nextDimension)) {
+            return {
+                data: null,
+                error: normalizeError('Dimensao invalida para a origem selecionada.', 'VALIDATION_ERROR'),
+            };
+        }
+
+        const { data, error } = await client
+            .from('catalog_dashboard_relatorios')
+            .update(payload)
+            .eq('id', reportId)
+            .select()
+            .single();
+
+        if (error) {
+            return {
+                data: null,
+                error: normalizeError(error.message, error.code || 'DB_DASH_REPORT_UPDATE_ERROR', error),
+            };
+        }
+
+        return { data, error: null };
+    }
+
+    async function removerDashboardRelatorio(id) {
+        const reportId = Number(id);
+        if (!Number.isFinite(reportId) || reportId <= 0) {
+            return { data: null, error: normalizeError('Relatorio invalido para exclusao.', 'VALIDATION_ERROR') };
+        }
+
+        const { error } = await client
+            .from('catalog_dashboard_relatorios')
+            .delete()
+            .eq('id', reportId);
+
+        if (error) {
+            return {
+                data: null,
+                error: normalizeError(error.message, error.code || 'DB_DASH_REPORT_DELETE_ERROR', error),
+            };
+        }
+
+        return { data: { id: reportId }, error: null };
     }
 
     const DIRECIONADOR_AREAS = new Set(['home', 'helpdesk', 'corporativo', 'telecom']);
@@ -1640,6 +1877,12 @@
             criar: criarLinha,
             atualizar: atualizarLinha,
             remover: removerLinha,
+        },
+        dashboards: {
+            listarRelatorios: listarDashboardRelatorios,
+            criarRelatorio: criarDashboardRelatorio,
+            atualizarRelatorio: atualizarDashboardRelatorio,
+            removerRelatorio: removerDashboardRelatorio,
         },
         admin: {
             listUsers,

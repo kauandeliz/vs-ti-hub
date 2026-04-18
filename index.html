@@ -18,6 +18,7 @@
     <link rel="stylesheet" href="css/layout.css">
     <link rel="stylesheet" href="css/components.css">
     <link rel="stylesheet" href="css/home.css">
+    <link rel="stylesheet" href="css/dashboards.css">
     <link rel="stylesheet" href="css/gerador.css">
     <link rel="stylesheet" href="css/historico.css">
     <link rel="stylesheet" href="css/colaboradores.css">
@@ -28,6 +29,7 @@
 
     <!-- Supabase JS SDK v2 -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 </head>
 <body>
 
@@ -48,6 +50,9 @@
     <div class="nav-section-label">Visão Geral</div>
     <button class="nav-item active" data-nav="home">
         <i class="nav-icon fas fa-home"></i> Home
+    </button>
+    <button class="nav-item" data-nav="dashboards">
+        <i class="nav-icon fas fa-chart-line"></i> Dashboards
     </button>
 
     <button class="nav-item" data-nav="gerador">
@@ -130,6 +135,7 @@
 <script src="js/supabase.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/home.js"></script>
+<script src="js/dashboards.js"></script>
 <script src="js/gerador-data.js"></script>
 <script src="js/gerador-ui.js"></script>
 <script src="js/unidades.js"></script>

@@ -1,0 +1,183 @@
+        <div class="page" id="page-dashboards">
+            <div class="page-header">
+                <h1>Dashboards</h1>
+                <p>Paineis visuais com indicadores operacionais e relatorios dinamicos.</p>
+            </div>
+
+            <div class="dashboards-toolbar">
+                <div class="dashboards-summary" id="dashboards-summary">Carregando dados dos dashboards...</div>
+                <div class="dashboards-toolbar-actions">
+                    <button class="btn-icon" id="dashboards-new-report-btn" style="display:none">+ Novo relatorio</button>
+                    <button class="btn-icon" id="dashboards-refresh-btn">↻ Atualizar</button>
+                </div>
+            </div>
+
+            <section class="dashboards-section">
+                <div class="dashboards-section-head">
+                    <h3>Visao executiva</h3>
+                    <p>Resumo consolidado das principais entidades do sistema.</p>
+                </div>
+                <div class="dashboards-kpi-grid" id="dashboards-kpi-grid">
+                    <div class="dash-kpi-card"><span>Indicadores</span><strong>--</strong></div>
+                    <div class="dash-kpi-card"><span>Indicadores</span><strong>--</strong></div>
+                    <div class="dash-kpi-card"><span>Indicadores</span><strong>--</strong></div>
+                    <div class="dash-kpi-card"><span>Indicadores</span><strong>--</strong></div>
+                </div>
+            </section>
+
+            <section class="dashboards-section">
+                <div class="dashboards-section-head">
+                    <h3>Dashboards automaticos</h3>
+                    <p>Analises geradas diretamente dos dados atuais da plataforma.</p>
+                </div>
+
+                <div class="dashboards-auto-grid">
+                    <article class="dash-chart-card">
+                        <div class="dash-chart-head">
+                            <h4>Colaboradores por status</h4>
+                            <span class="dash-chart-badge">Colaboradores</span>
+                        </div>
+                        <div class="dash-chart-wrap"><canvas id="dash-auto-colab-status"></canvas></div>
+                    </article>
+
+                    <article class="dash-chart-card">
+                        <div class="dash-chart-head">
+                            <h4>Colaboradores por setor</h4>
+                            <span class="dash-chart-badge">Colaboradores</span>
+                        </div>
+                        <div class="dash-chart-wrap"><canvas id="dash-auto-colab-setor"></canvas></div>
+                    </article>
+
+                    <article class="dash-chart-card">
+                        <div class="dash-chart-head">
+                            <h4>Colaboradores por UF</h4>
+                            <span class="dash-chart-badge">Colaboradores</span>
+                        </div>
+                        <div class="dash-chart-wrap"><canvas id="dash-auto-colab-uf"></canvas></div>
+                    </article>
+
+                    <article class="dash-chart-card">
+                        <div class="dash-chart-head">
+                            <h4>Filiais por UF</h4>
+                            <span class="dash-chart-badge">Filiais</span>
+                        </div>
+                        <div class="dash-chart-wrap"><canvas id="dash-auto-filiais-uf"></canvas></div>
+                    </article>
+
+                    <article class="dash-chart-card">
+                        <div class="dash-chart-head">
+                            <h4>Linhas por tipo</h4>
+                            <span class="dash-chart-badge">Linhas</span>
+                        </div>
+                        <div class="dash-chart-wrap"><canvas id="dash-auto-linhas-tipo"></canvas></div>
+                    </article>
+
+                    <article class="dash-chart-card">
+                        <div class="dash-chart-head">
+                            <h4>Linhas por departamento</h4>
+                            <span class="dash-chart-badge">Linhas</span>
+                        </div>
+                        <div class="dash-chart-wrap"><canvas id="dash-auto-linhas-dpto"></canvas></div>
+                    </article>
+
+                    <article class="dash-chart-card">
+                        <div class="dash-chart-head">
+                            <h4>Documentos por categoria</h4>
+                            <span class="dash-chart-badge">Documentacao</span>
+                        </div>
+                        <div class="dash-chart-wrap"><canvas id="dash-auto-docs-categoria"></canvas></div>
+                    </article>
+
+                    <article class="dash-chart-card">
+                        <div class="dash-chart-head">
+                            <h4>Cards direcionadores por area</h4>
+                            <span class="dash-chart-badge">Cards</span>
+                        </div>
+                        <div class="dash-chart-wrap"><canvas id="dash-auto-cards-area"></canvas></div>
+                    </article>
+
+                    <article class="dash-chart-card">
+                        <div class="dash-chart-head">
+                            <h4>Usuarios por status</h4>
+                            <span class="dash-chart-badge">Contas de acesso</span>
+                        </div>
+                        <div class="dash-chart-wrap"><canvas id="dash-auto-users-status"></canvas></div>
+                        <div class="dash-chart-note" id="dash-auto-users-note"></div>
+                    </article>
+                </div>
+            </section>
+
+            <section class="dashboards-section">
+                <div class="dashboards-section-head">
+                    <h3>Relatorios customizados</h3>
+                    <p>Crie relatorios com visualizacao dinamica usando as fontes de dados do sistema.</p>
+                </div>
+
+                <div class="dashboards-report-grid" id="dashboards-report-grid">
+                    <div class="table-state">
+                        <div class="spinner"></div>
+                        <div>Carregando relatorios...</div>
+                    </div>
+                </div>
+            </section>
+
+            <div class="modal-backdrop dashboards-report-modal" id="dashboards-report-modal" hidden>
+                <div class="modal dashboards-modal" style="max-width:900px" onclick="event.stopPropagation()">
+                    <div class="modal-header">
+                        <h3 id="dashboards-report-modal-title">Novo relatorio</h3>
+                        <button class="modal-close" data-action="close-dash-report-modal" aria-label="Fechar">✕</button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="dashboards-report-form" class="dashboards-form">
+                            <input type="hidden" id="dash-report-id">
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Nome</label>
+                                    <input type="text" id="dash-report-nome" placeholder="Ex: Linhas por departamento" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Fonte de dados</label>
+                                    <select id="dash-report-origem" required></select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Dimensao</label>
+                                    <select id="dash-report-dimensao" required></select>
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Visualizacao</label>
+                                    <select id="dash-report-visualizacao" required></select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Limite de categorias</label>
+                                    <input type="number" id="dash-report-limite" min="3" max="20" value="8" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Ordem</label>
+                                    <input type="number" id="dash-report-ordem" min="0" value="100" required>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Descricao</label>
+                                <input type="text" id="dash-report-descricao" placeholder="Descricao curta para o card de relatorio">
+                            </div>
+
+                            <label class="cad-checkbox">
+                                <input type="checkbox" id="dash-report-ativo" checked>
+                                <span>Relatorio ativo</span>
+                            </label>
+
+                            <div class="cad-actions">
+                                <button type="button" class="btn-row" data-action="close-dash-report-modal">Fechar</button>
+                                <button type="button" class="btn-row" id="dash-report-cancel-btn" style="display:none">Cancelar edicao</button>
+                                <button type="submit" class="btn-primary" id="dash-report-submit-btn">Salvar relatorio</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
