@@ -17,6 +17,7 @@
         if (state.initialized) return;
 
         document.getElementById('unidades-refresh-btn')?.addEventListener('click', loadUnidades);
+        document.getElementById('unidades-open-filial-create-btn')?.addEventListener('click', handleOpenFilialCreate);
 
         document.addEventListener('app:catalog-updated', () => {
             if (isUnidadesActive()) {
@@ -24,6 +25,14 @@
             }
         });
 
+        document.addEventListener('app:auth-changed', () => {
+            syncAdminActions();
+            if (isUnidadesActive()) {
+                loadUnidades();
+            }
+        });
+
+        syncAdminActions();
         state.initialized = true;
     }
 
@@ -33,7 +42,27 @@
 
     async function onUnidadesActivate() {
         if (!getCurrentUser()) return;
+        syncAdminActions();
         await loadUnidades();
+    }
+
+    function syncAdminActions() {
+        const createBtn = document.getElementById('unidades-open-filial-create-btn');
+        if (!createBtn) return;
+
+        const admin = typeof window.isAdmin === 'function' && window.isAdmin();
+        createBtn.style.display = admin ? '' : 'none';
+    }
+
+    function handleOpenFilialCreate() {
+        if (typeof window.openFilialCreateModal === 'function') {
+            window.openFilialCreateModal();
+            return;
+        }
+
+        if (typeof window.navTo === 'function') {
+            window.navTo('cad-filiais', null, { badgeLabel: 'Cadastros • Filiais' });
+        }
     }
 
     async function loadUnidades() {

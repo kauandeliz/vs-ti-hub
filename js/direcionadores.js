@@ -33,9 +33,9 @@
         if (state.initialized) return;
 
         document.getElementById('cad-open-link-modal')?.addEventListener('click', () => {
-            resetLinkForm();
-            openLinkModal();
+            openCardCreateModal();
         });
+        document.addEventListener('click', handleCardCreateClick);
         bindLinkModal();
 
         document.getElementById('cad-link-form')?.addEventListener('submit', handleLinkSubmit);
@@ -49,6 +49,7 @@
         });
 
         document.addEventListener('app:auth-changed', () => {
+            syncAdminCardCreateActions();
             if (isCadDirecionadoresActive()) {
                 if (isAdmin()) {
                     loadAdminCards();
@@ -59,6 +60,7 @@
             loadPublicCards();
         });
 
+        syncAdminCardCreateActions();
         state.initialized = true;
         loadPublicCards();
     }
@@ -441,6 +443,38 @@
         button.style.display = disabled ? 'none' : '';
     }
 
+    function syncAdminCardCreateActions() {
+        const visible = isAdmin();
+        document.querySelectorAll('[data-admin-card-action]').forEach((node) => {
+            node.style.display = visible ? '' : 'none';
+        });
+    }
+
+    function handleCardCreateClick(event) {
+        const button = event.target.closest('[data-open-card-create]');
+        if (!button) return;
+
+        event.preventDefault();
+        const area = String(button.dataset.cardArea || '').trim().toLowerCase();
+        openCardCreateModal(area);
+    }
+
+    function openCardCreateModal(area = '') {
+        if (!isAdmin()) {
+            notify('Acesso restrito a administradores.', 'error');
+            return false;
+        }
+
+        resetLinkForm();
+        if (Object.prototype.hasOwnProperty.call(AREA_LABELS, area)) {
+            setValue('cad-link-area', area);
+        }
+
+        openLinkModal();
+        setTimeout(() => document.getElementById('cad-link-nome')?.focus(), 30);
+        return true;
+    }
+
     async function askConfirmation({ title, message, confirmText }) {
         if (typeof window.showConfirmDialog === 'function') {
             return window.showConfirmDialog({
@@ -525,6 +559,7 @@
     }
 
     window.onDirecionadoresPageActivate = onDirecionadoresPageActivate;
+    window.openCardCreateModal = openCardCreateModal;
 
     document.addEventListener('DOMContentLoaded', initDirecionadores);
 })();

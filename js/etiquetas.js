@@ -16,6 +16,8 @@
         if (state.initialized) return;
 
         document.getElementById('labelGrid')?.addEventListener('click', handleLabelCopy);
+        document.getElementById('etiquetas-refresh-btn')?.addEventListener('click', loadEtiquetas);
+        document.getElementById('etiquetas-open-filial-create-btn')?.addEventListener('click', handleOpenFilialCreate);
 
         document.addEventListener('app:catalog-updated', () => {
             if (isEtiquetasActive()) {
@@ -23,6 +25,14 @@
             }
         });
 
+        document.addEventListener('app:auth-changed', () => {
+            syncAdminActions();
+            if (isEtiquetasActive()) {
+                loadEtiquetas();
+            }
+        });
+
+        syncAdminActions();
         state.initialized = true;
     }
 
@@ -32,7 +42,27 @@
 
     async function onEtiquetasActivate() {
         if (!getCurrentUser()) return;
+        syncAdminActions();
         await loadEtiquetas();
+    }
+
+    function syncAdminActions() {
+        const createBtn = document.getElementById('etiquetas-open-filial-create-btn');
+        if (!createBtn) return;
+
+        const admin = typeof window.isAdmin === 'function' && window.isAdmin();
+        createBtn.style.display = admin ? '' : 'none';
+    }
+
+    function handleOpenFilialCreate() {
+        if (typeof window.openFilialCreateModal === 'function') {
+            window.openFilialCreateModal({ usaEtiqueta: true });
+            return;
+        }
+
+        if (typeof window.navTo === 'function') {
+            window.navTo('cad-filiais', null, { badgeLabel: 'Cadastros • Filiais' });
+        }
     }
 
     async function loadEtiquetas() {

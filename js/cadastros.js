@@ -27,8 +27,7 @@
             openCadModal('cad-cargo-modal');
         });
         document.getElementById('cad-open-filial-modal')?.addEventListener('click', () => {
-            resetFilialForm();
-            openCadModal('cad-filial-modal');
+            openFilialCreateModal();
         });
 
         bindCadModal('cad-setor-modal', resetSetorForm);
@@ -679,6 +678,23 @@
         modal.hidden = true;
     }
 
+    function openFilialCreateModal(preset = {}) {
+        if (!isAdmin()) {
+            notify('Acesso restrito a administradores.', 'error');
+            return false;
+        }
+
+        resetFilialForm();
+
+        if (Object.prototype.hasOwnProperty.call(preset, 'usaEtiqueta')) {
+            setChecked('cad-filial-etiqueta', Boolean(preset.usaEtiqueta));
+        }
+
+        openCadModal('cad-filial-modal');
+        setTimeout(() => document.getElementById('cad-filial-nome')?.focus(), 30);
+        return true;
+    }
+
     function setCreateButtonsDisabled(disabled) {
         ['cad-open-setor-modal', 'cad-open-cargo-modal', 'cad-open-filial-modal'].forEach((id) => {
             const button = document.getElementById(id);
@@ -752,6 +768,7 @@
     window.onCadastrosActivate = onCadastrosActivate;
     window.onCadEstruturaActivate = onCadEstruturaActivate;
     window.onCadFiliaisActivate = onCadFiliaisActivate;
+    window.openFilialCreateModal = openFilialCreateModal;
     window.loadCadastros = loadCadastros;
 
     document.addEventListener('DOMContentLoaded', initCadastros);

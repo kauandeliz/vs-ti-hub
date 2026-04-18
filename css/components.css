@@ -23,6 +23,15 @@
     margin-top: 3px;
 }
 
+.page-actions-row {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+}
+
 /* ─── SECTION LABEL ───────────────────────────────── */
 .section-label {
     font-size: 0.6rem;
