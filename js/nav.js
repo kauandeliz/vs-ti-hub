@@ -47,7 +47,11 @@
         if (!page) return;
 
         event.preventDefault();
-        navTo(page, resolveNavButton(target, page));
+        navTo(page, resolveNavButton(target, page), {
+            cadModule: target.dataset.cadModuleTarget || '',
+            badgeLabel: target.dataset.badgeLabel || '',
+            docsMode: target.dataset.docsMode || '',
+        });
     }
 
     function resolveNavButton(clickedElement, page) {
@@ -55,10 +59,18 @@
             return clickedElement;
         }
 
+        const cadModule = clickedElement.dataset.cadModuleTarget || '';
+        if (page === 'cadastros' && cadModule) {
+            const moduleButton = document.querySelector(`.nav-item[data-nav="${page}"][data-cad-module-target="${cadModule}"]`);
+            if (moduleButton) {
+                return moduleButton;
+            }
+        }
+
         return document.querySelector(`.nav-item[data-nav="${page}"]`) || null;
     }
 
-    function navTo(page, element) {
+    function navTo(page, element, options = {}) {
         const pageElement = document.getElementById(`page-${page}`);
         if (!pageElement) return;
 
@@ -70,8 +82,15 @@
             element.classList.add('active');
         }
 
+        if (page === 'cadastros' && options.cadModule && typeof window.setCadastrosModule === 'function') {
+            window.setCadastrosModule(options.cadModule);
+        }
+        if (page === 'documentacao' && typeof window.setDocumentacaoMode === 'function') {
+            window.setDocumentacaoMode(options.docsMode || 'consulta');
+        }
+
         currentPage = page;
-        updatePageBadge(page);
+        updatePageBadge(page, options.badgeLabel || '');
         runPageHook(page);
 
         if (window.innerWidth < 900) {
@@ -79,10 +98,10 @@
         }
     }
 
-    function updatePageBadge(page) {
+    function updatePageBadge(page, explicitLabel = '') {
         const badge = document.getElementById('currentPageBadge');
         if (badge) {
-            badge.textContent = PAGE_LABELS[page] || page;
+            badge.textContent = explicitLabel || PAGE_LABELS[page] || page;
         }
     }
 

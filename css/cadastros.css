@@ -110,6 +110,19 @@
     padding: 14px 14px 0;
 }
 
+.cad-card-head-inline {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.cad-head-btn {
+    flex-shrink: 0;
+    padding: 7px 12px;
+    font-size: 0.68rem;
+}
+
 .cad-card h3 {
     font-size: 0.88rem;
     margin-bottom: 6px;
@@ -126,6 +139,61 @@
 .cad-form-shell {
     padding: 0 14px 14px;
     border-bottom: 1px solid var(--border);
+}
+
+.cad-crud-modal[hidden] {
+    display: none;
+}
+
+.cad-modal .modal-body {
+    padding: 16px 18px;
+}
+
+.cad-modal-form .form-group label {
+    font-size: 0.66rem;
+    font-weight: 600;
+    color: var(--text-soft);
+    display: block;
+    margin-bottom: 5px;
+}
+
+.cad-modal-form input[type="text"],
+.cad-modal-form input[type="number"],
+.cad-modal-form input[type="url"],
+.cad-modal-form select,
+.cad-modal-form textarea {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 0.74rem;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.cad-modal-form input[type="text"],
+.cad-modal-form input[type="number"],
+.cad-modal-form input[type="url"],
+.cad-modal-form select {
+    height: 34px;
+    padding: 0 10px;
+}
+
+.cad-modal-form textarea {
+    min-height: 84px;
+    resize: vertical;
+    padding: 8px 10px;
+}
+
+.cad-modal-form input[type="text"]:focus,
+.cad-modal-form input[type="number"]:focus,
+.cad-modal-form input[type="url"]:focus,
+.cad-modal-form select:focus,
+.cad-modal-form textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(79, 142, 247, 0.12);
 }
 
 .cad-card-wide {
@@ -235,5 +303,15 @@
         width: 100%;
         text-align: left;
         border-radius: 9px;
+    }
+
+    .cad-card-head-inline {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .cad-head-btn {
+        width: 100%;
+        justify-content: center;
     }
 }

@@ -21,6 +21,12 @@
     function initColaboradores() {
         if (state.initialized) return;
 
+        document.getElementById('colab-new-btn')?.addEventListener('click', () => {
+            resetForm();
+            openColabModal();
+        });
+        bindColabModal();
+
         document.getElementById('colab-form')?.addEventListener('submit', handleFormSubmit);
         document.getElementById('colab-cancel-btn')?.addEventListener('click', resetForm);
         document.getElementById('colab-refresh-btn')?.addEventListener('click', loadColaboradores);
@@ -33,6 +39,13 @@
             if (!event.detail?.isAdmin) {
                 renderRestricted();
                 setFormDisabled(true);
+                closeColabModal();
+                return;
+            }
+
+            setFormDisabled(false);
+            if (document.getElementById('page-colaboradores')?.classList.contains('active')) {
+                loadColaboradores();
             }
         });
 
@@ -280,6 +293,7 @@
 
         showToast(id > 0 ? 'Colaborador interno atualizado.' : 'Colaborador interno criado.', 'success');
         resetForm();
+        closeColabModal();
         await loadColaboradores();
         document.dispatchEvent(new CustomEvent('app:colaboradores-updated'));
     }
@@ -330,7 +344,11 @@
 
         if (btn.dataset.action === 'delete') {
             const name = btn.dataset.name || 'este colaborador interno';
-            const ok = window.confirm(`Excluir ${name}?`);
+            const ok = await askConfirmation({
+                title: 'Excluir colaborador interno',
+                message: `Excluir ${name}?`,
+                confirmText: 'Excluir',
+            });
             if (!ok) return;
 
             const { error } = await window.App.api.colaboradores.remover(id);
@@ -361,7 +379,8 @@
 
         setText('colab-submit-btn', 'Atualizar Colaborador Interno');
         toggleDisplay('colab-cancel-btn', true);
-        document.getElementById('colab-form-nome')?.focus();
+        openColabModal();
+        setTimeout(() => document.getElementById('colab-form-nome')?.focus(), 30);
     }
 
     function resetForm() {
@@ -380,12 +399,49 @@
 
     function setFormDisabled(disabled) {
         const form = document.getElementById('colab-form');
+        const newButton = document.getElementById('colab-new-btn');
+
+        if (newButton) {
+            newButton.disabled = disabled;
+            newButton.style.display = disabled ? 'none' : '';
+        }
         if (!form) return;
 
         form.querySelectorAll('input, select, button, textarea').forEach((element) => {
             if (element.id === 'colab-cancel-btn' && element.style.display === 'none') return;
             element.disabled = disabled;
         });
+    }
+
+    function bindColabModal() {
+        const modal = document.getElementById('colab-modal');
+        if (!modal) return;
+
+        modal.addEventListener('click', (event) => {
+            if (event.target === modal) {
+                resetForm();
+                closeColabModal();
+            }
+        });
+
+        modal.querySelectorAll('[data-action="close-colab-modal"]').forEach((button) => {
+            button.addEventListener('click', () => {
+                resetForm();
+                closeColabModal();
+            });
+        });
+    }
+
+    function openColabModal() {
+        const modal = document.getElementById('colab-modal');
+        if (!modal) return;
+        modal.hidden = false;
+    }
+
+    function closeColabModal() {
+        const modal = document.getElementById('colab-modal');
+        if (!modal) return;
+        modal.hidden = true;
     }
 
     function getStatusLabel(value) {
@@ -414,35 +470,29 @@
     }
 
     function showToast(message, type = 'success') {
-        const existing = document.querySelector('.app-toast');
-        if (existing) {
-            existing.remove();
+        if (typeof window.showToast === 'function') {
+            window.showToast(message, type);
+            return;
         }
 
-        const toast = document.createElement('div');
-        toast.className = 'app-toast';
-        const isError = type === 'error';
+        if (type === 'error') {
+            console.error(message);
+        } else {
+            console.log(message);
+        }
+    }
 
-        toast.style.cssText = `
-            position:fixed;
-            bottom:24px;
-            right:24px;
-            z-index:999;
-            padding:10px 16px;
-            border-radius:8px;
-            font-size:0.78rem;
-            font-weight:600;
-            font-family:var(--font);
-            box-shadow:0 4px 20px rgba(0,0,0,0.4);
-            animation:fadeIn 0.2s ease;
-            background:${isError ? 'rgba(240,82,82,0.15)' : 'rgba(56,217,169,0.15)'};
-            border:1px solid ${isError ? 'rgba(240,82,82,0.3)' : 'rgba(56,217,169,0.3)'};
-            color:${isError ? 'var(--danger)' : 'var(--accent2)'};
-        `;
-        toast.textContent = `${isError ? '⚠ ' : '✓ '}${message}`;
-        document.body.appendChild(toast);
-
-        setTimeout(() => toast.remove(), 3200);
+    async function askConfirmation({ title, message, confirmText }) {
+        if (typeof window.showConfirmDialog === 'function') {
+            return window.showConfirmDialog({
+                title,
+                message,
+                confirmText: confirmText || 'Confirmar',
+                cancelText: 'Cancelar',
+                danger: true,
+            });
+        }
+        return window.confirm(message);
     }
 
     function escapeHtml(value) {
@@ -468,7 +518,6 @@
 
     window.onColaboradoresActivate = onColaboradoresActivate;
     window.loadColaboradores = loadColaboradores;
-    window.showToast = window.showToast || showToast;
 
     document.addEventListener('DOMContentLoaded', initColaboradores);
 })();

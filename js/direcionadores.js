@@ -32,6 +32,12 @@
     function initDirecionadores() {
         if (state.initialized) return;
 
+        document.getElementById('cad-open-link-modal')?.addEventListener('click', () => {
+            resetLinkForm();
+            openLinkModal();
+        });
+        bindLinkModal();
+
         document.getElementById('cad-link-form')?.addEventListener('submit', handleLinkSubmit);
         document.getElementById('cad-link-cancel')?.addEventListener('click', resetLinkForm);
         document.getElementById('cad-link-tbody')?.addEventListener('click', handleLinkTableClick);
@@ -179,6 +185,7 @@
             return;
         }
 
+        setCreateButtonState(false);
         state.loadingAdmin = true;
         renderAdminLoading();
         const { data, error } = await api.listarDirecionadores({ apenasAtivos: false });
@@ -239,11 +246,15 @@
                 </td>
             </tr>
         `;
+        closeLinkModal();
+        setCreateButtonState(true);
     }
 
     function renderAdminTable() {
         const tbody = document.getElementById('cad-link-tbody');
         if (!tbody) return;
+
+        setCreateButtonState(false);
 
         if (!state.adminCards.length) {
             tbody.innerHTML = `
@@ -328,6 +339,7 @@
 
         notify(id > 0 ? 'Card atualizado.' : 'Card criado.', 'success');
         resetLinkForm();
+        closeLinkModal();
         await Promise.all([loadAdminCards(), loadPublicCards()]);
     }
 
@@ -365,13 +377,18 @@
             setChecked('cad-link-ativo', Boolean(card.ativo));
             setText('cad-link-submit', 'Atualizar Card');
             toggleDisplay('cad-link-cancel', true);
-            document.getElementById('cad-link-nome')?.focus();
+            openLinkModal();
+            setTimeout(() => document.getElementById('cad-link-nome')?.focus(), 30);
             return;
         }
 
         if (button.dataset.action === 'delete-link') {
             const nome = button.dataset.nome || 'este card';
-            const ok = window.confirm(`Excluir ${nome}?`);
+            const ok = await askConfirmation({
+                title: 'Excluir card direcionador',
+                message: `Excluir ${nome}?`,
+                confirmText: 'Excluir',
+            });
             if (!ok) return;
 
             const { error } = await window.App.api.catalog.removerDirecionador(id);
@@ -384,6 +401,57 @@
             resetLinkForm();
             await Promise.all([loadAdminCards(), loadPublicCards()]);
         }
+    }
+
+    function bindLinkModal() {
+        const modal = document.getElementById('cad-link-modal');
+        if (!modal) return;
+
+        modal.addEventListener('click', (event) => {
+            if (event.target === modal) {
+                resetLinkForm();
+                closeLinkModal();
+            }
+        });
+
+        modal.querySelectorAll('[data-action="close-cad-modal"]').forEach((button) => {
+            button.addEventListener('click', () => {
+                resetLinkForm();
+                closeLinkModal();
+            });
+        });
+    }
+
+    function openLinkModal() {
+        const modal = document.getElementById('cad-link-modal');
+        if (!modal) return;
+        modal.hidden = false;
+    }
+
+    function closeLinkModal() {
+        const modal = document.getElementById('cad-link-modal');
+        if (!modal) return;
+        modal.hidden = true;
+    }
+
+    function setCreateButtonState(disabled) {
+        const button = document.getElementById('cad-open-link-modal');
+        if (!button) return;
+        button.disabled = Boolean(disabled);
+        button.style.display = disabled ? 'none' : '';
+    }
+
+    async function askConfirmation({ title, message, confirmText }) {
+        if (typeof window.showConfirmDialog === 'function') {
+            return window.showConfirmDialog({
+                title,
+                message,
+                confirmText: confirmText || 'Confirmar',
+                cancelText: 'Cancelar',
+                danger: true,
+            });
+        }
+        return window.confirm(message);
     }
 
     function setValue(id, value) {

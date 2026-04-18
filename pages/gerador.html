@@ -1,0 +1,108 @@
+﻿        <div class="page" id="page-gerador">
+            <div class="page-header">
+                <h1>Gerador de Acessos VS</h1>
+                <p>Onboarding de TI — preencha os dados do novo colaborador</p>
+            </div>
+
+            <div class="gen-layout">
+                <!-- Form -->
+                <div class="gen-card">
+                    <h2>Dados do Colaborador</h2>
+                    <form id="admission-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Nome Completo</label>
+                                <input type="text" id="nome" placeholder="João da Silva" required>
+                            </div>
+                            <div class="form-group">
+                                <label>CPF</label>
+                                <input type="text" id="cpf" placeholder="000.000.000-00" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Data de Admissão</label>
+                            <input type="text" id="dataAdmissao" placeholder="dd/mm/aaaa" required>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Setor</label>
+                                <select id="setor" required>
+                                    <option value="" disabled selected>Selecione...</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Cargo</label>
+                                <select id="cargo" required disabled>
+                                    <option value="" disabled selected>Setor primeiro</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>UF</label>
+                                <select id="uf" required>
+                                    <option value="" disabled selected>Selecione...</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Cidade</label>
+                                <select id="local" required disabled>
+                                    <option value="" disabled selected>UF primeiro</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Bairro</label>
+                            <select id="bairro" required disabled>
+                                <option value="" disabled selected>Cidade primeiro</option>
+                            </select>
+                        </div>
+
+                        <div style="margin-bottom: 14px;">
+                            <span class="checkboxes-label">Acessos a Criar</span>
+                            <div class="checkbox-grid">
+                                <label class="checkbox-item checked">
+                                    <input type="checkbox" id="criarEmail" checked>
+                                    <div class="checkbox-dot"></div>
+                                    <span>E-mail</span>
+                                </label>
+                                <label class="checkbox-item checked">
+                                    <input type="checkbox" id="criarWts" checked>
+                                    <div class="checkbox-dot"></div>
+                                    <span>Usuário WTS</span>
+                                </label>
+                                <label class="checkbox-item checked">
+                                    <input type="checkbox" id="criarHelpdesk" checked>
+                                    <div class="checkbox-dot"></div>
+                                    <span>Helpdesk</span>
+                                </label>
+                                <label class="checkbox-item checked">
+                                    <input type="checkbox" id="criarNyxos" checked>
+                                    <div class="checkbox-dot"></div>
+                                    <span>Nyxos</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn-primary">Gerar Acessos</button>
+                        <div class="error-msg" id="error-message">Preencha todos os campos obrigatórios.</div>
+                    </form>
+                </div>
+
+                <!-- Results -->
+                <div class="gen-card" id="results-card">
+                    <h2>Acessos Gerados</h2>
+                    <div id="results-inner">
+                        <div class="results-placeholder">
+                            <div class="icon"></div>
+                            <div>Preencha o formulário e clique em <strong>Gerar Acessos</strong><br>para ver as credenciais aqui.</div>
+                        </div>
+                    </div>
+                    <button class="btn-success" id="save-button" style="display:none">
+                        Baixar CSV com os dados
+                    </button>
+                </div>
+            </div>
+        </div>
+        <!-- end page-gerador -->
+

@@ -369,6 +369,12 @@
                 adminNav.style.display = visible ? '' : 'none';
             }
         });
+
+        const docsNav = document.getElementById('nav-documentacao');
+        if (docsNav) {
+            docsNav.dataset.docsMode = visible ? 'gestao' : 'consulta';
+            docsNav.dataset.badgeLabel = 'Documentação';
+        }
     }
 
     function showDocumentationNav(visible) {

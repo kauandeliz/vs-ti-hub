@@ -301,3 +301,81 @@ tbody tr:hover td {
 
 .copy-btn:hover         { border-color: var(--accent2); color: var(--accent2); }
 .copy-btn.copied        { border-color: var(--accent2); color: var(--accent2); background: rgba(56, 217, 169, 0.08); }
+
+/* ─── GLOBAL FEEDBACK ─────────────────────────────── */
+.app-toast-stack {
+    position: fixed;
+    left: 18px;
+    bottom: 18px;
+    z-index: 1200;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
+    pointer-events: none;
+}
+
+.app-toast {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    max-width: min(92vw, 420px);
+    padding: 10px 12px;
+    border-radius: 9px;
+    border: 1px solid var(--border);
+    background: rgba(15, 18, 24, 0.96);
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.32);
+    color: var(--text);
+    font-size: 0.72rem;
+    font-weight: 600;
+    font-family: var(--font);
+    transform: translateY(8px);
+    opacity: 0;
+    transition: transform 0.2s ease, opacity 0.2s ease;
+    pointer-events: auto;
+}
+
+.app-toast.is-visible {
+    transform: translateY(0);
+    opacity: 1;
+}
+
+.app-toast.is-exit {
+    transform: translateY(8px);
+    opacity: 0;
+}
+
+.app-toast__icon {
+    width: 16px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.app-toast__text {
+    line-height: 1.45;
+}
+
+.app-toast--success {
+    border-color: rgba(56, 217, 169, 0.34);
+    background: rgba(13, 28, 22, 0.95);
+    color: var(--accent2);
+}
+
+.app-toast--error {
+    border-color: rgba(240, 82, 82, 0.36);
+    background: rgba(34, 17, 18, 0.96);
+    color: #ffb1b1;
+}
+
+.app-toast--warning {
+    border-color: rgba(245, 166, 35, 0.38);
+    background: rgba(35, 24, 12, 0.96);
+    color: #ffcb80;
+}
+
+.app-confirm-message {
+    margin: 0;
+    color: var(--text-soft);
+    font-size: 0.74rem;
+    line-height: 1.55;
+}

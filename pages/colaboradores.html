@@ -1,0 +1,128 @@
+        <div class="page" id="page-colaboradores">
+            <div class="page-header">
+                <h1>Colaboradores Internos</h1>
+                <p>Cadastro interno de colaboradores sem login e sem armazenamento de credenciais.</p>
+            </div>
+
+            <div class="colab-layout">
+                <div class="colab-table-card">
+                    <div class="colab-table-header">
+                        <h3>Colaboradores internos cadastrados</h3>
+                        <div class="colab-header-actions">
+                            <button class="btn-icon" id="colab-new-btn">Cadastrar</button>
+                            <button class="btn-icon" id="colab-refresh-btn">↻ Atualizar</button>
+                        </div>
+                    </div>
+
+                    <div class="colab-toolbar">
+                        <div class="search-wrap">
+                            <span class="search-icon"></span>
+                            <input
+                                type="text"
+                                id="colab-search"
+                                placeholder="Buscar por status, UF, loja, empresa, nome, setor ou funcao..."
+                                style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px 8px 32px;color:var(--text);font-family:var(--font);font-size:0.8rem;outline:none;"
+                            >
+                        </div>
+                        <select class="filter-select" id="colab-filter-status">
+                            <option value="">Todos os status</option>
+                            <option value="ativo">Ativos</option>
+                            <option value="inativo">Inativos</option>
+                        </select>
+                        <div class="colab-summary" id="colab-summary">Carregue os colaboradores internos para ver os indicadores.</div>
+                    </div>
+
+                    <div class="table-wrap" style="border:none;border-radius:0;margin-bottom:0">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>STATUS</th>
+                                    <th>UF</th>
+                                    <th>LOJA</th>
+                                    <th>EMPRESA</th>
+                                    <th>NOME</th>
+                                    <th>SETOR</th>
+                                    <th>FUNCAO</th>
+                                    <th>ACOES</th>
+                                </tr>
+                            </thead>
+                            <tbody id="colab-tbody">
+                                <tr><td colspan="8">
+                                    <div class="table-state">
+                                        <div class="icon">🧑‍💼</div>
+                                        <div>Navegue ate esta pagina para carregar os colaboradores internos.</div>
+                                    </div>
+                                </td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div id="colab-pagination" class="pagination"></div>
+                </div>
+            </div>
+
+            <div class="modal-backdrop colab-crud-modal" id="colab-modal" hidden>
+                <div class="modal" style="max-width:760px" onclick="event.stopPropagation()">
+                    <div class="modal-header">
+                        <h3>Cadastro de Colaborador Interno</h3>
+                        <button class="modal-close" data-action="close-colab-modal" aria-label="Fechar">✕</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="colab-form-note">
+                            Estrutura identica a planilha: STATUS, UF, LOJA, EMPRESA, NOME, SETOR, FUNCAO.
+                        </div>
+
+                        <form id="colab-form">
+                            <input type="hidden" id="colab-id">
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>STATUS</label>
+                                    <select id="colab-form-status" required>
+                                        <option value="ATIVO" selected>ATIVO</option>
+                                        <option value="INATIVO">INATIVO</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>UF</label>
+                                    <input type="text" id="colab-form-uf" placeholder="SP" maxlength="2" required>
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>LOJA</label>
+                                    <input type="text" id="colab-form-loja" placeholder="Ex: CURITIBA BOTANICO" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>EMPRESA</label>
+                                    <input type="text" id="colab-form-empresa" placeholder="Ex: 11" required>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label>NOME</label>
+                                <input type="text" id="colab-form-nome" placeholder="Nome completo do colaborador interno" required>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>SETOR</label>
+                                    <input type="text" id="colab-form-setor" placeholder="Ex: COMERCIAL" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>FUNCAO</label>
+                                    <input type="text" id="colab-form-funcao" placeholder="Ex: EXECUTIVO DE VENDAS" required>
+                                </div>
+                            </div>
+
+                            <div class="cad-actions">
+                                <button type="button" class="btn-row" data-action="close-colab-modal">Fechar</button>
+                                <button type="button" class="btn-row" id="colab-cancel-btn" style="display:none">Cancelar edicao</button>
+                                <button type="submit" class="btn-primary" id="colab-submit-btn">Salvar Colaborador Interno</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>

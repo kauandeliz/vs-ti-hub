@@ -1,9 +1,6 @@
 /* ─── COLABORADORES PAGE ──────────────────────────── */
 .colab-layout {
-    display: grid;
-    grid-template-columns: 1fr 380px;
-    gap: 20px;
-    align-items: flex-start;
+    display: block;
 }
 
 .colab-table-card {
@@ -26,6 +23,12 @@
     font-size: 0.82rem;
     font-weight: 700;
     color: #fff;
+}
+
+.colab-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .colab-toolbar {
@@ -55,6 +58,49 @@
     padding: 18px;
     position: sticky;
     top: 80px;
+}
+
+.colab-crud-modal[hidden] {
+    display: none;
+}
+
+#colab-modal .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 9px;
+}
+
+#colab-modal .form-group {
+    margin-bottom: 11px;
+}
+
+#colab-modal .form-group label {
+    font-size: 0.66rem;
+    font-weight: 600;
+    color: var(--text-soft);
+    display: block;
+    margin-bottom: 5px;
+}
+
+#colab-modal input[type="text"],
+#colab-modal select {
+    width: 100%;
+    height: 34px;
+    padding: 0 10px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 0.74rem;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+#colab-modal input[type="text"]:focus,
+#colab-modal select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(79, 142, 247, 0.12);
 }
 
 .colab-form-card h3 {
@@ -116,15 +162,22 @@
 }
 
 @media (max-width: 1100px) {
-    .colab-layout {
-        grid-template-columns: 1fr;
-    }
-
     .colab-form-card {
         position: static;
     }
 
     .colab-summary {
         margin-left: 0;
+    }
+}
+
+@media (max-width: 760px) {
+    .colab-header-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+
+    #colab-modal .form-row {
+        grid-template-columns: 1fr;
     }
 }

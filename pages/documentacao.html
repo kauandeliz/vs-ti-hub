@@ -1,0 +1,160 @@
+        <div class="page" id="page-documentacao">
+            <div class="page-header">
+                <h1>Documentacao</h1>
+                <p>Explorador de arquivos com arvore de pastas, lista detalhada e visualizacao de documentos.</p>
+            </div>
+
+            <div class="docs-layout">
+                <aside class="docs-tree-card">
+                    <div class="docs-panel-head docs-tree-header">
+                        <div class="docs-head-copy">
+                            <h3>Navegacao</h3>
+                            <p>Estrutura de pastas</p>
+                        </div>
+                    </div>
+                    <div class="docs-toolbar">
+                        <label class="docs-search-wrap" for="docs-search">
+                            <i class="fa-solid fa-magnifying-glass docs-search-icon" aria-hidden="true"></i>
+                            <input
+                                type="text"
+                                id="docs-search"
+                                class="docs-search-input"
+                                placeholder="Buscar por titulo, categoria, descricao ou nome do arquivo..."
+                            >
+                        </label>
+                        <select class="filter-select docs-filter-select" id="docs-filter-categoria">
+                            <option value="">Todas as categorias</option>
+                            <option value="TERMO_RESPONSABILIDADE">Termo de Responsabilidade</option>
+                            <option value="TUTORIAL_TI">Tutorial de TI</option>
+                            <option value="TERMO_ASSINADO">Termo Assinado</option>
+                            <option value="GERAL">Documentacao Geral</option>
+                        </select>
+                    </div>
+                    <div class="docs-tree-root" id="docs-tree-root">
+                        <div class="table-state">
+                            <div class="spinner"></div>
+                            <div>Carregando arvore...</div>
+                        </div>
+                    </div>
+                </aside>
+
+                <div class="docs-content-card">
+                    <div class="docs-panel-head docs-content-header">
+                        <div class="docs-head-copy">
+                            <h3>Explorador de Arquivos</h3>
+                            <p>Navegue por pastas, visualize documentos e organize o acervo como no Explorer.</p>
+                        </div>
+                        <div class="docs-content-actions">
+                            <button class="btn-icon" id="docs-new-folder-btn">
+                                <i class="fa-regular fa-folder"></i> Nova Pasta
+                            </button>
+                            <button class="btn-icon" id="docs-new-doc-btn">
+                                <i class="fa-regular fa-file-lines"></i> Novo Documento
+                            </button>
+                            <button class="btn-icon" id="docs-go-root-btn">Raiz</button>
+                            <button class="btn-icon" id="docs-go-up-btn">Subir</button>
+                            <button class="btn-icon" id="docs-refresh-btn">↻ Atualizar</button>
+                        </div>
+                    </div>
+
+                    <div class="docs-breadcrumb" id="docs-breadcrumb">/</div>
+                    <div class="docs-summary" id="docs-summary">Carregue os documentos para ver os indicadores.</div>
+
+                    <div class="docs-selection-panel docs-selection-inline" id="docs-selection-panel">
+                        <div class="docs-selection-label">Selecao atual</div>
+                        <div class="docs-selection-title" id="docs-selection-title">Nenhum item selecionado</div>
+                        <div class="docs-selection-meta" id="docs-selection-meta">Selecione uma pasta ou documento na lista para ver os detalhes.</div>
+                    </div>
+
+                    <div class="docs-explorer-wrap">
+                        <div class="docs-explorer-head">
+                            <div class="docs-col col-name">Nome</div>
+                            <div class="docs-col col-type">Tipo</div>
+                            <div class="docs-col col-category">Categoria</div>
+                            <div class="docs-col col-date">Modificado em</div>
+                            <div class="docs-col col-size">Tamanho</div>
+                            <div class="docs-col col-actions">Acoes</div>
+                        </div>
+                        <div class="docs-explorer-body" id="docs-cards-grid">
+                            <div class="table-state">
+                                <div class="spinner"></div>
+                                <div>Carregando itens...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-backdrop" id="docs-crud-modal" hidden>
+                <div class="modal docs-crud-modal" onclick="event.stopPropagation()">
+                    <div class="modal-header">
+                        <h3 id="docs-modal-title">Cadastro de Item</h3>
+                        <button class="modal-close" data-action="close-docs-modal" aria-label="Fechar">✕</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="docs-form-note">
+                            Crie pastas para organizar a arvore e documentos para armazenar os arquivos.
+                        </div>
+                        <div class="docs-form-permission" id="docs-form-permission"></div>
+
+                        <form id="docs-form">
+                            <input type="hidden" id="docs-id">
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Tipo</label>
+                                    <select id="docs-form-tipo" required>
+                                        <option value="DOCUMENTO" selected>Documento</option>
+                                        <option value="PASTA">Pasta</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Pasta pai</label>
+                                    <select id="docs-form-parent">
+                                        <option value="">Raiz</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Categoria</label>
+                                <select id="docs-form-categoria" required>
+                                    <option value="" selected disabled>Selecione...</option>
+                                    <option value="TERMO_RESPONSABILIDADE">Termo de Responsabilidade</option>
+                                    <option value="TUTORIAL_TI">Tutorial de TI</option>
+                                    <option value="TERMO_ASSINADO">Termo Assinado</option>
+                                    <option value="GERAL">Documentacao Geral</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Titulo</label>
+                                <input type="text" id="docs-form-titulo" placeholder="Ex: Termo de responsabilidade - Notebook / Pasta Contratos" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Descricao</label>
+                                <textarea id="docs-form-descricao" placeholder="Resumo rapido do conteudo do documento..."></textarea>
+                            </div>
+
+                            <div class="form-group" id="docs-file-group">
+                                <label>Arquivo</label>
+                                <input
+                                    type="file"
+                                    id="docs-form-arquivo"
+                                    accept=".pdf,.png,.jpg,.jpeg,.webp,.txt,.csv,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+                                >
+                                <div class="docs-file-help">Maximo recomendado: 20 MB. Em edicao, envie arquivo apenas se quiser substituir o atual.</div>
+                                <div class="docs-current-file" id="docs-current-file" style="display:none"></div>
+                            </div>
+
+                            <div class="cad-actions">
+                                <button type="button" class="btn-row" data-action="close-docs-modal">Fechar</button>
+                                <button type="button" class="btn-row" id="docs-cancel-btn" style="display:none">Cancelar edicao</button>
+                                <button type="submit" class="btn-primary" id="docs-submit-btn">Salvar Item</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>

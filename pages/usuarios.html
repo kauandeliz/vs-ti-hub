@@ -1,0 +1,101 @@
+        <div class="page" id="page-usuarios">
+            <div class="page-header">
+                <h1>Contas de Acesso</h1>
+                <p>Gerencie logins e permissoes da plataforma VS TI Hub</p>
+            </div>
+
+            <div class="usuarios-grid">
+                <div class="usuarios-table-card">
+                    <div class="usuarios-table-header">
+                        <h3>Contas de acesso cadastradas</h3>
+                        <div class="usuarios-header-actions">
+                            <button class="btn-icon" id="usuarios-open-create-btn">Cadastrar</button>
+                            <button class="btn-icon" id="usuarios-refresh-btn">↻ Atualizar</button>
+                        </div>
+                    </div>
+                    <div class="table-wrap" style="border:none;border-radius:0">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Conta</th>
+                                    <th>Tipo / Estrutura</th>
+                                    <th>Status</th>
+                                    <th>Acoes</th>
+                                </tr>
+                            </thead>
+                            <tbody id="usuarios-tbody">
+                                <tr><td colspan="4">
+                                    <div class="table-state">
+                                        <div class="icon"></div>
+                                        <div>Navegue ate esta pagina para carregar.</div>
+                                    </div>
+                                </td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-backdrop usuarios-crud-modal" id="usuarios-create-modal" hidden>
+                <div class="modal" style="max-width:620px" onclick="event.stopPropagation()">
+                    <div class="modal-header">
+                        <h3>Criar conta de acesso</h3>
+                        <button class="modal-close" data-action="close-usuarios-create" aria-label="Fechar">✕</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="invite-notice">
+                            <span></span>
+                            <span>Cadastre tipo, setor e cargo para manter o perfil organizacional da conta.</span>
+                        </div>
+
+                        <form id="new-user-form">
+                            <div class="form-group">
+                                <label>Nome completo</label>
+                                <input type="text" id="new-user-name" placeholder="Joao da Silva" required>
+                            </div>
+                            <div class="form-group">
+                                <label>E-mail corporativo</label>
+                                <input type="email" id="new-user-email" placeholder="joao.silva@vinilsul.com.br" required>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Tipo</label>
+                                    <select id="new-user-type" required>
+                                        <option value="comum" selected>Conta comum</option>
+                                        <option value="adm">Administrador</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Setor</label>
+                                    <select id="new-user-setor" required>
+                                        <option value="" selected disabled>Selecione...</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Cargo</label>
+                                <select id="new-user-cargo" required disabled>
+                                    <option value="" selected disabled>Setor primeiro</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Senha de acesso</label>
+                                <input type="password" id="new-user-password" placeholder="Minimo 8 caracteres" required minlength="8">
+                            </div>
+
+                            <div style="margin-bottom:14px">
+                                <span style="font-size:0.7rem;font-weight:600;color:var(--text-soft);display:block;margin-bottom:6px">Perfil</span>
+                                <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 13px;font-size:0.75rem;color:var(--text-soft)">
+                                    Escolha <span class="role-badge comum">conta comum</span> para operacao diaria ou <span class="role-badge admin">adm</span> para gestao completa.
+                                </div>
+                            </div>
+
+                            <div class="cad-actions">
+                                <button type="button" class="btn-row" data-action="close-usuarios-create">Fechar</button>
+                                <button type="submit" class="btn-primary" id="new-user-btn">Criar conta</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>

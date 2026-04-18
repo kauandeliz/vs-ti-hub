@@ -1,7 +1,7 @@
 /**
  * documentacao.js
  *
- * Biblioteca documental em cards com árvore de pastas.
+ * Biblioteca documental estilo Explorer com árvore de pastas e lista de arquivos.
  */
 
 (function bootstrapDocumentacao() {
@@ -27,6 +27,8 @@
         loading: false,
         records: [],
         currentFolderId: null,
+        selectedItemId: null,
+        viewMode: 'consulta',
         search: '',
         category: '',
         byId: new Map(),
@@ -41,23 +43,35 @@
         document.getElementById('docs-filter-categoria')?.addEventListener('change', handleCategoryFilterChange);
         document.getElementById('docs-go-root-btn')?.addEventListener('click', () => setCurrentFolder(null));
         document.getElementById('docs-go-up-btn')?.addEventListener('click', goUpFolder);
+        document.getElementById('docs-new-folder-btn')?.addEventListener('click', handleCreateFolderShortcut);
+        document.getElementById('docs-new-doc-btn')?.addEventListener('click', handleCreateDocumentShortcut);
 
         document.getElementById('docs-tree-root')?.addEventListener('click', handleTreeClick);
         document.getElementById('docs-breadcrumb')?.addEventListener('click', handleBreadcrumbClick);
         document.getElementById('docs-cards-grid')?.addEventListener('click', handleCardsClick);
+        document.getElementById('docs-cards-grid')?.addEventListener('dblclick', handleCardsDoubleClick);
 
         document.getElementById('docs-form')?.addEventListener('submit', handleFormSubmit);
-        document.getElementById('docs-cancel-btn')?.addEventListener('click', resetForm);
+        document.getElementById('docs-cancel-btn')?.addEventListener('click', () => {
+            resetForm();
+            closeDocsCrudModal();
+        });
         document.getElementById('docs-form-tipo')?.addEventListener('change', syncFormTypeUI);
+        bindDocsCrudModal();
 
         document.addEventListener('app:auth-changed', () => {
+            syncManagementModeUI();
             syncFormAccess();
+            if (!isManagementMode()) {
+                closeDocsCrudModal();
+            }
             if (isDocumentacaoActive()) {
                 loadDocumentacao();
             }
         });
 
         state.initialized = true;
+        syncManagementModeUI();
         syncFormAccess();
         resetForm();
     }
@@ -74,7 +88,22 @@
         return typeof window.isAdmin === 'function' ? window.isAdmin() : false;
     }
 
+    function normalizeViewMode(mode) {
+        return String(mode || '').trim().toLowerCase() === 'gestao' ? 'gestao' : 'consulta';
+    }
+
+    function isManagementMode() {
+        return normalizeViewMode(state.viewMode) === 'gestao' && hasAdminAccess();
+    }
+
+    function setDocumentacaoMode(mode) {
+        state.viewMode = normalizeViewMode(mode);
+        syncManagementModeUI();
+        syncFormAccess();
+    }
+
     async function onDocumentacaoActivate() {
+        syncManagementModeUI();
         syncFormAccess();
         await loadDocumentacao();
     }
@@ -165,6 +194,9 @@
         if (state.currentFolderId !== null && !state.byId.has(state.currentFolderId)) {
             state.currentFolderId = null;
         }
+        if (state.selectedItemId !== null && !state.byId.has(state.selectedItemId)) {
+            state.selectedItemId = null;
+        }
 
         renderAll();
         syncParentSelect();
@@ -186,7 +218,7 @@
             cardsGrid.innerHTML = `
                 <div class="table-state">
                     <div class="spinner"></div>
-                    <div>Carregando cards...</div>
+                    <div>Carregando itens...</div>
                 </div>
             `;
         }
@@ -205,8 +237,10 @@
         if (treeRoot) treeRoot.innerHTML = html;
         if (cardsGrid) cardsGrid.innerHTML = html;
 
+        state.selectedItemId = null;
         setSummaryText('Falha ao carregar a documentação.');
         setBreadcrumbText('/');
+        renderSelectionPanel();
         syncGoUpButton();
     }
 
@@ -219,6 +253,7 @@
         renderBreadcrumb();
         renderSummary();
         renderCards();
+        renderSelectionPanel();
         syncGoUpButton();
     }
 
@@ -309,6 +344,46 @@
         if (summary) summary.textContent = text;
     }
 
+    function renderSelectionPanel() {
+        const titleEl = document.getElementById('docs-selection-title');
+        const metaEl = document.getElementById('docs-selection-meta');
+        const panelEl = document.getElementById('docs-selection-panel');
+        if (!titleEl || !metaEl || !panelEl) return;
+
+        const item = state.byId.get(Number(state.selectedItemId));
+        if (!item) {
+            panelEl.classList.remove('has-selection');
+            titleEl.textContent = 'Nenhum item selecionado';
+            metaEl.textContent = 'Selecione uma pasta ou documento na lista para ver os detalhes.';
+            return;
+        }
+
+        panelEl.classList.add('has-selection');
+        const tipo = normalizeTipo(item.tipo);
+        titleEl.textContent = item.titulo || (tipo === 'PASTA' ? 'Pasta' : 'Documento');
+
+        if (tipo === 'PASTA') {
+            const childCount = getChildren(Number(item.id)).length;
+            metaEl.textContent = `Pasta • ${childCount} item(ns) • Atualização ${formatDateTime(item.atualizado_em || item.criado_em)}`;
+            return;
+        }
+
+        metaEl.textContent = `${getCategoryLabel(item.categoria)} • ${item.arquivo_nome || 'arquivo'} • ${formatFileSize(item.arquivo_tamanho_bytes)} • Atualização ${formatDateTime(item.atualizado_em || item.criado_em)}`;
+    }
+
+    function syncManagementModeUI() {
+        const layout = document.querySelector('#page-documentacao .docs-layout');
+        const quickFolderBtn = document.getElementById('docs-new-folder-btn');
+        const quickDocBtn = document.getElementById('docs-new-doc-btn');
+
+        const management = isManagementMode();
+        layout?.classList.toggle('docs-mode-management', management);
+        layout?.classList.toggle('docs-mode-consulta', !management);
+
+        if (quickFolderBtn) quickFolderBtn.style.display = management ? '' : 'none';
+        if (quickDocBtn) quickDocBtn.style.display = management ? '' : 'none';
+    }
+
     function renderSummary() {
         const currentItems = getVisibleChildren();
         const folders = currentItems.filter((item) => normalizeTipo(item.tipo) === 'PASTA').length;
@@ -387,6 +462,11 @@
         if (!cardsGrid) return;
 
         const items = getVisibleChildren();
+        const hasSelectedVisible = items.some((item) => Number(item.id) === Number(state.selectedItemId));
+        if (!hasSelectedVisible) {
+            state.selectedItemId = null;
+        }
+
         if (!items.length) {
             cardsGrid.innerHTML = `
                 <div class="table-state">
@@ -394,7 +474,7 @@
                     <div>Nenhum item encontrado nesta pasta.</div>
                     <div class="docs-empty-hint">
                         ${hasAdminAccess()
-                            ? 'Use o painel à direita para criar uma pasta ou enviar um novo documento.'
+                            ? 'Use “Nova Pasta” ou “Novo Documento” para começar a organizar esta área.'
                             : 'Use os filtros da esquerda para encontrar documentos em outras pastas.'}
                     </div>
                 </div>
@@ -402,82 +482,45 @@
             return;
         }
 
-        cardsGrid.innerHTML = items.map((item) => {
-            const tipo = normalizeTipo(item.tipo);
-            return tipo === 'PASTA' ? renderFolderCard(item) : renderDocumentCard(item);
-        }).join('');
+        cardsGrid.innerHTML = items.map((item) => renderExplorerRow(item)).join('');
     }
 
-    function renderFolderCard(item) {
-        const folderId = Number(item.id);
-        const childCount = getChildren(folderId).length;
-        const canManage = hasAdminAccess();
+    function renderExplorerRow(item) {
+        const id = Number(item.id);
+        const tipo = normalizeTipo(item.tipo);
+        const isFolder = tipo === 'PASTA';
+        const isSelected = Number(state.selectedItemId) === id;
+        const canManage = isManagementMode();
+        const icon = isFolder ? '📁' : getDocumentIcon(item);
+        const typeLabel = isFolder ? 'Pasta' : 'Documento';
+        const categoryLabel = isFolder ? '—' : getCategoryLabel(item.categoria);
+        const sizeLabel = isFolder ? '—' : formatFileSize(item.arquivo_tamanho_bytes);
+        const modified = formatDateTime(item.atualizado_em || item.criado_em);
+        const name = item.titulo || (isFolder ? 'Pasta' : 'Documento');
+        const primaryAction = isFolder ? 'open-folder' : 'preview-item';
+        const primaryLabel = isFolder ? 'Abrir' : 'Visualizar';
 
         return `
-            <article class="doc-card folder">
-                <div class="doc-card-kind-row">
-                    <span class="doc-kind-chip folder">Pasta</span>
-                    <span class="doc-kind-meta">${childCount} item(ns)</span>
+            <div class="docs-explorer-row ${isSelected ? 'selected' : ''}" data-id="${id}">
+                <div class="docs-col col-name">
+                    <button class="docs-row-name-btn" data-action="${primaryAction}" data-id="${id}">
+                        <span class="docs-row-icon">${escapeHtml(icon)}</span>
+                        <span class="docs-row-name-text">${escapeHtml(name)}</span>
+                    </button>
                 </div>
-                <div class="doc-card-head">
-                    <div class="doc-card-icon folder-icon">📁</div>
-                    <div class="doc-card-head-text">
-                        <div class="doc-card-title">${escapeHtml(item.titulo || 'Pasta')}</div>
-                        <div class="doc-card-subtitle">Container de arquivos e subpastas</div>
+                <div class="docs-col col-type">${escapeHtml(typeLabel)}</div>
+                <div class="docs-col col-category">${escapeHtml(categoryLabel)}</div>
+                <div class="docs-col col-date">${escapeHtml(modified)}</div>
+                <div class="docs-col col-size">${escapeHtml(sizeLabel)}</div>
+                <div class="docs-col col-actions">
+                    <div class="docs-row-actions">
+                        <button class="btn-row primary" data-action="${primaryAction}" data-id="${id}">${primaryLabel}</button>
+                        ${!isFolder ? `<button class="btn-row" data-action="download-item" data-id="${id}">Baixar</button>` : ''}
+                        ${canManage ? `<button class="btn-row" data-action="edit-item" data-id="${id}">Editar</button>` : ''}
+                        ${canManage ? `<button class="btn-row danger" data-action="delete-item" data-id="${id}" data-title="${escapeHtmlAttribute(name)}">Excluir</button>` : ''}
                     </div>
                 </div>
-                <div class="doc-card-desc">${escapeHtml(item.descricao || 'Pasta para organizar documentos e subpastas.')}</div>
-                <div class="doc-card-meta">
-                    <div class="doc-meta-row">
-                        <span>Atualização</span>
-                        <strong>${escapeHtml(formatDateTime(item.atualizado_em || item.criado_em))}</strong>
-                    </div>
-                </div>
-                <div class="doc-card-actions">
-                    <button class="btn-row primary" data-action="open-folder" data-id="${item.id}">Abrir</button>
-                    ${canManage ? `<button class="btn-row" data-action="edit-item" data-id="${item.id}">Editar</button>` : ''}
-                    ${canManage ? `<button class="btn-row danger" data-action="delete-item" data-id="${item.id}" data-title="${escapeHtmlAttribute(item.titulo || '')}">Excluir</button>` : ''}
-                </div>
-            </article>
-        `;
-    }
-
-    function renderDocumentCard(item) {
-        const canManage = hasAdminAccess();
-        const category = getCategoryLabel(item.categoria);
-        const icon = getDocumentIcon(item);
-
-        return `
-            <article class="doc-card">
-                <div class="doc-card-kind-row">
-                    <span class="doc-kind-chip document">Documento</span>
-                    <span class="doc-kind-meta">${escapeHtml(formatFileSize(item.arquivo_tamanho_bytes))}</span>
-                </div>
-                <div class="doc-card-head">
-                    <div class="doc-card-icon">${escapeHtml(icon)}</div>
-                    <div class="doc-card-head-text">
-                        <div class="doc-card-title">${escapeHtml(item.titulo || 'Documento')}</div>
-                        <span class="doc-category-badge">${escapeHtml(category)}</span>
-                    </div>
-                </div>
-                <div class="doc-card-desc">${escapeHtml(item.descricao || 'Documento sem descrição cadastrada.')}</div>
-                <div class="doc-card-meta">
-                    <div class="doc-meta-row">
-                        <span>Arquivo</span>
-                        <strong class="doc-file-name">${escapeHtml(item.arquivo_nome || 'Arquivo sem nome')}</strong>
-                    </div>
-                    <div class="doc-meta-row">
-                        <span>Atualização</span>
-                        <strong>${escapeHtml(formatDateTime(item.atualizado_em || item.criado_em))}</strong>
-                    </div>
-                </div>
-                <div class="doc-card-actions">
-                    <button class="btn-row primary" data-action="preview-item" data-id="${item.id}">Visualizar</button>
-                    <button class="btn-row" data-action="download-item" data-id="${item.id}">Baixar</button>
-                    ${canManage ? `<button class="btn-row" data-action="edit-item" data-id="${item.id}">Editar</button>` : ''}
-                    ${canManage ? `<button class="btn-row danger" data-action="delete-item" data-id="${item.id}" data-title="${escapeHtmlAttribute(item.titulo || '')}">Excluir</button>` : ''}
-                </div>
-            </article>
+            </div>
         `;
     }
 
@@ -505,40 +548,101 @@
 
     async function handleCardsClick(event) {
         const button = event.target.closest('[data-action][data-id]');
-        if (!button) return;
+        if (button) {
+            const action = button.dataset.action;
+            const id = Number(button.dataset.id);
+            if (!Number.isFinite(id)) return;
+            setSelectedItem(id);
 
-        const action = button.dataset.action;
-        const id = Number(button.dataset.id);
+            if (action === 'open-folder') {
+                setCurrentFolder(id);
+                return;
+            }
+
+            if (action === 'preview-item') {
+                await visualizarDocumento(id, { forceDownload: false });
+                return;
+            }
+
+            if (action === 'download-item') {
+                await visualizarDocumento(id, { forceDownload: true });
+                return;
+            }
+
+            if (!isManagementMode()) {
+                showToast('Cadastros ficam disponíveis no menu Administração > Cadastros.', 'error');
+                return;
+            }
+
+            if (action === 'edit-item') {
+                fillFormForEdit(id);
+                return;
+            }
+
+            if (action === 'delete-item') {
+                await handleDeleteItem(id, button.dataset.title || 'este item');
+            }
+            return;
+        }
+
+        const row = event.target.closest('.docs-explorer-row[data-id]');
+        if (!row) return;
+        const rowId = Number(row.dataset.id);
+        if (!Number.isFinite(rowId)) return;
+        setSelectedItem(rowId);
+    }
+
+    async function handleCardsDoubleClick(event) {
+        const row = event.target.closest('.docs-explorer-row[data-id]');
+        if (!row) return;
+
+        const id = Number(row.dataset.id);
         if (!Number.isFinite(id)) return;
+        const item = state.byId.get(id);
+        if (!item) return;
 
-        if (action === 'open-folder') {
+        setSelectedItem(id);
+
+        if (normalizeTipo(item.tipo) === 'PASTA') {
             setCurrentFolder(id);
             return;
         }
 
-        if (action === 'preview-item') {
-            await visualizarDocumento(id, { forceDownload: false });
+        await visualizarDocumento(id, { forceDownload: false });
+    }
+
+    function setSelectedItem(itemId) {
+        const numericId = Number(itemId);
+        state.selectedItemId = Number.isFinite(numericId) && state.byId.has(numericId) ? numericId : null;
+        renderCards();
+        renderSelectionPanel();
+    }
+
+    function handleCreateFolderShortcut() {
+        if (!isManagementMode()) {
+            showToast('Use Administração > Cadastros > Documentação para criar pastas.', 'error');
             return;
         }
+        resetForm();
+        setValue('docs-form-tipo', 'PASTA');
+        setValue('docs-form-categoria', 'GERAL');
+        syncFormTypeUI();
+        setModalTitle('Nova Pasta');
+        openDocsCrudModal();
+        setTimeout(() => document.getElementById('docs-form-titulo')?.focus(), 30);
+    }
 
-        if (action === 'download-item') {
-            await visualizarDocumento(id, { forceDownload: true });
+    function handleCreateDocumentShortcut() {
+        if (!isManagementMode()) {
+            showToast('Use Administração > Cadastros > Documentação para criar documentos.', 'error');
             return;
         }
-
-        if (!hasAdminAccess()) {
-            showToast('Apenas administradores podem alterar itens da documentação.', 'error');
-            return;
-        }
-
-        if (action === 'edit-item') {
-            fillFormForEdit(id);
-            return;
-        }
-
-        if (action === 'delete-item') {
-            await handleDeleteItem(id, button.dataset.title || 'este item');
-        }
+        resetForm();
+        setValue('docs-form-tipo', 'DOCUMENTO');
+        syncFormTypeUI();
+        setModalTitle('Novo Documento');
+        openDocsCrudModal();
+        setTimeout(() => document.getElementById('docs-form-titulo')?.focus(), 30);
     }
 
     async function handleDeleteItem(id, title) {
@@ -547,7 +651,11 @@
             ? ` Isso também removerá ${descendants.length - 1} item(ns) filho(s).`
             : '';
 
-        const confirmed = window.confirm(`Excluir ${title}?${extraText}`);
+        const confirmed = await askConfirmation({
+            title: 'Excluir item',
+            message: `Excluir ${title}?${extraText}`,
+            confirmText: 'Excluir',
+        });
         if (!confirmed) return;
 
         const { data, error } = await window.App.api.documentacao.remover(id);
@@ -591,16 +699,19 @@
         state.search = String(event.target.value || '').trim();
         renderSummary();
         renderCards();
+        renderSelectionPanel();
     }
 
     function handleCategoryFilterChange(event) {
         state.category = String(event.target.value || '').trim().toUpperCase();
         renderSummary();
         renderCards();
+        renderSelectionPanel();
     }
 
     function setCurrentFolder(folderId) {
         state.currentFolderId = normalizeParentId(folderId);
+        state.selectedItemId = null;
         renderAll();
         syncParentSelect();
         syncGoUpButton();
@@ -714,8 +825,8 @@
     async function handleFormSubmit(event) {
         event.preventDefault();
 
-        if (!hasAdminAccess()) {
-            showToast('Apenas administradores podem cadastrar ou editar itens.', 'error');
+        if (!isManagementMode()) {
+            showToast('Cadastros ficam em Administração > Cadastros > Documentação.', 'error');
             return;
         }
 
@@ -747,6 +858,7 @@
 
         showToast(id > 0 ? 'Item atualizado.' : 'Item cadastrado.', 'success');
         resetForm();
+        closeDocsCrudModal();
         await loadDocumentacao();
     }
 
@@ -802,6 +914,8 @@
             return;
         }
 
+        setSelectedItem(record.id);
+
         setValue('docs-id', String(record.id));
         setValue('docs-form-tipo', normalizeTipo(record.tipo));
         setValue('docs-form-parent', record.parent_id ? String(record.parent_id) : '');
@@ -823,9 +937,11 @@
 
         syncParentSelect(record.id);
         syncFormTypeUI();
+        setModalTitle('Editar Item');
         setText('docs-submit-btn', 'Atualizar Item');
         toggleDisplay('docs-cancel-btn', true);
-        document.getElementById('docs-form-titulo')?.focus();
+        openDocsCrudModal();
+        setTimeout(() => document.getElementById('docs-form-titulo')?.focus(), 30);
     }
 
     function resetForm() {
@@ -843,11 +959,50 @@
             currentFile.style.display = 'none';
         }
 
+        setModalTitle('Cadastro de Item');
         setText('docs-submit-btn', 'Salvar Item');
         toggleDisplay('docs-cancel-btn', false);
         syncParentSelect();
         syncFormTypeUI();
         syncFormAccess();
+    }
+
+    function bindDocsCrudModal() {
+        const modal = document.getElementById('docs-crud-modal');
+        if (!modal) return;
+
+        modal.addEventListener('click', (event) => {
+            if (event.target === modal) {
+                resetForm();
+                closeDocsCrudModal();
+            }
+        });
+
+        modal.querySelectorAll('[data-action="close-docs-modal"]').forEach((button) => {
+            button.addEventListener('click', () => {
+                resetForm();
+                closeDocsCrudModal();
+            });
+        });
+    }
+
+    function openDocsCrudModal() {
+        const modal = document.getElementById('docs-crud-modal');
+        if (!modal) return;
+        modal.hidden = false;
+    }
+
+    function closeDocsCrudModal() {
+        const modal = document.getElementById('docs-crud-modal');
+        if (!modal) return;
+        modal.hidden = true;
+    }
+
+    function setModalTitle(title) {
+        const modalTitle = document.getElementById('docs-modal-title');
+        if (modalTitle) {
+            modalTitle.textContent = title;
+        }
     }
 
     function syncParentSelect(editingId = null) {
@@ -904,31 +1059,45 @@
             if (isFolder && !categorySelect.value) {
                 categorySelect.value = 'GERAL';
             }
-            categorySelect.disabled = isFolder || !hasAdminAccess();
+            categorySelect.disabled = isFolder || !isManagementMode();
         }
 
         if (fileInput) {
-            fileInput.disabled = isFolder || !hasAdminAccess();
+            fileInput.disabled = isFolder || !isManagementMode();
         }
     }
 
     function syncFormAccess() {
         const isAdminUser = hasAdminAccess();
+        const management = isManagementMode();
         const form = document.getElementById('docs-form');
         const permissionNote = document.getElementById('docs-form-permission');
+        const quickFolderBtn = document.getElementById('docs-new-folder-btn');
+        const quickDocBtn = document.getElementById('docs-new-doc-btn');
 
         if (permissionNote) {
-            permissionNote.textContent = isAdminUser
-                ? 'Você possui permissão para criar, editar e excluir pastas e documentos.'
-                : 'Modo leitura: você pode navegar em pastas, visualizar e baixar documentos.';
-            permissionNote.classList.toggle('restricted', !isAdminUser);
+            if (management) {
+                permissionNote.textContent = 'Modo gestão ativo: você pode criar, editar e excluir pastas e documentos.';
+            } else if (isAdminUser) {
+                permissionNote.textContent = 'Modo consulta ativo. Para cadastrar, use Administração > Cadastros > Documentação.';
+            } else {
+                permissionNote.textContent = 'Modo leitura: você pode navegar em pastas, visualizar e baixar documentos.';
+            }
+            permissionNote.classList.toggle('restricted', !management);
+        }
+
+        if (quickFolderBtn) quickFolderBtn.disabled = !management;
+        if (quickDocBtn) quickDocBtn.disabled = !management;
+        if (!management) {
+            closeDocsCrudModal();
         }
 
         if (!form) return;
 
         form.querySelectorAll('input, select, textarea, button').forEach((element) => {
             if (element.id === 'docs-cancel-btn' && element.style.display === 'none') return;
-            element.disabled = !isAdminUser;
+            if (element.dataset.action === 'close-docs-modal') return;
+            element.disabled = !management;
         });
 
         syncFormTypeUI();
@@ -993,6 +1162,19 @@
         el.style.display = visible ? '' : 'none';
     }
 
+    async function askConfirmation({ title, message, confirmText }) {
+        if (typeof window.showConfirmDialog === 'function') {
+            return window.showConfirmDialog({
+                title,
+                message,
+                confirmText: confirmText || 'Confirmar',
+                cancelText: 'Cancelar',
+                danger: true,
+            });
+        }
+        return window.confirm(message);
+    }
+
     function showToast(message, type = 'success') {
         if (typeof window.showToast === 'function') {
             window.showToast(message, type);
@@ -1028,6 +1210,7 @@
 
     window.onDocumentacaoActivate = onDocumentacaoActivate;
     window.loadDocumentacao = loadDocumentacao;
+    window.setDocumentacaoMode = setDocumentacaoMode;
 
     document.addEventListener('DOMContentLoaded', initDocumentacao);
 })();

@@ -17,6 +17,14 @@
     function initUsuarios() {
         if (state.initialized) return;
 
+        document.getElementById('usuarios-open-create-btn')?.addEventListener('click', async () => {
+            if (!isAdmin()) return;
+            await loadInviteCatalog(false);
+            resetCreateUserForm();
+            openCreateUserModal();
+        });
+        bindCreateUserModal();
+
         document.getElementById('new-user-form')?.addEventListener('submit', handleCreateUser);
         document.getElementById('usuarios-tbody')?.addEventListener('click', handleTableActionClick);
         document.getElementById('usuarios-refresh-btn')?.addEventListener('click', loadUsuarios);
@@ -26,6 +34,15 @@
             if (!event.detail?.isAdmin) {
                 renderUsuariosEmpty('Acesso restrito a administradores.');
                 clearInviteSelects();
+                setCreateButtonDisabled(true);
+                closeCreateUserModal();
+                return;
+            }
+
+            setCreateButtonDisabled(false);
+            if (document.getElementById('page-usuarios')?.classList.contains('active')) {
+                loadInviteCatalog(false);
+                loadUsuarios();
             }
         });
 
@@ -41,9 +58,11 @@
     async function onUsuariosActivate() {
         if (!isAdmin()) {
             renderUsuariosEmpty('Acesso restrito a administradores.');
+            setCreateButtonDisabled(true);
             return;
         }
 
+        setCreateButtonDisabled(false);
         await loadInviteCatalog(false);
         await loadUsuarios();
     }
@@ -81,11 +100,6 @@
         const cargoInput = document.getElementById('new-user-cargo');
         const passwordInput = document.getElementById('new-user-password');
         const button = document.getElementById('new-user-btn');
-        const errorBox = document.getElementById('new-user-error');
-        const successBox = document.getElementById('new-user-ok');
-
-        hideMessage(errorBox);
-        hideMessage(successBox);
 
         const name = nameInput?.value?.trim() || '';
         const email = emailInput?.value?.trim().toLowerCase() || '';
@@ -96,7 +110,7 @@
 
         const validation = validateInviteInput({ name, email, type, setor, cargo, password });
         if (validation) {
-            showMessage(errorBox, validation);
+            showToast(validation, 'error');
             return;
         }
 
@@ -114,7 +128,7 @@
         setInviteBusy(button, false);
 
         if (error) {
-            showMessage(errorBox, error.message);
+            showToast(error.message, 'error');
             return;
         }
 
@@ -122,10 +136,11 @@
         if (emailInput) emailInput.value = '';
         if (typeInput) typeInput.value = 'comum';
         if (setorInput) setorInput.value = '';
-        resetInviteCargoSelect('Setor primeiro');
+        if (cargoInput) cargoInput.value = '';
         if (passwordInput) passwordInput.value = '';
-
-        showMessage(successBox, `Conta ${name} criada com sucesso.`);
+        resetInviteCargoSelect('Setor primeiro');
+        closeCreateUserModal();
+        showToast(`Conta ${name} criada com sucesso.`, 'success');
         await loadUsuarios();
     }
 
@@ -171,6 +186,13 @@
 
         button.disabled = busy;
         button.textContent = busy ? 'Criando...' : 'Criar conta';
+    }
+
+    function setCreateButtonDisabled(disabled) {
+        const createButton = document.getElementById('usuarios-open-create-btn');
+        if (!createButton) return;
+        createButton.disabled = Boolean(disabled);
+        createButton.style.display = disabled ? 'none' : '';
     }
 
     function clearInviteSelects() {
@@ -522,7 +544,11 @@
             return;
         }
 
-        const confirmed = window.confirm(`Desativar o acesso de ${email}?`);
+        const confirmed = await askConfirmation({
+            title: 'Desativar conta',
+            message: `Desativar o acesso de ${email}?`,
+            confirmText: 'Desativar',
+        });
         if (!confirmed) return;
 
         const { error } = await window.App.api.admin.deactivateUser(userId);
@@ -536,7 +562,11 @@
     }
 
     async function reativarUsuario(userId, email) {
-        const confirmed = window.confirm(`Reativar o acesso de ${email}?`);
+        const confirmed = await askConfirmation({
+            title: 'Reativar conta',
+            message: `Reativar o acesso de ${email}?`,
+            confirmText: 'Reativar',
+        });
         if (!confirmed) return;
 
         const { error } = await window.App.api.admin.reactivateUser(userId);
@@ -833,6 +863,67 @@
         if (!element) return;
         element.textContent = '';
         element.style.display = 'none';
+    }
+
+    function bindCreateUserModal() {
+        const modal = document.getElementById('usuarios-create-modal');
+        if (!modal) return;
+
+        modal.addEventListener('click', (event) => {
+            if (event.target === modal) {
+                resetCreateUserForm();
+                closeCreateUserModal();
+            }
+        });
+
+        modal.querySelectorAll('[data-action="close-usuarios-create"]').forEach((button) => {
+            button.addEventListener('click', () => {
+                resetCreateUserForm();
+                closeCreateUserModal();
+            });
+        });
+    }
+
+    function openCreateUserModal() {
+        const modal = document.getElementById('usuarios-create-modal');
+        if (!modal) return;
+        modal.hidden = false;
+        setTimeout(() => document.getElementById('new-user-name')?.focus(), 50);
+    }
+
+    function closeCreateUserModal() {
+        const modal = document.getElementById('usuarios-create-modal');
+        if (!modal) return;
+        modal.hidden = true;
+    }
+
+    function resetCreateUserForm() {
+        const nameInput = document.getElementById('new-user-name');
+        const emailInput = document.getElementById('new-user-email');
+        const typeInput = document.getElementById('new-user-type');
+        const setorInput = document.getElementById('new-user-setor');
+        const passwordInput = document.getElementById('new-user-password');
+
+        if (nameInput) nameInput.value = '';
+        if (emailInput) emailInput.value = '';
+        if (typeInput) typeInput.value = 'comum';
+        if (setorInput) setorInput.value = '';
+        if (passwordInput) passwordInput.value = '';
+        resetInviteCargoSelect('Setor primeiro');
+        setInviteBusy(document.getElementById('new-user-btn'), false);
+    }
+
+    async function askConfirmation({ title, message, confirmText }) {
+        if (typeof window.showConfirmDialog === 'function') {
+            return window.showConfirmDialog({
+                title,
+                message,
+                confirmText: confirmText || 'Confirmar',
+                cancelText: 'Cancelar',
+                danger: true,
+            });
+        }
+        return window.confirm(message);
     }
 
     function showToast(message, type = 'success') {

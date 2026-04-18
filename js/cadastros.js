@@ -25,6 +25,23 @@
     function initCadastros() {
         if (state.initialized) return;
 
+        document.getElementById('cad-open-setor-modal')?.addEventListener('click', () => {
+            resetSetorForm();
+            openCadModal('cad-setor-modal');
+        });
+        document.getElementById('cad-open-cargo-modal')?.addEventListener('click', () => {
+            resetCargoForm();
+            openCadModal('cad-cargo-modal');
+        });
+        document.getElementById('cad-open-filial-modal')?.addEventListener('click', () => {
+            resetFilialForm();
+            openCadModal('cad-filial-modal');
+        });
+
+        bindCadModal('cad-setor-modal', resetSetorForm);
+        bindCadModal('cad-cargo-modal', resetCargoForm);
+        bindCadModal('cad-filial-modal', resetFilialForm);
+
         document.getElementById('cad-setor-form')?.addEventListener('submit', handleSetorSubmit);
         document.getElementById('cad-setor-cancel')?.addEventListener('click', resetSetorForm);
         document.getElementById('cad-setor-tbody')?.addEventListener('click', handleSetorTableClick);
@@ -124,6 +141,8 @@
         setText('cad-kpi-setores', '—');
         setText('cad-kpi-cargos', '—');
         setText('cad-kpi-filiais', '—');
+        ['cad-setor-modal', 'cad-cargo-modal', 'cad-filial-modal'].forEach(closeCadModal);
+        setCreateButtonsDisabled(true);
     }
 
     function renderLoadingStates() {
@@ -176,6 +195,7 @@
         renderFiliaisTable();
         syncSetorSelects();
         updateSummary();
+        setCreateButtonsDisabled(false);
     }
 
     function updateSummary() {
@@ -401,6 +421,7 @@
 
         notify(id > 0 ? 'Setor atualizado.' : 'Setor criado.', 'success');
         resetSetorForm();
+        closeCadModal('cad-setor-modal');
         await loadCadastros();
         dispatchCatalogUpdated();
     }
@@ -431,13 +452,18 @@
             setChecked('cad-setor-ativo', Boolean(setor.ativo));
             setText('cad-setor-submit', 'Atualizar Setor');
             toggleDisplay('cad-setor-cancel', true);
-            document.getElementById('cad-setor-nome')?.focus();
+            openCadModal('cad-setor-modal');
+            setTimeout(() => document.getElementById('cad-setor-nome')?.focus(), 30);
             return;
         }
 
         if (action === 'delete-setor') {
             const nome = button.dataset.nome || 'este setor';
-            const ok = window.confirm(`Excluir ${nome}? Os cargos vinculados também serão removidos.`);
+            const ok = await askConfirmation({
+                title: 'Excluir setor',
+                message: `Excluir ${nome}? Os cargos vinculados tambem serao removidos.`,
+                confirmText: 'Excluir',
+            });
             if (!ok) return;
 
             const { error } = await window.App.api.catalog.removerSetor(id);
@@ -477,6 +503,7 @@
 
         notify(id > 0 ? 'Cargo atualizado.' : 'Cargo criado.', 'success');
         resetCargoForm();
+        closeCadModal('cad-cargo-modal');
         await loadCadastros();
         dispatchCatalogUpdated();
     }
@@ -509,13 +536,18 @@
             setChecked('cad-cargo-ativo', Boolean(cargo.ativo));
             setText('cad-cargo-submit', 'Atualizar Cargo');
             toggleDisplay('cad-cargo-cancel', true);
-            document.getElementById('cad-cargo-nome')?.focus();
+            openCadModal('cad-cargo-modal');
+            setTimeout(() => document.getElementById('cad-cargo-nome')?.focus(), 30);
             return;
         }
 
         if (action === 'delete-cargo') {
             const nome = button.dataset.nome || 'este cargo';
-            const ok = window.confirm(`Excluir ${nome}?`);
+            const ok = await askConfirmation({
+                title: 'Excluir cargo',
+                message: `Excluir ${nome}?`,
+                confirmText: 'Excluir',
+            });
             if (!ok) return;
 
             const { error } = await window.App.api.catalog.removerCargo(id);
@@ -566,6 +598,7 @@
 
         notify(id > 0 ? 'Filial atualizada.' : 'Filial criada.', 'success');
         resetFilialForm();
+        closeCadModal('cad-filial-modal');
         await loadCadastros();
         dispatchCatalogUpdated();
     }
@@ -617,13 +650,18 @@
             setChecked('cad-filial-ativo', Boolean(filial.ativo));
             setText('cad-filial-submit', 'Atualizar Filial');
             toggleDisplay('cad-filial-cancel', true);
-            document.getElementById('cad-filial-nome')?.focus();
+            openCadModal('cad-filial-modal');
+            setTimeout(() => document.getElementById('cad-filial-nome')?.focus(), 30);
             return;
         }
 
         if (action === 'delete-filial') {
             const nome = button.dataset.nome || 'esta filial';
-            const ok = window.confirm(`Excluir ${nome}?`);
+            const ok = await askConfirmation({
+                title: 'Excluir filial',
+                message: `Excluir ${nome}?`,
+                confirmText: 'Excluir',
+            });
             if (!ok) return;
 
             const { error } = await window.App.api.catalog.removerFilial(id);
@@ -637,6 +675,60 @@
             await loadCadastros();
             dispatchCatalogUpdated();
         }
+    }
+
+    function bindCadModal(modalId, onCloseReset) {
+        const modal = document.getElementById(modalId);
+        if (!modal) return;
+
+        modal.addEventListener('click', (event) => {
+            if (event.target === modal) {
+                if (typeof onCloseReset === 'function') onCloseReset();
+                closeCadModal(modalId);
+            }
+        });
+
+        modal.querySelectorAll('[data-action="close-cad-modal"]').forEach((button) => {
+            button.addEventListener('click', () => {
+                if (typeof onCloseReset === 'function') onCloseReset();
+                closeCadModal(modalId);
+            });
+        });
+    }
+
+    function openCadModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (!modal) return;
+        modal.hidden = false;
+    }
+
+    function closeCadModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (!modal) return;
+        modal.hidden = true;
+    }
+
+    function setCreateButtonsDisabled(disabled) {
+        ['cad-open-setor-modal', 'cad-open-cargo-modal', 'cad-open-filial-modal'].forEach((id) => {
+            const button = document.getElementById(id);
+            if (button) {
+                button.disabled = Boolean(disabled);
+                button.style.display = disabled ? 'none' : '';
+            }
+        });
+    }
+
+    async function askConfirmation({ title, message, confirmText }) {
+        if (typeof window.showConfirmDialog === 'function') {
+            return window.showConfirmDialog({
+                title,
+                message,
+                confirmText: confirmText || 'Confirmar',
+                cancelText: 'Cancelar',
+                danger: true,
+            });
+        }
+        return window.confirm(message);
     }
 
     function setValue(id, value) {
@@ -688,6 +780,7 @@
 
     window.onCadastrosActivate = onCadastrosActivate;
     window.loadCadastros = loadCadastros;
+    window.setCadastrosModule = setActiveModule;
 
     document.addEventListener('DOMContentLoaded', initCadastros);
 })();
