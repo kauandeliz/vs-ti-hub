@@ -18,6 +18,8 @@
     function initCadastros() {
         if (state.initialized) return;
 
+        mountCadModalsToBody();
+
         document.getElementById('cad-open-setor-modal')?.addEventListener('click', () => {
             resetSetorForm();
             openCadModal('cad-setor-modal');
@@ -56,6 +58,14 @@
         });
 
         state.initialized = true;
+    }
+
+    function mountCadModalsToBody() {
+        ['cad-setor-modal', 'cad-cargo-modal', 'cad-filial-modal'].forEach((modalId) => {
+            const modal = document.getElementById(modalId);
+            if (!modal || modal.parentElement === document.body) return;
+            document.body.appendChild(modal);
+        });
     }
 
     function isCadastroDataPageActive() {

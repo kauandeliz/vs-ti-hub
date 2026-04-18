@@ -32,6 +32,8 @@
     function initDirecionadores() {
         if (state.initialized) return;
 
+        mountLinkModalToBody();
+
         document.getElementById('cad-open-link-modal')?.addEventListener('click', () => {
             openCardCreateModal();
         });
@@ -63,6 +65,12 @@
         syncAdminCardCreateActions();
         state.initialized = true;
         loadPublicCards();
+    }
+
+    function mountLinkModalToBody() {
+        const modal = document.getElementById('cad-link-modal');
+        if (!modal || modal.parentElement === document.body) return;
+        document.body.appendChild(modal);
     }
 
     function isCadDirecionadoresActive() {
