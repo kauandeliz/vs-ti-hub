@@ -1,0 +1,189 @@
+/* ─── LIGHT THEME OVERRIDES ───────────────────────── */
+:root[data-theme="light"] body::before {
+    background-image:
+        linear-gradient(rgba(47, 111, 219, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(47, 111, 219, 0.05) 1px, transparent 1px);
+}
+
+:root[data-theme="light"] body::after {
+    background: radial-gradient(ellipse, rgba(47, 111, 219, 0.1) 0%, transparent 70%);
+}
+
+:root[data-theme="light"] .sidebar {
+    box-shadow: 6px 0 18px rgba(23, 38, 58, 0.06);
+}
+
+:root[data-theme="light"] .sidebar-logo-text strong,
+:root[data-theme="light"] .page-header h1,
+:root[data-theme="light"] .card-body h3,
+:root[data-theme="light"] .external-card-title,
+:root[data-theme="light"] .stat-value,
+:root[data-theme="light"] .modal-header h3,
+:root[data-theme="light"] .cad-kpi-card strong,
+:root[data-theme="light"] .cad-hub-title,
+:root[data-theme="light"] .cad-card h3,
+:root[data-theme="light"] .cad-link-main strong,
+:root[data-theme="light"] .colab-table-header h3,
+:root[data-theme="light"] .colab-form-card h3,
+:root[data-theme="light"] .linhas-table-header h3,
+:root[data-theme="light"] .usuarios-table-header h3,
+:root[data-theme="light"] .new-user-card h3 {
+    color: var(--text-strong);
+}
+
+:root[data-theme="light"] .topbar {
+    background: rgba(243, 246, 251, 0.92);
+}
+
+:root[data-theme="light"] .nav-section-label::after {
+    background: rgba(23, 38, 58, 0.14);
+}
+
+:root[data-theme="light"] .nav-item:hover {
+    background: rgba(47, 111, 219, 0.08);
+}
+
+:root[data-theme="light"] .nav-item.active {
+    background: rgba(47, 111, 219, 0.12);
+}
+
+:root[data-theme="light"] tbody tr:hover td {
+    background: rgba(47, 111, 219, 0.06);
+}
+
+:root[data-theme="light"] .table-wrap,
+:root[data-theme="light"] .tool-card,
+:root[data-theme="light"] .external-card,
+:root[data-theme="light"] .cad-card,
+:root[data-theme="light"] .linhas-table-card,
+:root[data-theme="light"] .colab-table-card,
+:root[data-theme="light"] .usuarios-table-card,
+:root[data-theme="light"] .dash-report-card,
+:root[data-theme="light"] .dashboards-section,
+:root[data-theme="light"] .dashboards-toolbar {
+    box-shadow: 0 10px 24px rgba(23, 38, 58, 0.06);
+}
+
+:root[data-theme="light"] .modal-backdrop {
+    background: rgba(15, 23, 42, 0.36);
+}
+
+:root[data-theme="light"] .app-toast {
+    background: #ffffff;
+    box-shadow: 0 8px 22px rgba(23, 38, 58, 0.12);
+}
+
+:root[data-theme="light"] .app-toast--success {
+    background: #f2fbf7;
+}
+
+:root[data-theme="light"] .app-toast--error {
+    background: #fff4f4;
+    color: #af3333;
+}
+
+:root[data-theme="light"] .app-toast--warning {
+    background: #fff8ee;
+    color: #9c620f;
+}
+
+/* Home */
+:root[data-theme="light"] .landing-hero {
+    background:
+        radial-gradient(1200px 340px at 100% -60%, rgba(28, 161, 120, 0.18), transparent 52%),
+        radial-gradient(900px 320px at -10% -20%, rgba(47, 111, 219, 0.17), transparent 58%),
+        linear-gradient(140deg, #ffffff, #f1f5fc);
+}
+
+:root[data-theme="light"] .landing-title,
+:root[data-theme="light"] .landing-spotlight h2,
+:root[data-theme="light"] .landing-kpi strong,
+:root[data-theme="light"] .shortcut-title {
+    color: var(--text-strong);
+}
+
+:root[data-theme="light"] .landing-btn.ghost,
+:root[data-theme="light"] .landing-kpi,
+:root[data-theme="light"] .landing-meta-chip {
+    background: rgba(47, 111, 219, 0.06);
+    border-color: rgba(47, 111, 219, 0.18);
+}
+
+:root[data-theme="light"] .landing-spotlight {
+    background: rgba(47, 111, 219, 0.05);
+    border-color: rgba(47, 111, 219, 0.16);
+}
+
+:root[data-theme="light"] .landing-footer {
+    border-top-color: rgba(23, 38, 58, 0.12);
+}
+
+/* Dashboards */
+:root[data-theme="light"] .dashboards-toolbar {
+    background:
+        radial-gradient(700px 160px at 100% -40%, rgba(47, 111, 219, 0.16), transparent 60%),
+        linear-gradient(150deg, #ffffff, #f4f7fd);
+}
+
+:root[data-theme="light"] .dashboards-section {
+    background: linear-gradient(160deg, #ffffff, #f4f8ff);
+}
+
+:root[data-theme="light"] .dashboards-section-head h3,
+:root[data-theme="light"] .dash-report-head h4,
+:root[data-theme="light"] .dash-chart-head h4,
+:root[data-theme="light"] .dash-kpi-card strong {
+    color: var(--text-strong);
+}
+
+:root[data-theme="light"] .dash-kpi-card {
+    background:
+        radial-gradient(220px 80px at 100% 0%, rgba(28, 161, 120, 0.16), transparent 65%),
+        linear-gradient(140deg, #ffffff, #f4f8ff);
+}
+
+:root[data-theme="light"] .dash-chart-card,
+:root[data-theme="light"] .dash-report-card {
+    background:
+        radial-gradient(220px 80px at 100% 0%, rgba(47, 111, 219, 0.14), transparent 60%),
+        linear-gradient(155deg, #ffffff, #f3f7fd);
+}
+
+/* Login and pre-login */
+:root[data-theme="light"] #login-screen::before {
+    background-image:
+        linear-gradient(rgba(47, 111, 219, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(47, 111, 219, 0.05) 1px, transparent 1px);
+}
+
+:root[data-theme="light"] #login-screen::after {
+    background: radial-gradient(ellipse, rgba(47, 111, 219, 0.09) 0%, transparent 70%);
+}
+
+:root[data-theme="light"] .public-hero {
+    background:
+        radial-gradient(1100px 300px at 90% -35%, rgba(28, 161, 120, 0.18), transparent 56%),
+        radial-gradient(760px 280px at -10% 0%, rgba(47, 111, 219, 0.16), transparent 58%),
+        linear-gradient(145deg, #ffffff, #f2f6fc);
+    border-color: rgba(47, 111, 219, 0.26);
+}
+
+:root[data-theme="light"] .public-hero-title,
+:root[data-theme="light"] .public-feature-card strong,
+:root[data-theme="light"] .login-logo-text strong,
+:root[data-theme="light"] .login-title {
+    color: var(--text-strong);
+}
+
+:root[data-theme="light"] .public-feature-card {
+    background: rgba(47, 111, 219, 0.06);
+    border-color: rgba(47, 111, 219, 0.16);
+}
+
+:root[data-theme="light"] .public-hero-btn {
+    background: rgba(47, 111, 219, 0.06);
+}
+
+:root[data-theme="light"] .login-btn:hover {
+    background: #255ec0;
+}

@@ -211,6 +211,41 @@
     gap: 8px;
 }
 
+.topbar-theme-toggle {
+    border: 1px solid var(--border);
+    background: var(--surface);
+    border-radius: 8px;
+    color: var(--text-soft);
+    height: 30px;
+    padding: 0 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.68rem;
+    font-weight: 600;
+    font-family: var(--font);
+    cursor: pointer;
+    transition: border-color 0.18s, color 0.18s, background 0.18s, transform 0.18s;
+}
+
+.topbar-theme-toggle:hover {
+    border-color: var(--border-hover);
+    color: var(--text);
+    transform: translateY(-1px);
+}
+
+.topbar-theme-toggle:active {
+    transform: translateY(0);
+}
+
+.topbar-theme-icon {
+    font-size: 0.72rem;
+}
+
+.topbar-theme-label {
+    line-height: 1;
+}
+
 /* ─── BADGES ──────────────────────────────────────── */
 .badge {
     background: rgba(79, 142, 247, 0.12);
@@ -271,4 +306,14 @@
     .main                { margin-left: 0; }
     .mobile-toggle       { display: flex; }
     .nav-section-label   { margin-top: 10px; }
+
+    .topbar-theme-label {
+        display: none;
+    }
+
+    .topbar-theme-toggle {
+        width: 30px;
+        padding: 0;
+        justify-content: center;
+    }
 }

@@ -250,7 +250,6 @@
         showApp();
         renderUserWidget(user);
         showAdminNav(isAdmin());
-        showDocumentationNav(true);
         startInactivityMonitor({ reset: !isSameUser });
         dispatchAuthChanged();
     }
@@ -263,7 +262,6 @@
         hideApp();
         clearUserWidget();
         showAdminNav(false);
-        showDocumentationNav(false);
         showLoginScreen();
         if (effectiveReason === 'inactivity') {
             showLoginError(INACTIVITY_LOGOUT_MESSAGE);
@@ -465,19 +463,6 @@
                 adminNav.style.display = visible ? '' : 'none';
             }
         });
-
-        const docsNav = document.getElementById('nav-documentacao');
-        if (docsNav) {
-            docsNav.dataset.docsMode = visible ? 'gestao' : 'consulta';
-            docsNav.dataset.badgeLabel = 'Documentação';
-        }
-    }
-
-    function showDocumentationNav(visible) {
-        const docsNav = document.getElementById('nav-documentacao');
-        if (docsNav) {
-            docsNav.style.display = visible ? '' : 'none';
-        }
     }
 
     function abrirTrocaSenhaPropria() {

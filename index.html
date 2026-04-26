@@ -5,6 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VS TI Hub</title>
     <link rel="icon" href="https://yt3.googleusercontent.com/TY_CfaW7OV4aqGfiUZP56C_5GTpUcc10Rmyud2qkF9L1ojYiTADJmuQfXnUURvrKDx364quSbjU=s900-c-k-c0x00ffffff-no-rj" type="image/jpeg">
+    <script>
+        (function applySavedTheme() {
+            try {
+                var savedTheme = localStorage.getItem('vs-ti-hub-theme');
+                if (savedTheme === 'light' || savedTheme === 'dark') {
+                    document.documentElement.setAttribute('data-theme', savedTheme);
+                }
+            } catch (error) {
+                // no-op
+            }
+        })();
+    </script>
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -23,9 +35,9 @@
     <link rel="stylesheet" href="css/historico.css">
     <link rel="stylesheet" href="css/colaboradores.css">
     <link rel="stylesheet" href="css/linhas.css">
-    <link rel="stylesheet" href="css/documentacao.css">
     <link rel="stylesheet" href="css/cadastros.css">
     <link rel="stylesheet" href="css/auth.css">
+    <link rel="stylesheet" href="css/theme.css">
 
     <!-- Supabase JS SDK v2 -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
@@ -85,17 +97,6 @@
     >
         <i class="nav-icon fas fa-id-badge"></i> Colaboradores Internos
     </button>
-    <button
-        class="nav-item"
-        id="nav-documentacao"
-        data-nav="documentacao"
-        data-docs-mode="consulta"
-        data-badge-label="Documentação"
-        style="display:none"
-    >
-        <i class="nav-icon fas fa-folder-open"></i> Documentação
-    </button>
-
     <div class="sidebar-footer">
         <span class="status-dot"></span> Sistema operacional
     </div>
@@ -112,6 +113,10 @@
                 placeholder="Buscar recursos, sistemas, cidades...">
         </div>
         <div class="topbar-right">
+            <button type="button" class="topbar-theme-toggle" id="theme-toggle-btn" aria-label="Ativar modo claro" title="Ativar modo claro">
+                <i class="fas fa-sun topbar-theme-icon" id="theme-toggle-icon" aria-hidden="true"></i>
+                <span class="topbar-theme-label" id="theme-toggle-label">Modo claro</span>
+            </button>
             <span class="badge green">● Online</span>
             <span class="badge" id="currentPageBadge">Dashboard</span>
         </div>
@@ -131,6 +136,7 @@
 <!-- Scripts (order matters: nav + data layer + auth + feature modules) -->
 <script src="js/pages-loader.js"></script>
 <script src="js/nav.js"></script>
+<script src="js/theme.js"></script>
 <script src="js/ui-feedback.js"></script>
 <script src="js/supabase.js"></script>
 <script src="js/auth.js"></script>
@@ -140,7 +146,6 @@
 <script src="js/gerador-ui.js"></script>
 <script src="js/unidades.js"></script>
 <script src="js/linhas.js"></script>
-<script src="js/documentacao.js"></script>
 <script src="js/colaboradores.js"></script>
 <script src="js/usuarios.js"></script>
 <script src="js/cadastros.js"></script>

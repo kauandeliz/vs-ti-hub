@@ -19,6 +19,7 @@
     --text:         #dce3f0;
     --text-muted:   #5a6478;
     --text-soft:    #8a95a8;
+    --text-strong:  #ffffff;
     --danger:       #f05252;
 
     /* Layout */
@@ -28,6 +29,22 @@
     /* Typography */
     --font: 'DM Sans', sans-serif;
     --mono: 'DM Mono', monospace;
+}
+
+:root[data-theme="light"] {
+    --bg:           #f3f6fb;
+    --surface:      #ffffff;
+    --surface2:     #edf2f9;
+    --border:       #d8e0ec;
+    --border-hover: #bac8dc;
+    --accent:       #2f6fdb;
+    --accent2:      #1ca178;
+    --accent3:      #b8771f;
+    --text:         #17263a;
+    --text-muted:   #73829b;
+    --text-soft:    #4e5f78;
+    --text-strong:  #142237;
+    --danger:       #d54848;
 }
 
 /* ─── BASE ───────────────────────────────────────────── */

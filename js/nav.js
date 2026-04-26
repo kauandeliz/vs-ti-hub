@@ -17,7 +17,6 @@
         unidades: 'Unidades',
         linhas: 'Linhas',
         colaboradores: 'Colaboradores Internos',
-        documentacao: 'Documentação',
         usuarios: 'Contas de Acesso',
         cadastros: 'Cadastros',
         'cad-estrutura': 'Cadastros • Estrutura',
@@ -61,7 +60,6 @@
         navTo(page, resolveNavButton(target, page), {
             cadModule: target.dataset.cadModuleTarget || '',
             badgeLabel: target.dataset.badgeLabel || '',
-            docsMode: target.dataset.docsMode || '',
         });
     }
 
@@ -85,10 +83,6 @@
         const navElement = element;
         if (navElement) {
             navElement.classList.add('active');
-        }
-
-        if (page === 'documentacao' && typeof window.setDocumentacaoMode === 'function') {
-            window.setDocumentacaoMode(options.docsMode || 'consulta');
         }
 
         currentPage = page;
@@ -122,10 +116,6 @@
 
         if (page === 'colaboradores' && typeof window.onColaboradoresActivate === 'function') {
             window.onColaboradoresActivate();
-        }
-
-        if (page === 'documentacao' && typeof window.onDocumentacaoActivate === 'function') {
-            window.onDocumentacaoActivate();
         }
 
         if (page === 'usuarios' && typeof window.onUsuariosActivate === 'function') {
