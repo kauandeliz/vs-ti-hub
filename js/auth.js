@@ -129,11 +129,29 @@
         }
 
         const { data, error } = _supabase.auth.onAuthStateChange(async (event, session) => {
+            if (event === 'SIGNED_OUT') {
+                onSignedOut(pendingSignOutReason || event || 'auth-state');
+                return;
+            }
+
             if (session?.user) {
                 await onSignedIn(session.user);
-            } else {
-                onSignedOut(pendingSignOutReason || event || 'auth-state');
+                return;
             }
+
+            // Alguns eventos (ex.: USER_UPDATED) podem chegar sem session.
+            // Antes de deslogar, tentamos recuperar a sessão atual.
+            try {
+                const { data: fallbackData, error: fallbackError } = await _supabase.auth.getSession();
+                if (!fallbackError && fallbackData?.session?.user) {
+                    await onSignedIn(fallbackData.session.user);
+                    return;
+                }
+            } catch {
+                // no-op
+            }
+
+            onSignedOut(pendingSignOutReason || event || 'auth-state');
         });
 
         if (!error) {
