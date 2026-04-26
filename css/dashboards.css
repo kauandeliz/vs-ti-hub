@@ -1,8 +1,11 @@
 /* ─── DASHBOARDS PAGE ─────────────────────────────── */
 #page-dashboards {
+    gap: 16px;
+}
+
+#page-dashboards.active {
     display: flex;
     flex-direction: column;
-    gap: 16px;
 }
 
 .dashboards-toolbar {

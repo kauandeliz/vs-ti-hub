@@ -208,21 +208,19 @@
 
         const api = window.App?.api;
         if (!api) {
-            setSummary('API indisponivel para carregar dashboards.');
-            renderAutoError('API indisponivel para carregar dashboards.');
+            setSummary('API indisponivel para carregar relatorios customizados.');
             renderReportsError('API indisponivel para carregar relatorios.');
             return;
         }
 
         if (!window.Chart) {
             setSummary('Biblioteca de graficos nao foi carregada.');
-            renderAutoError('Biblioteca de graficos indisponivel (Chart.js).');
             renderReportsError('Biblioteca de graficos indisponivel (Chart.js).');
             return;
         }
 
         state.loading = true;
-        setSummary('Atualizando indicadores e relatorios...');
+        setSummary('Atualizando relatorios customizados...');
 
         const isAdminUser = hasAdminAccess();
         const usersPromise = isAdminUser && api.admin?.listUsers
@@ -249,8 +247,6 @@
         state.records.usuarios = usersRes.data || [];
         state.reports = reportsRes.data || [];
 
-        renderKpis();
-        renderAutoDashboards();
         renderCustomReports();
 
         const errors = [colabRes.error, filiaisRes.error, linhasRes.error, docsRes.error, cardsRes.error, reportsRes.error, usersRes.error]
