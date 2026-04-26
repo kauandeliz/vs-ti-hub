@@ -108,6 +108,7 @@
     const state = {
         initialized: false,
         loading: false,
+        layoutResizeTimer: null,
         records: {
             colaboradores: [],
             filiais: [],
@@ -137,6 +138,7 @@
         document.getElementById('dashboards-report-form')?.addEventListener('submit', handleReportSubmit);
         document.getElementById('dash-report-cancel-btn')?.addEventListener('click', resetReportForm);
         document.getElementById('dash-report-origem')?.addEventListener('change', handleOrigemChange);
+        window.addEventListener('resize', handleWindowResize);
 
         bindReportModal();
         renderReportFormSelects();
@@ -169,6 +171,19 @@
         });
 
         state.initialized = true;
+    }
+
+    function handleWindowResize() {
+        if (!isDashboardsActive()) return;
+
+        if (state.layoutResizeTimer) {
+            window.clearTimeout(state.layoutResizeTimer);
+        }
+
+        state.layoutResizeTimer = window.setTimeout(() => {
+            state.layoutResizeTimer = null;
+            syncReportChartsLayout();
+        }, 120);
     }
 
     function hasAdminAccess() {
@@ -552,6 +567,20 @@
 
         state.reports.forEach((report) => {
             renderCustomReportChart(report);
+        });
+        queueReportChartsResize();
+    }
+
+    function queueReportChartsResize() {
+        window.requestAnimationFrame(() => {
+            window.setTimeout(syncReportChartsLayout, 40);
+        });
+    }
+
+    function syncReportChartsLayout() {
+        state.reportCharts.forEach((chart) => {
+            chart?.resize?.();
+            chart?.update?.('none');
         });
     }
 
