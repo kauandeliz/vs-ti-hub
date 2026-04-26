@@ -66,7 +66,7 @@
 
         const user = typeof window.getCurrentUser === 'function' ? window.getCurrentUser() : null;
         if (!user) {
-            el.textContent = 'Conectado no hub';
+            el.textContent = 'Conectado no VinilSul Hub';
             return;
         }
 

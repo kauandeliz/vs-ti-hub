@@ -327,10 +327,11 @@
         root.innerHTML = `
             <div class="public-landing-grid">
                 <section class="public-hero">
-                    <span class="public-hero-pill">${escapeHtml(greeting)} • Plataforma pública</span>
-                    <h1 class="public-hero-title">VS TI Hub</h1>
+                    <span class="public-hero-pill">${escapeHtml(greeting)} • Portal corporativo</span>
+                    <h1 class="public-hero-title">VinilSul Hub</h1>
                     <p class="public-hero-subtitle">
-                        Hub central para gestão de acessos, catálogo organizacional e operação diária de TI da VinilSul.
+                        Plataforma corporativa da VinilSul para centralizar módulos de operação e gestão.
+                        O módulo de TI já está ativo e novos módulos serão conectados no mesmo hub.
                     </p>
 
                     <div class="public-hero-actions">
@@ -340,26 +341,26 @@
 
                     <div class="public-feature-grid">
                         <article class="public-feature-card">
-                            <strong>Onboarding completo</strong>
-                            <span>Gerador de acessos padronizado e auditável.</span>
+                            <strong>Módulo TI ativo</strong>
+                            <span>Operação diária já disponível com cadastros, acessos e dashboards.</span>
                         </article>
                         <article class="public-feature-card">
-                            <strong>Controle de usuários</strong>
-                            <span>Perfis ADM e comum com setor e cargo.</span>
+                            <strong>Arquitetura modular</strong>
+                            <span>Estrutura pronta para adicionar RH, Comercial, Financeiro e outros módulos.</span>
                         </article>
                         <article class="public-feature-card">
-                            <strong>Catálogo dinâmico</strong>
-                            <span>Setores, cargos e filiais mantidos por CRUD.</span>
+                            <strong>Escala corporativa</strong>
+                            <span>Uma única base visual e de autenticação para toda a empresa.</span>
                         </article>
                     </div>
                 </section>
 
                 <div class="login-card public-login-card">
                     <div class="login-logo">
-                        <img src="assets/images/vs-logo.svg" alt="VS">
+                        <img src="assets/images/vinilsul-logo.jpg" alt="VinilSul">
                         <div class="login-logo-text">
-                            <strong>VS TI Hub</strong>
-                            <span>VinilSul Sistemas</span>
+                            <strong>VinilSul Hub</strong>
+                            <span>Plataforma Corporativa</span>
                         </div>
                     </div>
 

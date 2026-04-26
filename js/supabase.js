@@ -1,7 +1,7 @@
 /**
  * supabase.js
  *
- * Camada central de acesso a dados e Edge Functions do VS TI Hub.
+ * Camada central de acesso a dados e Edge Functions do VinilSul Hub.
  * - Inicializa o cliente Supabase uma única vez
  * - Padroniza erros e respostas
  * - Centraliza chamadas de banco e funções administrativas
