@@ -57,6 +57,15 @@
                                 <label>E-mail corporativo</label>
                                 <input type="email" id="new-user-email" placeholder="joao.silva@vinilsul.com.br" required>
                             </div>
+                            <div class="form-group">
+                                <label>Foto de perfil</label>
+                                <input type="file" id="new-user-avatar" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml">
+                                <div style="margin-top:6px;font-size:0.64rem;color:var(--text-muted)">Opcional. Formatos aceitos: PNG, JPG, WEBP, GIF ou SVG (máx. 3 MB).</div>
+                                <div id="new-user-avatar-preview" style="display:none;margin-top:8px;align-items:center;gap:8px">
+                                    <img id="new-user-avatar-preview-img" src="assets/images/user-placeholder.svg" alt="Preview da foto" style="width:34px;height:34px;border-radius:50%;object-fit:cover;border:1px solid var(--border)">
+                                    <span id="new-user-avatar-preview-name" style="font-size:0.66rem;color:var(--text-soft)"></span>
+                                </div>
+                            </div>
                             <div class="form-row">
                                 <div class="form-group">
                                     <label>Tipo</label>

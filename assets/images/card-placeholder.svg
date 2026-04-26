@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" role="img" aria-label="Sem imagem">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#e9f0fb"/>
+      <stop offset="100%" stop-color="#f6f9ff"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#2f6fdb"/>
+      <stop offset="100%" stop-color="#1ca178"/>
+    </linearGradient>
+  </defs>
+  <rect width="640" height="360" fill="url(#bg)"/>
+  <rect x="0" y="0" width="640" height="28" fill="url(#accent)" opacity="0.92"/>
+  <g transform="translate(248 102)">
+    <rect x="0" y="0" width="144" height="108" rx="14" fill="#dbe6f8"/>
+    <circle cx="38" cy="34" r="13" fill="#b7c9e7"/>
+    <path d="M18 90l34-30 22 20 30-28 22 38H18z" fill="#9fb6dc"/>
+  </g>
+  <text x="320" y="264" text-anchor="middle" font-size="26" font-family="DM Sans, Arial, sans-serif" fill="#4e5f78">
+    Imagem do card
+  </text>
+</svg>

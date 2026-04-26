@@ -7,6 +7,7 @@
 (function bootstrapDirecionadores() {
     'use strict';
 
+    const CARD_IMAGE_PLACEHOLDER = 'assets/images/card-placeholder.svg';
     const AREA_LABELS = {
         home: 'Home',
         helpdesk: 'Helpdesk',
@@ -44,6 +45,7 @@
         document.getElementById('cad-link-form')?.addEventListener('submit', handleLinkSubmit);
         document.getElementById('cad-link-cancel')?.addEventListener('click', resetLinkForm);
         document.getElementById('cad-link-tbody')?.addEventListener('click', handleLinkTableClick);
+        document.getElementById('cad-link-imagem-file')?.addEventListener('change', syncCardImagePreview);
         document.getElementById('cad-dir-refresh-btn')?.addEventListener('click', () => {
             if (isAdmin()) {
                 loadAdminCards();
@@ -136,11 +138,12 @@
 
     function renderExternalCard(card) {
         const id = Number(card.id);
+        const cardImage = sanitizeText(card.imagem_url) || CARD_IMAGE_PLACEHOLDER;
         if (!isAdmin()) {
             return `
                 <a href="${escapeHtmlAttribute(card.link)}" target="_blank" rel="noopener noreferrer" class="external-card">
                     <div class="external-card-image">
-                        <img src="${escapeHtmlAttribute(card.imagem_url)}" alt="${escapeHtmlAttribute(card.nome)}" loading="lazy">
+                        <img src="${escapeHtmlAttribute(cardImage)}" alt="${escapeHtmlAttribute(card.nome)}" loading="lazy" onerror="this.onerror=null;this.src='${CARD_IMAGE_PLACEHOLDER}';">
                     </div>
                     <div class="external-card-content">
                         <div class="external-card-title">${escapeHtml(card.nome)}</div>
@@ -154,7 +157,7 @@
             <article class="external-card external-card-manage">
                 <a href="${escapeHtmlAttribute(card.link)}" target="_blank" rel="noopener noreferrer" class="external-card-link">
                     <div class="external-card-image">
-                        <img src="${escapeHtmlAttribute(card.imagem_url)}" alt="${escapeHtmlAttribute(card.nome)}" loading="lazy">
+                        <img src="${escapeHtmlAttribute(cardImage)}" alt="${escapeHtmlAttribute(card.nome)}" loading="lazy" onerror="this.onerror=null;this.src='${CARD_IMAGE_PLACEHOLDER}';">
                     </div>
                     <div class="external-card-content">
                         <div class="external-card-title">${escapeHtml(card.nome)}</div>
@@ -324,20 +327,50 @@
         if (!isAdmin()) return;
 
         const id = Number(document.getElementById('cad-link-id')?.value || 0);
-        const payload = {
-            area: document.getElementById('cad-link-area')?.value || '',
-            nome: document.getElementById('cad-link-nome')?.value || '',
-            descricao: document.getElementById('cad-link-descricao')?.value || '',
-            link: document.getElementById('cad-link-url')?.value || '',
-            imagemUrl: document.getElementById('cad-link-imagem')?.value || '',
-            ordem: document.getElementById('cad-link-ordem')?.value || '100',
-            ativo: Boolean(document.getElementById('cad-link-ativo')?.checked),
-        };
+        const previousImagePath = sanitizeText(document.getElementById('cad-link-imagem-path')?.value || '');
+        const previousImageUrl = sanitizeText(document.getElementById('cad-link-imagem-url')?.value || '');
+        const imageInput = document.getElementById('cad-link-imagem-file');
+        const imageFile = imageInput?.files?.[0] || null;
 
         const api = window.App?.api?.catalog;
         if (!api) {
             notify('API de cards indisponível.', 'error');
             return;
+        }
+
+        let uploadedImagePath = '';
+        let imagePathToSave = previousImagePath;
+        let imageUrlToSave = previousImagePath ? '' : previousImageUrl;
+
+        if (imageFile) {
+            const uploadRes = await api.uploadDirecionadorImagem(imageFile);
+            if (uploadRes.error) {
+                notify(uploadRes.error.message, 'error');
+                return;
+            }
+            uploadedImagePath = sanitizeText(uploadRes.data?.path || '');
+            imagePathToSave = uploadedImagePath;
+            imageUrlToSave = '';
+        }
+
+        if (!imagePathToSave && !imageUrlToSave) {
+            notify('Envie a imagem do card.', 'error');
+            return;
+        }
+
+        const payload = {
+            area: document.getElementById('cad-link-area')?.value || '',
+            nome: document.getElementById('cad-link-nome')?.value || '',
+            descricao: document.getElementById('cad-link-descricao')?.value || '',
+            link: document.getElementById('cad-link-url')?.value || '',
+            ordem: document.getElementById('cad-link-ordem')?.value || '100',
+            ativo: Boolean(document.getElementById('cad-link-ativo')?.checked),
+        };
+
+        if (imagePathToSave) {
+            payload.imagemPath = imagePathToSave;
+        } else {
+            payload.imagemUrl = imageUrlToSave;
         }
 
         const op = id > 0
@@ -346,8 +379,15 @@
 
         const { error } = await op;
         if (error) {
+            if (uploadedImagePath) {
+                await api.removerDirecionadorImagem(uploadedImagePath);
+            }
             notify(error.message, 'error');
             return;
+        }
+
+        if (uploadedImagePath && previousImagePath && previousImagePath !== uploadedImagePath) {
+            await api.removerDirecionadorImagem(previousImagePath);
         }
 
         notify(id > 0 ? 'Card atualizado.' : 'Card criado.', 'success');
@@ -362,11 +402,14 @@
         setValue('cad-link-nome', '');
         setValue('cad-link-descricao', '');
         setValue('cad-link-url', '');
-        setValue('cad-link-imagem', '');
+        setValue('cad-link-imagem-path', '');
+        setValue('cad-link-imagem-url', '');
+        setValue('cad-link-imagem-file', '');
         setValue('cad-link-ordem', '100');
         setChecked('cad-link-ativo', true);
         setText('cad-link-submit', 'Salvar Card');
         toggleDisplay('cad-link-cancel', false);
+        syncCardImagePreview();
     }
 
     async function handleLinkTableClick(event) {
@@ -386,6 +429,8 @@
 
         if (button.dataset.action === 'delete-link') {
             const nome = button.dataset.nome || 'este card';
+            const card = state.adminCards.find((item) => item.id === id);
+            const imagePath = sanitizeText(card?.imagem_path || '');
             const ok = await askConfirmation({
                 title: 'Excluir card direcionador',
                 message: `Excluir ${nome}?`,
@@ -393,10 +438,20 @@
             });
             if (!ok) return;
 
-            const { error } = await window.App.api.catalog.removerDirecionador(id);
+            const api = window.App?.api?.catalog;
+            if (!api) {
+                notify('API de cards indisponível.', 'error');
+                return;
+            }
+
+            const { error } = await api.removerDirecionador(id);
             if (error) {
                 notify(error.message, 'error');
                 return;
+            }
+
+            if (imagePath) {
+                await api.removerDirecionadorImagem(imagePath);
             }
 
             notify('Card removido.', 'success');
@@ -531,14 +586,50 @@
         setValue('cad-link-nome', card.nome || '');
         setValue('cad-link-descricao', card.descricao || '');
         setValue('cad-link-url', card.link || '');
-        setValue('cad-link-imagem', card.imagem_url || '');
+        setValue('cad-link-imagem-path', card.imagem_path || '');
+        setValue('cad-link-imagem-url', card.imagem_url || '');
+        setValue('cad-link-imagem-file', '');
         setValue('cad-link-ordem', Number.isFinite(card.ordem) ? String(card.ordem) : '100');
         setChecked('cad-link-ativo', Boolean(card.ativo));
         setText('cad-link-submit', 'Atualizar Card');
         toggleDisplay('cad-link-cancel', true);
+        syncCardImagePreview();
         openLinkModal();
         setTimeout(() => document.getElementById('cad-link-nome')?.focus(), 30);
         return true;
+    }
+
+    function syncCardImagePreview() {
+        const previewImage = document.getElementById('cad-link-imagem-preview-img');
+        const previewName = document.getElementById('cad-link-imagem-preview-name');
+        const fileInput = document.getElementById('cad-link-imagem-file');
+        const storedPath = sanitizeText(document.getElementById('cad-link-imagem-path')?.value || '');
+        const storedUrl = sanitizeText(document.getElementById('cad-link-imagem-url')?.value || '');
+        if (!previewImage || !previewName || !fileInput) return;
+
+        const file = fileInput.files?.[0] || null;
+        if (file) {
+            previewImage.src = URL.createObjectURL(file);
+            previewName.textContent = `${file.name} (${formatBytes(file.size)})`;
+            return;
+        }
+
+        if (storedUrl) {
+            previewImage.src = storedUrl;
+            previewName.textContent = storedPath ? 'Imagem já cadastrada no storage' : 'Imagem atual (URL antiga)';
+            return;
+        }
+
+        previewImage.src = CARD_IMAGE_PLACEHOLDER;
+        previewName.textContent = 'Nenhuma imagem selecionada';
+    }
+
+    function formatBytes(bytes) {
+        const value = Number(bytes);
+        if (!Number.isFinite(value) || value <= 0) return '0 KB';
+        if (value < 1024) return `${value} B`;
+        if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
+        return `${(value / (1024 * 1024)).toFixed(1)} MB`;
     }
 
     async function askConfirmation({ title, message, confirmText }) {
@@ -603,6 +694,10 @@
 
     function escapeHtmlAttribute(value) {
         return escapeHtml(value).replace(/\n/g, '&#10;');
+    }
+
+    function sanitizeText(value) {
+        return String(value || '').trim();
     }
 
     function onDirecionadoresPageActivate(page) {

@@ -15,6 +15,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 type Body = Record<string, unknown>;
 type UserType = 'adm' | 'comum';
 
+const APP_IMAGES_BUCKET = 'app-imagens';
 const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') || '')
     .split(',')
     .map((origin) => origin.trim())
@@ -50,6 +51,56 @@ function sanitizeText(value: unknown) {
 
 function normalizeEmail(value: unknown) {
     return sanitizeText(value).toLowerCase();
+}
+
+function isHttpUrl(value: string) {
+    return /^https?:\/\//i.test(value);
+}
+
+function getPublicImagePrefix() {
+    const supabaseUrl = sanitizeText(Deno.env.get('SUPABASE_URL'));
+    if (!supabaseUrl) return '';
+    return `${supabaseUrl}/storage/v1/object/public/${APP_IMAGES_BUCKET}/`;
+}
+
+function normalizeStoragePath(value: unknown) {
+    const path = sanitizeText(value);
+    if (!path) return '';
+    if (isHttpUrl(path) || path.startsWith('data:') || path.startsWith('blob:')) return '';
+    return path;
+}
+
+function normalizeOptionalHttpUrl(value: unknown) {
+    const raw = sanitizeText(value);
+    if (!raw) return { value: '', error: null };
+
+    try {
+        const parsed = new URL(raw);
+        if (!['http:', 'https:'].includes(parsed.protocol)) {
+            return { value: '', error: 'URL da foto inválida. Use http(s).' };
+        }
+        const normalized = parsed.toString();
+        const prefix = getPublicImagePrefix();
+        if (prefix && !normalized.startsWith(prefix)) {
+            return { value: '', error: 'URL da foto inválida. Use imagem enviada no próprio sistema.' };
+        }
+        return { value: normalized, error: null };
+    } catch {
+        return { value: '', error: 'URL da foto inválida. Use http(s).' };
+    }
+}
+
+function buildPublicImageUrl(path: string) {
+    const supabaseUrl = sanitizeText(Deno.env.get('SUPABASE_URL'));
+    const cleanPath = sanitizeText(path);
+    if (!supabaseUrl || !cleanPath) return '';
+
+    const encodedPath = cleanPath
+        .split('/')
+        .map((segment) => encodeURIComponent(segment))
+        .join('/');
+
+    return `${supabaseUrl}/storage/v1/object/public/${APP_IMAGES_BUCKET}/${encodedPath}`;
 }
 
 function normalizeUserType(value: unknown): UserType | null {
@@ -91,6 +142,9 @@ function parseProfilePayload(body: Body) {
     const type = normalizeUserType(body.type);
     const setor = sanitizeText(body.setor);
     const cargo = sanitizeText(body.cargo);
+    const avatarPath = normalizeStoragePath(body.avatarPath);
+    const { value: avatarUrl, error: avatarUrlError } = normalizeOptionalHttpUrl(body.avatarUrl);
+    const removeAvatar = Boolean(body.removeAvatar);
 
     if (!name || name.split(/\s+/).length < 2) {
         return { data: null, error: 'Informe nome e sobrenome.' };
@@ -112,6 +166,10 @@ function parseProfilePayload(body: Body) {
         return { data: null, error: 'Cargo é obrigatório.' };
     }
 
+    if (avatarUrlError) {
+        return { data: null, error: avatarUrlError };
+    }
+
     return {
         data: {
             name,
@@ -119,6 +177,9 @@ function parseProfilePayload(body: Body) {
             type,
             setor,
             cargo,
+            avatarPath,
+            avatarUrl,
+            removeAvatar,
         },
         error: null,
     };
@@ -158,12 +219,17 @@ async function handleListUsers(req: Request, adminClient: ReturnType<typeof crea
 
     const users = (data?.users || []).map((user) => {
         const metadata = (user.user_metadata || {}) as Record<string, unknown>;
+        const avatarPath = normalizeStoragePath(metadata?.avatar_path);
+        const { value: validatedAvatarUrl } = normalizeOptionalHttpUrl(metadata?.avatar_url);
+        const avatarUrl = validatedAvatarUrl || (avatarPath ? buildPublicImageUrl(avatarPath) : '');
         return {
             id: user.id,
             email: user.email,
             user_metadata: {
                 ...metadata,
                 type: inferTypeFromMetadata(metadata),
+                avatar_path: avatarPath || null,
+                avatar_url: avatarUrl || null,
             },
             confirmed_at: user.confirmed_at,
             banned_until: user.banned_until,
@@ -187,6 +253,8 @@ async function handleInviteUser(
     }
 
     const role = userTypeToRole(data.type);
+    const avatarPath = data.avatarPath || '';
+    const avatarUrl = data.avatarUrl || (avatarPath ? buildPublicImageUrl(avatarPath) : '');
 
     const { data: created, error } = await adminClient.auth.admin.createUser({
         email: data.email,
@@ -198,6 +266,8 @@ async function handleInviteUser(
             type: data.type,
             setor: data.setor,
             cargo: data.cargo,
+            avatar_path: avatarPath || null,
+            avatar_url: avatarUrl || null,
             invited_by: callerId,
             invited_at: new Date().toISOString(),
         },
@@ -247,6 +317,26 @@ async function handleUpdateUserProfile(
 
     const existingMetadata = (currentData.user.user_metadata || {}) as Record<string, unknown>;
     const role = userTypeToRole(profileData.type);
+    let nextAvatarPath = normalizeStoragePath(existingMetadata.avatar_path);
+    let nextAvatarUrl = sanitizeText(existingMetadata.avatar_url);
+
+    if (profileData.removeAvatar) {
+        nextAvatarPath = '';
+        nextAvatarUrl = '';
+    } else {
+        if (profileData.avatarPath) {
+            nextAvatarPath = profileData.avatarPath;
+        }
+        if (profileData.avatarUrl) {
+            nextAvatarUrl = profileData.avatarUrl;
+        }
+        if (nextAvatarPath && !nextAvatarUrl) {
+            nextAvatarUrl = buildPublicImageUrl(nextAvatarPath);
+        }
+        if (!nextAvatarPath) {
+            nextAvatarUrl = '';
+        }
+    }
 
     const { data: updated, error } = await adminClient.auth.admin.updateUserById(targetUserId, {
         email: profileData.email,
@@ -257,6 +347,8 @@ async function handleUpdateUserProfile(
             type: profileData.type,
             setor: profileData.setor,
             cargo: profileData.cargo,
+            avatar_path: nextAvatarPath || null,
+            avatar_url: nextAvatarUrl || null,
             updated_by: callerId,
             updated_at: new Date().toISOString(),
         },

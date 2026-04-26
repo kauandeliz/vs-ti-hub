@@ -34,6 +34,18 @@
         },
     });
 
+    const APP_IMAGES_BUCKET = 'app-imagens';
+    const MAX_CARD_IMAGE_BYTES = 5 * 1024 * 1024;
+    const MAX_AVATAR_IMAGE_BYTES = 3 * 1024 * 1024;
+    const ALLOWED_IMAGE_MIME_TYPES = new Set([
+        'image/png',
+        'image/jpeg',
+        'image/jpg',
+        'image/webp',
+        'image/gif',
+        'image/svg+xml',
+    ]);
+
     function normalizeError(message, code = 'APP_ERROR', details = null) {
         return {
             message: String(message || 'Erro desconhecido.'),
@@ -48,6 +60,203 @@
         } catch {
             return null;
         }
+    }
+
+    function isHttpUrl(value) {
+        return /^https?:\/\//i.test(String(value || '').trim());
+    }
+
+    function isStoragePath(value) {
+        const raw = String(value || '').trim();
+        if (!raw) return false;
+        if (isHttpUrl(raw)) return false;
+        if (raw.startsWith('data:')) return false;
+        if (raw.startsWith('blob:')) return false;
+        return true;
+    }
+
+    function isFileUploadLike(file) {
+        return Boolean(
+            file
+            && typeof file === 'object'
+            && typeof file.name === 'string'
+            && Number.isFinite(file.size),
+        );
+    }
+
+    function sanitizeAssetStorageFileName(fileName) {
+        const normalized = String(fileName || '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^a-zA-Z0-9._-]/g, '_')
+            .replace(/_+/g, '_')
+            .replace(/^_+|_+$/g, '')
+            .slice(-120);
+
+        return normalized || 'arquivo';
+    }
+
+    function buildAppImagePath(folder, fileName) {
+        const safeFolder = String(folder || 'misc').replace(/[^a-zA-Z0-9/_-]/g, '').replace(/^\/+|\/+$/g, '') || 'misc';
+        const stamp = new Date().toISOString().replace(/[-:.TZ]/g, '');
+        const random = Math.random().toString(36).slice(2, 10);
+        const safeName = sanitizeAssetStorageFileName(fileName);
+        return `${safeFolder}/${stamp}_${random}_${safeName}`;
+    }
+
+    function normalizeImageFile(file, { required = true, maxBytes = MAX_CARD_IMAGE_BYTES, label = 'a imagem' } = {}) {
+        if (!isFileUploadLike(file)) {
+            if (!required) return { file: null, error: null };
+            return { file: null, error: normalizeError(`Selecione ${label}.`, 'VALIDATION_ERROR') };
+        }
+
+        if (file.size <= 0) {
+            return { file: null, error: normalizeError('Arquivo inválido ou vazio.', 'VALIDATION_ERROR') };
+        }
+
+        if (file.size > maxBytes) {
+            const mbLimit = Math.floor(maxBytes / (1024 * 1024));
+            return { file: null, error: normalizeError(`Arquivo acima de ${mbLimit} MB. Reduza o tamanho e tente novamente.`, 'VALIDATION_ERROR') };
+        }
+
+        const mime = String(file.type || '').toLowerCase();
+        if (mime && !ALLOWED_IMAGE_MIME_TYPES.has(mime)) {
+            return { file: null, error: normalizeError('Formato de imagem inválido. Use PNG, JPG, WEBP, GIF ou SVG.', 'VALIDATION_ERROR') };
+        }
+
+        return { file, error: null };
+    }
+
+    function getPublicStorageUrl(bucket, path) {
+        if (!bucket || !path) return '';
+        const { data } = client.storage.from(bucket).getPublicUrl(path);
+        return String(data?.publicUrl || '').trim();
+    }
+
+    function getStoragePublicPrefix(bucket) {
+        const baseUrl = String(config.supabaseUrl || '').replace(/\/+$/, '');
+        return `${baseUrl}/storage/v1/object/public/${bucket}/`;
+    }
+
+    function extractStoragePathFromPublicUrl(url, bucket = APP_IMAGES_BUCKET) {
+        const rawUrl = String(url || '').trim();
+        const prefix = getStoragePublicPrefix(bucket);
+        if (!rawUrl || !prefix || !rawUrl.startsWith(prefix)) {
+            return '';
+        }
+
+        const encodedPath = rawUrl.slice(prefix.length);
+        if (!encodedPath) return '';
+        return encodedPath
+            .split('/')
+            .map((segment) => {
+                try {
+                    return decodeURIComponent(segment);
+                } catch {
+                    return segment;
+                }
+            })
+            .join('/');
+    }
+
+    function resolveStoredImageValue(rawValue, bucket = APP_IMAGES_BUCKET) {
+        const raw = String(rawValue || '').trim();
+        if (!raw) {
+            return { path: '', url: '' };
+        }
+
+        if (isStoragePath(raw)) {
+            return {
+                path: raw,
+                url: getPublicStorageUrl(bucket, raw),
+            };
+        }
+
+        const pathFromPublicUrl = extractStoragePathFromPublicUrl(raw, bucket);
+        if (pathFromPublicUrl) {
+            return {
+                path: pathFromPublicUrl,
+                url: raw,
+            };
+        }
+
+        return { path: '', url: '' };
+    }
+
+    async function uploadAppImage(file, { folder = 'misc', maxBytes = MAX_CARD_IMAGE_BYTES, label = 'a imagem' } = {}) {
+        const { file: normalizedFile, error: fileError } = normalizeImageFile(file, {
+            required: true,
+            maxBytes,
+            label,
+        });
+        if (fileError) {
+            return { data: null, error: fileError };
+        }
+
+        const storagePath = buildAppImagePath(folder, normalizedFile.name);
+        const { error: uploadError } = await client
+            .storage
+            .from(APP_IMAGES_BUCKET)
+            .upload(storagePath, normalizedFile, {
+                upsert: false,
+                contentType: normalizedFile.type || 'application/octet-stream',
+            });
+
+        if (uploadError) {
+            return {
+                data: null,
+                error: normalizeError(uploadError.message, uploadError.statusCode || 'STORAGE_UPLOAD_ERROR', uploadError),
+            };
+        }
+
+        return {
+            data: {
+                path: storagePath,
+                url: getPublicStorageUrl(APP_IMAGES_BUCKET, storagePath),
+            },
+            error: null,
+        };
+    }
+
+    async function removeAppImage(path) {
+        const storagePath = String(path || '').trim();
+        if (!isStoragePath(storagePath)) {
+            return { data: null, error: null };
+        }
+
+        const { error } = await client.storage.from(APP_IMAGES_BUCKET).remove([storagePath]);
+        if (error) {
+            return {
+                data: null,
+                error: normalizeError(error.message, error.statusCode || 'STORAGE_REMOVE_ERROR', error),
+            };
+        }
+
+        return { data: { path: storagePath }, error: null };
+    }
+
+    async function uploadDirecionadorImagem(file) {
+        return uploadAppImage(file, {
+            folder: 'cards',
+            maxBytes: MAX_CARD_IMAGE_BYTES,
+            label: 'a imagem do card',
+        });
+    }
+
+    async function removerDirecionadorImagem(path) {
+        return removeAppImage(path);
+    }
+
+    async function uploadUserAvatar(file) {
+        return uploadAppImage(file, {
+            folder: 'avatars',
+            maxBytes: MAX_AVATAR_IMAGE_BYTES,
+            label: 'a foto de perfil',
+        });
+    }
+
+    async function removeUserAvatar(path) {
+        return removeAppImage(path);
     }
 
     async function getSessionOrError() {
@@ -271,7 +480,7 @@
         };
     }
 
-    async function inviteUser({ name, email, password, type, setor, cargo }) {
+    async function inviteUser({ name, email, password, type, setor, cargo, avatarPath = '', avatarUrl = '' }) {
         return invokeFunction('invite-user', {
             action: 'invite',
             name,
@@ -280,10 +489,22 @@
             type,
             setor,
             cargo,
+            avatarPath,
+            avatarUrl,
         }, { requiresAuth: true });
     }
 
-    async function updateUserProfile({ targetUserId, name, email, type, setor, cargo }) {
+    async function updateUserProfile({
+        targetUserId,
+        name,
+        email,
+        type,
+        setor,
+        cargo,
+        avatarPath = '',
+        avatarUrl = '',
+        removeAvatar = false,
+    }) {
         return invokeFunction('invite-user', {
             action: 'update-profile',
             targetUserId,
@@ -292,6 +513,9 @@
             type,
             setor,
             cargo,
+            avatarPath,
+            avatarUrl,
+            removeAvatar,
         }, { requiresAuth: true });
     }
 
@@ -1123,10 +1347,27 @@
             payload.link = value;
         }
 
-        if (Object.prototype.hasOwnProperty.call(fields, 'imagemUrl')) {
-            const { value, error } = normalizeHttpUrl(fields.imagemUrl, 'a foto do card');
-            if (error) return { payload: null, error };
-            payload.imagem_url = value;
+        if (Object.prototype.hasOwnProperty.call(fields, 'imagemPath')) {
+            const imagePath = sanitizeText(fields.imagemPath);
+            if (!imagePath || !isStoragePath(imagePath)) {
+                return { payload: null, error: normalizeError('Imagem do card inválida. Envie um arquivo de imagem.', 'VALIDATION_ERROR') };
+            }
+            payload.imagem_url = imagePath;
+        }
+
+        if (Object.prototype.hasOwnProperty.call(fields, 'imagemUrl') && !Object.prototype.hasOwnProperty.call(fields, 'imagemPath')) {
+            const imageUrl = sanitizeText(fields.imagemUrl);
+            if (!imageUrl) {
+                return { payload: null, error: normalizeError('Envie a imagem do card.', 'VALIDATION_ERROR') };
+            }
+            const pathFromPublicUrl = extractStoragePathFromPublicUrl(imageUrl, APP_IMAGES_BUCKET);
+            if (!pathFromPublicUrl) {
+                return {
+                    payload: null,
+                    error: normalizeError('Imagem inválida. Envie um arquivo para armazenar no sistema.', 'VALIDATION_ERROR'),
+                };
+            }
+            payload.imagem_url = pathFromPublicUrl;
         }
 
         if (Object.prototype.hasOwnProperty.call(fields, 'ordem')) {
@@ -1189,7 +1430,16 @@
             };
         }
 
-        return { data: data || [], error: null };
+        const normalized = (data || []).map((item) => {
+            const image = resolveStoredImageValue(item.imagem_url, APP_IMAGES_BUCKET);
+            return {
+                ...item,
+                imagem_path: image.path || (isStoragePath(item.imagem_url) ? String(item.imagem_url) : ''),
+                imagem_url: image.url || '',
+            };
+        });
+
+        return { data: normalized, error: null };
     }
 
     async function criarDirecionador(fields = {}) {
@@ -1891,6 +2141,8 @@
             deactivateUser,
             reactivateUser,
             changeUserPassword,
+            uploadUserAvatar,
+            removeUserAvatar,
         },
         catalog: {
             listarSetores,
@@ -1909,6 +2161,8 @@
             criarDirecionador,
             atualizarDirecionador,
             removerDirecionador,
+            uploadDirecionadorImagem,
+            removerDirecionadorImagem,
             getCatalogSnapshot,
             invalidateCatalogCache,
         },

@@ -373,6 +373,19 @@
     letter-spacing: 0;
 }
 
+.user-avatar.user-avatar-image {
+    background: var(--surface2);
+    border-color: var(--border);
+    overflow: hidden;
+}
+
+.user-avatar.user-avatar-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
 .user-info { flex: 1; min-width: 0; }
 
 .user-name {
@@ -450,6 +463,19 @@
     font-weight: 700;
     color: var(--accent);
     flex-shrink: 0;
+}
+
+.user-row-avatar.user-row-avatar-image {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    overflow: hidden;
+}
+
+.user-row-avatar.user-row-avatar-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
 }
 
 /* New user form card */
@@ -552,10 +578,9 @@
 #usuarios-create-modal input[type="text"],
 #usuarios-create-modal input[type="email"],
 #usuarios-create-modal input[type="password"],
+#usuarios-create-modal input[type="file"],
 #usuarios-create-modal select {
     width: 100%;
-    height: 34px;
-    padding: 0 10px;
     background: var(--surface2);
     border: 1px solid var(--border);
     border-radius: 8px;
@@ -569,9 +594,23 @@
 #usuarios-create-modal input[type="text"]:focus,
 #usuarios-create-modal input[type="email"]:focus,
 #usuarios-create-modal input[type="password"]:focus,
+#usuarios-create-modal input[type="file"]:focus,
 #usuarios-create-modal select:focus {
     border-color: var(--accent);
     box-shadow: 0 0 0 3px rgba(79, 142, 247, 0.12);
+}
+
+#usuarios-create-modal input[type="text"],
+#usuarios-create-modal input[type="email"],
+#usuarios-create-modal input[type="password"],
+#usuarios-create-modal select {
+    height: 34px;
+    padding: 0 10px;
+}
+
+#usuarios-create-modal input[type="file"] {
+    min-height: 34px;
+    padding: 6px 8px;
 }
 
 @media (max-width: 900px) {

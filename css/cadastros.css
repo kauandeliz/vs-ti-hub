@@ -217,6 +217,7 @@
 .cad-modal-form input[type="text"],
 .cad-modal-form input[type="number"],
 .cad-modal-form input[type="url"],
+.cad-modal-form input[type="file"],
 .cad-modal-form select,
 .cad-modal-form textarea {
     width: 100%;
@@ -238,6 +239,11 @@
     padding: 0 10px;
 }
 
+.cad-modal-form input[type="file"] {
+    min-height: 34px;
+    padding: 6px 8px;
+}
+
 .cad-modal-form textarea {
     min-height: 84px;
     resize: vertical;
@@ -247,6 +253,7 @@
 .cad-modal-form input[type="text"]:focus,
 .cad-modal-form input[type="number"]:focus,
 .cad-modal-form input[type="url"]:focus,
+.cad-modal-form input[type="file"]:focus,
 .cad-modal-form select:focus,
 .cad-modal-form textarea:focus {
     border-color: var(--accent);

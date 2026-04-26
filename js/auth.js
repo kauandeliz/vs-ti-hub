@@ -335,7 +335,7 @@
 
                 <div class="login-card public-login-card">
                     <div class="login-logo">
-                        <img src="https://yt3.googleusercontent.com/TY_CfaW7OV4aqGfiUZP56C_5GTpUcc10Rmyud2qkF9L1ojYiTADJmuQfXnUURvrKDx364quSbjU=s900-c-k-c0x00ffffff-no-rj" alt="VS">
+                        <img src="assets/images/vs-logo.svg" alt="VS">
                         <div class="login-logo-text">
                             <strong>VS TI Hub</strong>
                             <span>VinilSul Sistemas</span>
@@ -424,6 +424,10 @@
             .join('')
             .toUpperCase()
             .slice(0, 2);
+        const avatarUrl = resolveUserAvatarUrl(user.user_metadata || {});
+        const avatarMarkup = avatarUrl
+            ? `<div class="user-avatar user-avatar-image"><img src="${escapeHtmlAttribute(avatarUrl)}" alt="Foto de perfil" loading="lazy" onerror="this.onerror=null;this.src='assets/images/user-placeholder.svg';"></div>`
+            : `<div class="user-avatar">${escapeHtml(initials)}</div>`;
         const rawType = String(user.user_metadata?.type || user.user_metadata?.role || '').toLowerCase();
         const roleLabel = ['adm', 'admin', 'administrador'].includes(rawType) ? 'ADM' : 'Usuário comum';
         const setor = user.user_metadata?.setor ? ` • ${user.user_metadata.setor}` : '';
@@ -435,7 +439,7 @@
         widget.id = 'sidebar-user-widget';
         widget.className = 'sidebar-user';
         widget.innerHTML = `
-            <div class="user-avatar">${escapeHtml(initials)}</div>
+            ${avatarMarkup}
             <div class="user-info">
                 <div class="user-name">${escapeHtml(displayName)}</div>
                 <div class="user-role">${escapeHtml(roleLabel + setor)}</div>
@@ -494,6 +498,53 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#039;');
+    }
+
+    function escapeHtmlAttribute(value) {
+        return escapeHtml(value).replace(/\n/g, '&#10;');
+    }
+
+    function getTrustedAvatarUrl(value) {
+        const raw = String(value || '').trim();
+        if (!raw) return '';
+
+        const baseUrl = String(window.App?.config?.supabaseUrl || window.SUPABASE_URL || '').replace(/\/+$/, '');
+        if (!baseUrl) return '';
+
+        const prefix = `${baseUrl}/storage/v1/object/public/app-imagens/`;
+        if (!raw.startsWith(prefix)) return '';
+        return raw;
+    }
+
+    function resolveUserAvatarUrl(metadata) {
+        const trustedUrl = getTrustedAvatarUrl(metadata?.avatar_url);
+        if (trustedUrl) return trustedUrl;
+
+        const path = String(metadata?.avatar_path || '').trim();
+        if (!isStoragePath(path)) return '';
+        return buildPublicAvatarUrl(path);
+    }
+
+    function isStoragePath(value) {
+        const raw = String(value || '').trim();
+        if (!raw) return false;
+        if (/^https?:\/\//i.test(raw)) return false;
+        if (raw.startsWith('data:')) return false;
+        if (raw.startsWith('blob:')) return false;
+        return true;
+    }
+
+    function buildPublicAvatarUrl(path) {
+        const baseUrl = String(window.App?.config?.supabaseUrl || window.SUPABASE_URL || '').replace(/\/+$/, '');
+        const cleanPath = String(path || '').trim();
+        if (!baseUrl || !cleanPath) return '';
+
+        const encodedPath = cleanPath
+            .split('/')
+            .map((segment) => encodeURIComponent(segment))
+            .join('/');
+
+        return `${baseUrl}/storage/v1/object/public/app-imagens/${encodedPath}`;
     }
 
     window.getCurrentUser = getCurrentUser;

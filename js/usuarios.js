@@ -8,6 +8,7 @@
     'use strict';
 
     const MIN_PASSWORD_LENGTH = 8;
+    const USER_AVATAR_PLACEHOLDER = 'assets/images/user-placeholder.svg';
     const state = {
         users: [],
         inviteCatalog: null,
@@ -29,6 +30,7 @@
         document.getElementById('usuarios-tbody')?.addEventListener('click', handleTableActionClick);
         document.getElementById('usuarios-refresh-btn')?.addEventListener('click', loadUsuarios);
         document.getElementById('new-user-setor')?.addEventListener('change', handleInviteSetorChange);
+        document.getElementById('new-user-avatar')?.addEventListener('change', syncCreateAvatarPreview);
 
         document.addEventListener('app:auth-changed', (event) => {
             if (!event.detail?.isAdmin) {
@@ -99,6 +101,7 @@
         const setorInput = document.getElementById('new-user-setor');
         const cargoInput = document.getElementById('new-user-cargo');
         const passwordInput = document.getElementById('new-user-password');
+        const avatarInput = document.getElementById('new-user-avatar');
         const button = document.getElementById('new-user-btn');
 
         const name = nameInput?.value?.trim() || '';
@@ -116,6 +119,20 @@
 
         setInviteBusy(button, true);
 
+        let avatarPath = '';
+        let avatarUrl = '';
+        const avatarFile = avatarInput?.files?.[0] || null;
+        if (avatarFile) {
+            const uploadResult = await window.App.api.admin.uploadUserAvatar(avatarFile);
+            if (uploadResult.error) {
+                setInviteBusy(button, false);
+                showToast(uploadResult.error.message, 'error');
+                return;
+            }
+            avatarPath = uploadResult.data?.path || '';
+            avatarUrl = uploadResult.data?.url || '';
+        }
+
         const { error } = await window.App.api.admin.inviteUser({
             name,
             email,
@@ -123,11 +140,16 @@
             type,
             setor,
             cargo,
+            avatarPath,
+            avatarUrl,
         });
 
         setInviteBusy(button, false);
 
         if (error) {
+            if (avatarPath) {
+                await window.App.api.admin.removeUserAvatar(avatarPath);
+            }
             showToast(error.message, 'error');
             return;
         }
@@ -138,6 +160,8 @@
         if (setorInput) setorInput.value = '';
         if (cargoInput) cargoInput.value = '';
         if (passwordInput) passwordInput.value = '';
+        if (avatarInput) avatarInput.value = '';
+        syncCreateAvatarPreview();
         resetInviteCargoSelect('Setor primeiro');
         closeCreateUserModal();
         showToast(`Conta ${name} criada com sucesso.`, 'success');
@@ -179,6 +203,93 @@
         }
 
         return null;
+    }
+
+    function resolveAvatarFromMetadata(metadata) {
+        const directPath = String(metadata?.avatar_path || '').trim();
+        const trustedUrl = getTrustedAvatarUrl(metadata?.avatar_url);
+        const pathFromUrl = directPath ? '' : extractStoragePathFromPublicUrl(trustedUrl);
+        const path = directPath || pathFromUrl;
+        const url = trustedUrl || (path ? buildPublicAvatarUrl(path) : '');
+        return { url, path };
+    }
+
+    function syncCreateAvatarPreview() {
+        const input = document.getElementById('new-user-avatar');
+        const preview = document.getElementById('new-user-avatar-preview');
+        const previewImg = document.getElementById('new-user-avatar-preview-img');
+        const previewName = document.getElementById('new-user-avatar-preview-name');
+        if (!input || !preview || !previewImg || !previewName) return;
+
+        const file = input.files?.[0] || null;
+        if (!file) {
+            preview.style.display = 'none';
+            previewImg.src = USER_AVATAR_PLACEHOLDER;
+            previewName.textContent = '';
+            return;
+        }
+
+        const localUrl = URL.createObjectURL(file);
+        preview.style.display = 'flex';
+        previewImg.src = localUrl;
+        previewName.textContent = `${file.name} (${formatBytes(file.size)})`;
+    }
+
+    function formatBytes(bytes) {
+        const value = Number(bytes);
+        if (!Number.isFinite(value) || value <= 0) return '0 KB';
+        if (value < 1024) return `${value} B`;
+        if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
+        return `${(value / (1024 * 1024)).toFixed(1)} MB`;
+    }
+
+    function buildPublicAvatarUrl(path) {
+        const baseUrl = String(window.App?.config?.supabaseUrl || window.SUPABASE_URL || '').replace(/\/+$/, '');
+        const cleanPath = String(path || '').trim();
+        if (!baseUrl || !cleanPath) return '';
+
+        const encodedPath = cleanPath
+            .split('/')
+            .map((segment) => encodeURIComponent(segment))
+            .join('/');
+
+        return `${baseUrl}/storage/v1/object/public/app-imagens/${encodedPath}`;
+    }
+
+    function getTrustedAvatarUrl(value) {
+        const raw = String(value || '').trim();
+        if (!raw) return '';
+
+        const baseUrl = String(window.App?.config?.supabaseUrl || window.SUPABASE_URL || '').replace(/\/+$/, '');
+        if (!baseUrl) return '';
+
+        const prefix = `${baseUrl}/storage/v1/object/public/app-imagens/`;
+        if (!raw.startsWith(prefix)) return '';
+        return raw;
+    }
+
+    function extractStoragePathFromPublicUrl(url) {
+        const trustedUrl = getTrustedAvatarUrl(url);
+        if (!trustedUrl) return '';
+
+        const baseUrl = String(window.App?.config?.supabaseUrl || window.SUPABASE_URL || '').replace(/\/+$/, '');
+        if (!baseUrl) return '';
+        const prefix = `${baseUrl}/storage/v1/object/public/app-imagens/`;
+        if (!trustedUrl.startsWith(prefix)) return '';
+
+        const encodedPath = trustedUrl.slice(prefix.length);
+        if (!encodedPath) return '';
+
+        return encodedPath
+            .split('/')
+            .map((segment) => {
+                try {
+                    return decodeURIComponent(segment);
+                } catch {
+                    return segment;
+                }
+            })
+            .join('/');
     }
 
     function setInviteBusy(button, busy) {
@@ -342,10 +453,15 @@
         const type = resolveUserType(user.user_metadata);
         const setor = user.user_metadata?.setor || '';
         const cargo = user.user_metadata?.cargo || '';
+        const avatar = resolveAvatarFromMetadata(user.user_metadata || {});
+        const avatarPreviewSource = avatar.url || USER_AVATAR_PLACEHOLDER;
+        const avatarPreviewLabel = avatar.url ? 'Foto atual' : 'Sem foto cadastrada';
 
         const modal = document.createElement('div');
         modal.className = 'modal-backdrop';
         modal.id = 'usuario-edit-modal';
+        modal.dataset.avatarPath = avatar.path || '';
+        modal.dataset.avatarUrl = avatar.url || '';
 
         modal.innerHTML = `
             <div class="modal" style="max-width:560px" onclick="event.stopPropagation()">
@@ -379,6 +495,19 @@
                         <label>Cargo</label>
                         <select id="edit-user-cargo"></select>
                     </div>
+                    <div class="form-group">
+                        <label>Foto de perfil</label>
+                        <input type="file" id="edit-user-avatar" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml">
+                        <div style="margin-top:6px;font-size:0.64rem;color:var(--text-muted)">Opcional. Formatos aceitos: PNG, JPG, WEBP, GIF ou SVG (máx. 3 MB).</div>
+                        <div id="edit-user-avatar-preview" style="display:flex;margin-top:8px;align-items:center;gap:8px">
+                            <img id="edit-user-avatar-preview-img" src="${escapeHtmlAttribute(avatarPreviewSource)}" alt="Preview da foto" style="width:34px;height:34px;border-radius:50%;object-fit:cover;border:1px solid var(--border)">
+                            <span id="edit-user-avatar-preview-name" style="font-size:0.66rem;color:var(--text-soft)">${escapeHtml(avatarPreviewLabel)}</span>
+                        </div>
+                        <label class="cad-checkbox" style="margin-top:8px;margin-bottom:0">
+                            <input type="checkbox" id="edit-user-avatar-remove"${avatar.url ? '' : ' disabled'}>
+                            <span>Remover foto atual</span>
+                        </label>
+                    </div>
 
                     <div class="error-msg" id="edit-user-error" style="margin-top:8px"></div>
                 </div>
@@ -410,6 +539,13 @@
         setorSelect?.addEventListener('change', () => {
             renderEditCargoOptions(cargoSelect, setorSelect.value || '', '');
         });
+        modal.querySelector('#edit-user-avatar')?.addEventListener('change', () => {
+            syncEditAvatarPreview(modal);
+        });
+        modal.querySelector('#edit-user-avatar-remove')?.addEventListener('change', () => {
+            syncEditAvatarPreview(modal);
+        });
+        syncEditAvatarPreview(modal);
 
         modal.querySelector('[data-action="save-profile"]')?.addEventListener('click', async () => {
             try {
@@ -492,6 +628,50 @@
         cargoSelect.disabled = false;
     }
 
+    function syncEditAvatarPreview(modal) {
+        if (!modal) return;
+
+        const previewImg = modal.querySelector('#edit-user-avatar-preview-img');
+        const previewName = modal.querySelector('#edit-user-avatar-preview-name');
+        const fileInput = modal.querySelector('#edit-user-avatar');
+        const removeToggle = modal.querySelector('#edit-user-avatar-remove');
+        if (!previewImg || !previewName || !fileInput) return;
+
+        const file = fileInput.files?.[0] || null;
+        const shouldRemove = Boolean(removeToggle?.checked);
+        const currentAvatarUrl = String(modal.dataset.avatarUrl || '');
+
+        if (shouldRemove) {
+            previewImg.src = USER_AVATAR_PLACEHOLDER;
+            previewName.textContent = 'Foto será removida';
+            return;
+        }
+
+        if (file) {
+            previewImg.src = URL.createObjectURL(file);
+            previewName.textContent = `${file.name} (${formatBytes(file.size)})`;
+            return;
+        }
+
+        if (currentAvatarUrl) {
+            previewImg.src = currentAvatarUrl;
+            previewName.textContent = 'Foto atual';
+            return;
+        }
+
+        previewImg.src = USER_AVATAR_PLACEHOLDER;
+        previewName.textContent = 'Sem foto cadastrada';
+    }
+
+    function isStoragePath(value) {
+        const raw = String(value || '').trim();
+        if (!raw) return false;
+        if (/^https?:\/\//i.test(raw)) return false;
+        if (raw.startsWith('data:')) return false;
+        if (raw.startsWith('blob:')) return false;
+        return true;
+    }
+
     function setEditBusy(modal, busy) {
         const saveButton = modal?.querySelector('[data-action="save-profile"]');
         if (!saveButton) return;
@@ -506,6 +686,9 @@
         const type = modal.querySelector('#edit-user-type')?.value || '';
         const setor = modal.querySelector('#edit-user-setor')?.value || '';
         const cargo = modal.querySelector('#edit-user-cargo')?.value || '';
+        const avatarInput = modal.querySelector('#edit-user-avatar');
+        const removeAvatar = Boolean(modal.querySelector('#edit-user-avatar-remove')?.checked);
+        const currentAvatarPath = String(modal.dataset.avatarPath || '');
         const errorBox = modal.querySelector('#edit-user-error');
 
         hideMessage(errorBox);
@@ -516,6 +699,27 @@
             return;
         }
 
+        let avatarPath = '';
+        let avatarUrl = '';
+        let uploadedAvatarPath = '';
+
+        if (!removeAvatar) {
+            avatarPath = currentAvatarPath;
+            avatarUrl = String(modal.dataset.avatarUrl || '');
+
+            const avatarFile = avatarInput?.files?.[0] || null;
+            if (avatarFile) {
+                const uploadResult = await window.App.api.admin.uploadUserAvatar(avatarFile);
+                if (uploadResult.error) {
+                    showMessage(errorBox, uploadResult.error.message);
+                    return;
+                }
+                uploadedAvatarPath = uploadResult.data?.path || '';
+                avatarPath = uploadedAvatarPath;
+                avatarUrl = uploadResult.data?.url || '';
+            }
+        }
+
         setEditBusy(modal, true);
         const { error } = await window.App.api.admin.updateUserProfile({
             targetUserId,
@@ -524,12 +728,25 @@
             type,
             setor,
             cargo,
+            avatarPath,
+            avatarUrl,
+            removeAvatar,
         });
         setEditBusy(modal, false);
 
         if (error) {
+            if (uploadedAvatarPath) {
+                await window.App.api.admin.removeUserAvatar(uploadedAvatarPath);
+            }
             showMessage(errorBox, error.message);
             return;
+        }
+
+        if (currentAvatarPath && isStoragePath(currentAvatarPath)) {
+            const avatarChanged = removeAvatar || (uploadedAvatarPath && uploadedAvatarPath !== currentAvatarPath);
+            if (avatarChanged) {
+                await window.App.api.admin.removeUserAvatar(currentAvatarPath);
+            }
         }
 
         modal.remove();
@@ -741,6 +958,7 @@
             const roleClass = userType === 'adm' ? 'admin' : 'comum';
             const setor = user.user_metadata?.setor || '—';
             const cargo = user.user_metadata?.cargo || '—';
+            const avatar = resolveAvatarFromMetadata(user.user_metadata || {});
             const initials = displayName
                 .split(' ')
                 .filter(Boolean)
@@ -748,6 +966,9 @@
                 .join('')
                 .toUpperCase()
                 .slice(0, 2);
+            const rowAvatarMarkup = avatar.url
+                ? `<div class="user-row-avatar user-row-avatar-image"><img src="${escapeHtmlAttribute(avatar.url)}" alt="Foto de perfil" loading="lazy" onerror="this.onerror=null;this.src='${USER_AVATAR_PLACEHOLDER}';"></div>`
+                : `<div class="user-row-avatar">${escapeHtml(initials)}</div>`;
 
             const status = user.banned_until ? 'inativo' : (user.confirmed_at ? 'ativo' : 'pendente');
 
@@ -775,7 +996,7 @@
                 <tr>
                     <td>
                         <div style="display:flex;align-items:center;gap:8px">
-                            <div class="user-row-avatar">${escapeHtml(initials)}</div>
+                            ${rowAvatarMarkup}
                             <div>
                                 <div style="font-size:0.76rem;font-weight:600;color:var(--text)">${safeName}</div>
                                 <div style="font-size:0.62rem;color:var(--text-muted)">${safeEmail}</div>
@@ -903,12 +1124,15 @@
         const typeInput = document.getElementById('new-user-type');
         const setorInput = document.getElementById('new-user-setor');
         const passwordInput = document.getElementById('new-user-password');
+        const avatarInput = document.getElementById('new-user-avatar');
 
         if (nameInput) nameInput.value = '';
         if (emailInput) emailInput.value = '';
         if (typeInput) typeInput.value = 'comum';
         if (setorInput) setorInput.value = '';
         if (passwordInput) passwordInput.value = '';
+        if (avatarInput) avatarInput.value = '';
+        syncCreateAvatarPreview();
         resetInviteCargoSelect('Setor primeiro');
         setInviteBusy(document.getElementById('new-user-btn'), false);
     }
