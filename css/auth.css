@@ -396,6 +396,77 @@
     box-shadow: 0 0 0 3px rgba(79, 142, 247, 0.24);
 }
 
+.profile-avatar-editor {
+    margin-top: 12px;
+    padding: 10px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface2);
+}
+
+.profile-avatar-editor[hidden] {
+    display: none;
+}
+
+.profile-avatar-editor-title {
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: var(--text-soft);
+    margin-bottom: 8px;
+}
+
+.profile-avatar-editor-frame {
+    width: 188px;
+    height: 188px;
+    margin: 0 auto;
+    border-radius: 50%;
+    overflow: hidden;
+    position: relative;
+    border: 1px solid var(--border);
+    background:
+        linear-gradient(45deg, rgba(255, 255, 255, 0.04) 25%, transparent 25%),
+        linear-gradient(-45deg, rgba(255, 255, 255, 0.04) 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, rgba(255, 255, 255, 0.04) 75%),
+        linear-gradient(-45deg, transparent 75%, rgba(255, 255, 255, 0.04) 75%);
+    background-size: 16px 16px;
+    background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+}
+
+.profile-avatar-editor-frame.is-dragging {
+    cursor: grabbing;
+}
+
+.profile-avatar-editor-frame img {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform-origin: center center;
+    max-width: none;
+    max-height: none;
+    pointer-events: none;
+    will-change: transform;
+}
+
+.profile-avatar-editor-controls {
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.profile-avatar-editor-controls label {
+    font-size: 0.66rem;
+    color: var(--text-soft);
+    white-space: nowrap;
+}
+
+.profile-avatar-editor-controls input[type="range"] {
+    flex: 1;
+}
+
 .user-avatar.user-avatar-image {
     background: var(--surface2);
     border-color: var(--border);

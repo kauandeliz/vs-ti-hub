@@ -14,6 +14,8 @@
 
     const MIN_PASSWORD_LENGTH = 8;
     const USER_AVATAR_PLACEHOLDER = 'assets/images/user-placeholder.svg';
+    const PROFILE_AVATAR_EDITOR_MAX_ZOOM = 3;
+    const PROFILE_AVATAR_EDITOR_OUTPUT_SIZE = 512;
     const INACTIVITY_TIMEOUT_MS = 40 * 60 * 1000;
     const INACTIVITY_ACTIVITY_THROTTLE_MS = 5000;
     const INACTIVITY_LOGOUT_MESSAGE = 'Sessão encerrada por inatividade após 40 minutos.';
@@ -545,6 +547,17 @@
                         <img id="profile-avatar-preview-img" src="${escapeHtmlAttribute(avatar.url || USER_AVATAR_PLACEHOLDER)}" alt="Preview da foto" style="width:42px;height:42px;border-radius:50%;object-fit:cover;border:1px solid var(--border)">
                         <span id="profile-avatar-preview-name" style="font-size:0.68rem;color:var(--text-soft)">${escapeHtml(avatar.url ? 'Foto atual' : 'Sem foto cadastrada')}</span>
                     </div>
+                    <div class="profile-avatar-editor" id="profile-avatar-editor" hidden>
+                        <div class="profile-avatar-editor-title">Posicionamento da foto</div>
+                        <div class="profile-avatar-editor-frame" id="profile-avatar-editor-frame">
+                            <img id="profile-avatar-editor-img" alt="Editor de foto de perfil" draggable="false">
+                        </div>
+                        <div class="profile-avatar-editor-controls">
+                            <label for="profile-avatar-zoom">Zoom</label>
+                            <input type="range" id="profile-avatar-zoom" min="1" max="${PROFILE_AVATAR_EDITOR_MAX_ZOOM}" step="0.01" value="1">
+                            <button type="button" class="btn-row" id="profile-avatar-reset">Centralizar</button>
+                        </div>
+                    </div>
                     <label class="cad-checkbox" style="margin-top:10px;margin-bottom:0">
                         <input type="checkbox" id="profile-avatar-remove"${avatar.url ? '' : ' disabled'}>
                         <span>Remover foto atual</span>
@@ -559,8 +572,12 @@
         `;
 
         document.body.appendChild(modal);
+        initProfileAvatarEditor(modal);
 
-        const close = () => modal.remove();
+        const close = () => {
+            destroyProfileAvatarEditor(modal);
+            modal.remove();
+        };
         modal.addEventListener('click', (event) => {
             if (event.target === modal) close();
         });
@@ -582,6 +599,8 @@
         setTimeout(() => {
             modal.querySelector('#profile-avatar-file')?.focus();
         }, 60);
+
+        syncProfileAvatarPreview(modal);
     }
 
     function resolveUserAvatarData(metadata) {
@@ -616,6 +635,263 @@
             .join('/');
     }
 
+    function getProfileAvatarEditorElements(modal) {
+        return {
+            wrapper: modal?.querySelector('#profile-avatar-editor') || null,
+            frame: modal?.querySelector('#profile-avatar-editor-frame') || null,
+            image: modal?.querySelector('#profile-avatar-editor-img') || null,
+            zoom: modal?.querySelector('#profile-avatar-zoom') || null,
+            reset: modal?.querySelector('#profile-avatar-reset') || null,
+        };
+    }
+
+    function initProfileAvatarEditor(modal) {
+        if (!modal || modal._avatarEditorBound) return;
+
+        const elements = getProfileAvatarEditorElements(modal);
+        if (!elements.frame || !elements.image || !elements.zoom || !elements.reset) return;
+
+        const handlers = {
+            pointerDown: (event) => {
+                const state = modal._avatarEditorState;
+                if (!state?.ready) return;
+                if (event.pointerType === 'mouse' && event.button !== 0) return;
+
+                event.preventDefault();
+                state.dragging = true;
+                state.dragStartX = event.clientX;
+                state.dragStartY = event.clientY;
+                state.dragOriginOffsetX = state.offsetX;
+                state.dragOriginOffsetY = state.offsetY;
+                elements.frame.classList.add('is-dragging');
+            },
+            pointerMove: (event) => {
+                const state = modal._avatarEditorState;
+                if (!state?.ready || !state.dragging) return;
+
+                state.offsetX = state.dragOriginOffsetX + (event.clientX - state.dragStartX);
+                state.offsetY = state.dragOriginOffsetY + (event.clientY - state.dragStartY);
+                renderProfileAvatarEditor(modal);
+            },
+            pointerUp: () => {
+                const state = modal._avatarEditorState;
+                if (!state) return;
+                state.dragging = false;
+                elements.frame.classList.remove('is-dragging');
+            },
+            zoomInput: () => {
+                const state = modal._avatarEditorState;
+                if (!state?.ready) return;
+                const value = Number(elements.zoom.value);
+                state.zoom = clampNumber(
+                    Number.isFinite(value) ? value : 1,
+                    1,
+                    PROFILE_AVATAR_EDITOR_MAX_ZOOM,
+                );
+                renderProfileAvatarEditor(modal);
+            },
+            resetClick: () => {
+                const state = modal._avatarEditorState;
+                if (!state?.ready) return;
+                state.zoom = 1;
+                state.offsetX = 0;
+                state.offsetY = 0;
+                elements.zoom.value = '1';
+                renderProfileAvatarEditor(modal);
+            },
+        };
+
+        elements.frame.addEventListener('pointerdown', handlers.pointerDown);
+        window.addEventListener('pointermove', handlers.pointerMove);
+        window.addEventListener('pointerup', handlers.pointerUp);
+        window.addEventListener('pointercancel', handlers.pointerUp);
+        elements.zoom.addEventListener('input', handlers.zoomInput);
+        elements.reset.addEventListener('click', handlers.resetClick);
+
+        modal._avatarEditorHandlers = handlers;
+        modal._avatarEditorBound = true;
+    }
+
+    function destroyProfileAvatarEditor(modal) {
+        if (!modal) return;
+
+        const handlers = modal._avatarEditorHandlers;
+        const elements = getProfileAvatarEditorElements(modal);
+        if (handlers) {
+            elements.frame?.removeEventListener('pointerdown', handlers.pointerDown);
+            window.removeEventListener('pointermove', handlers.pointerMove);
+            window.removeEventListener('pointerup', handlers.pointerUp);
+            window.removeEventListener('pointercancel', handlers.pointerUp);
+            elements.zoom?.removeEventListener('input', handlers.zoomInput);
+            elements.reset?.removeEventListener('click', handlers.resetClick);
+        }
+
+        cleanupProfileAvatarEditor(modal, { clearFileKey: true });
+        delete modal._avatarEditorHandlers;
+        modal._avatarEditorBound = false;
+    }
+
+    function cleanupProfileAvatarEditor(modal, { clearFileKey = false } = {}) {
+        if (!modal) return;
+
+        const state = modal._avatarEditorState;
+        if (state?.objectUrl) {
+            URL.revokeObjectURL(state.objectUrl);
+        }
+        delete modal._avatarEditorState;
+
+        if (clearFileKey) {
+            delete modal.dataset.avatarEditorFileKey;
+        }
+
+        const elements = getProfileAvatarEditorElements(modal);
+        if (elements.image) {
+            elements.image.removeAttribute('src');
+            elements.image.style.transform = '';
+        }
+        if (elements.zoom) {
+            elements.zoom.value = '1';
+        }
+    }
+
+    function loadProfileAvatarEditorFromFile(modal, file) {
+        if (!modal || !file) return;
+
+        const elements = getProfileAvatarEditorElements(modal);
+        if (!elements.wrapper || !elements.frame || !elements.image || !elements.zoom) return;
+
+        const fileKey = `${file.name}|${file.size}|${file.lastModified}`;
+        if (modal.dataset.avatarEditorFileKey === fileKey && modal._avatarEditorState?.ready) {
+            elements.wrapper.hidden = false;
+            renderProfileAvatarEditor(modal);
+            return;
+        }
+
+        cleanupProfileAvatarEditor(modal, { clearFileKey: false });
+        modal.dataset.avatarEditorFileKey = fileKey;
+
+        const objectUrl = URL.createObjectURL(file);
+        const image = new Image();
+        image.onload = () => {
+            const frameSize = Math.max(160, elements.frame.clientWidth || 0);
+            const baseScale = Math.max(
+                frameSize / Math.max(1, image.naturalWidth),
+                frameSize / Math.max(1, image.naturalHeight),
+            );
+
+            modal._avatarEditorState = {
+                objectUrl,
+                naturalWidth: image.naturalWidth,
+                naturalHeight: image.naturalHeight,
+                baseScale,
+                frameSize,
+                zoom: 1,
+                offsetX: 0,
+                offsetY: 0,
+                dragging: false,
+                dragStartX: 0,
+                dragStartY: 0,
+                dragOriginOffsetX: 0,
+                dragOriginOffsetY: 0,
+                ready: true,
+            };
+
+            elements.wrapper.hidden = false;
+            elements.image.src = objectUrl;
+            elements.zoom.value = '1';
+            renderProfileAvatarEditor(modal);
+        };
+        image.onerror = () => {
+            cleanupProfileAvatarEditor(modal, { clearFileKey: false });
+        };
+        image.src = objectUrl;
+    }
+
+    function clampNumber(value, min, max) {
+        return Math.min(max, Math.max(min, value));
+    }
+
+    function renderProfileAvatarEditor(modal) {
+        const state = modal?._avatarEditorState;
+        if (!state?.ready) return;
+
+        const elements = getProfileAvatarEditorElements(modal);
+        if (!elements.frame || !elements.image || !elements.zoom) return;
+
+        const frameSize = Math.max(160, elements.frame.clientWidth || state.frameSize || 0);
+        state.frameSize = frameSize;
+        state.zoom = clampNumber(state.zoom, 1, PROFILE_AVATAR_EDITOR_MAX_ZOOM);
+
+        const scale = state.baseScale * state.zoom;
+        const scaledWidth = state.naturalWidth * scale;
+        const scaledHeight = state.naturalHeight * scale;
+        const maxOffsetX = Math.max(0, (scaledWidth - frameSize) / 2);
+        const maxOffsetY = Math.max(0, (scaledHeight - frameSize) / 2);
+        state.offsetX = clampNumber(state.offsetX, -maxOffsetX, maxOffsetX);
+        state.offsetY = clampNumber(state.offsetY, -maxOffsetY, maxOffsetY);
+
+        elements.zoom.value = String(state.zoom);
+        elements.image.style.transform = `translate(calc(-50% + ${state.offsetX}px), calc(-50% + ${state.offsetY}px)) scale(${scale})`;
+    }
+
+    async function buildAdjustedAvatarFile(modal, originalFile) {
+        const state = modal?._avatarEditorState;
+        const elements = getProfileAvatarEditorElements(modal);
+        if (!state?.ready || !elements.image) {
+            return originalFile;
+        }
+
+        const frameSize = Math.max(160, state.frameSize || elements.frame?.clientWidth || 0);
+        const scale = state.baseScale * state.zoom;
+        const scaledWidth = state.naturalWidth * scale;
+        const scaledHeight = state.naturalHeight * scale;
+        const imageLeft = ((frameSize - scaledWidth) / 2) + state.offsetX;
+        const imageTop = ((frameSize - scaledHeight) / 2) + state.offsetY;
+        const ratio = PROFILE_AVATAR_EDITOR_OUTPUT_SIZE / frameSize;
+
+        const canvas = document.createElement('canvas');
+        canvas.width = PROFILE_AVATAR_EDITOR_OUTPUT_SIZE;
+        canvas.height = PROFILE_AVATAR_EDITOR_OUTPUT_SIZE;
+
+        const context = canvas.getContext('2d');
+        if (!context) {
+            return originalFile;
+        }
+
+        context.imageSmoothingEnabled = true;
+        context.imageSmoothingQuality = 'high';
+        context.drawImage(
+            elements.image,
+            imageLeft * ratio,
+            imageTop * ratio,
+            scaledWidth * ratio,
+            scaledHeight * ratio,
+        );
+
+        const blob = await new Promise((resolve) => {
+            canvas.toBlob((result) => resolve(result), 'image/png');
+        });
+        if (!(blob instanceof Blob) || blob.size <= 0) {
+            return originalFile;
+        }
+
+        const fileName = buildAvatarOutputFileName(originalFile?.name);
+        return new File([blob], fileName, {
+            type: 'image/png',
+            lastModified: Date.now(),
+        });
+    }
+
+    function buildAvatarOutputFileName(originalName) {
+        const baseName = String(originalName || 'avatar')
+            .replace(/\.[^.]+$/, '')
+            .replace(/[^a-zA-Z0-9._-]/g, '_')
+            .replace(/_+/g, '_')
+            .replace(/^_+|_+$/g, '')
+            .slice(0, 42) || 'avatar';
+        return `${baseName}_perfil.png`;
+    }
+
     function syncProfileAvatarPreview(modal) {
         if (!modal) return;
 
@@ -623,6 +899,7 @@
         const previewName = modal.querySelector('#profile-avatar-preview-name');
         const fileInput = modal.querySelector('#profile-avatar-file');
         const removeToggle = modal.querySelector('#profile-avatar-remove');
+        const editorWrapper = modal.querySelector('#profile-avatar-editor');
         if (!previewImg || !previewName || !fileInput) return;
 
         const file = fileInput.files?.[0] || null;
@@ -630,16 +907,25 @@
         const currentAvatarUrl = String(modal.dataset.currentAvatarUrl || '');
 
         if (shouldRemove) {
+            if (editorWrapper) {
+                editorWrapper.hidden = true;
+            }
             previewImg.src = USER_AVATAR_PLACEHOLDER;
             previewName.textContent = 'Foto será removida';
             return;
         }
 
         if (file) {
-            previewImg.src = URL.createObjectURL(file);
+            previewImg.src = USER_AVATAR_PLACEHOLDER;
             previewName.textContent = `${file.name} (${formatBytes(file.size)})`;
+            loadProfileAvatarEditorFromFile(modal, file);
             return;
         }
+
+        if (editorWrapper) {
+            editorWrapper.hidden = true;
+        }
+        cleanupProfileAvatarEditor(modal, { clearFileKey: true });
 
         if (currentAvatarUrl) {
             previewImg.src = currentAvatarUrl;
@@ -680,7 +966,8 @@
 
         const avatarFile = fileInput?.files?.[0] || null;
         if (avatarFile && !removeAvatar) {
-            const uploadResult = await profileApi.uploadAvatar(avatarFile);
+            const adjustedAvatarFile = await buildAdjustedAvatarFile(modal, avatarFile);
+            const uploadResult = await profileApi.uploadAvatar(adjustedAvatarFile);
             if (uploadResult.error) {
                 showErrorMessage(errorBox, uploadResult.error.message);
                 return;
@@ -715,6 +1002,7 @@
             }
         }
 
+        destroyProfileAvatarEditor(modal);
         modal.remove();
         await refreshCurrentUserFromSession();
         showToast('Foto de perfil atualizada com sucesso.', 'success');
