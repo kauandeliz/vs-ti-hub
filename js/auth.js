@@ -13,6 +13,7 @@
     'use strict';
 
     const MIN_PASSWORD_LENGTH = 8;
+    const USER_AVATAR_PLACEHOLDER = 'assets/images/user-placeholder.svg';
     const INACTIVITY_TIMEOUT_MS = 40 * 60 * 1000;
     const INACTIVITY_ACTIVITY_THROTTLE_MS = 5000;
     const INACTIVITY_LOGOUT_MESSAGE = 'Sessão encerrada por inatividade após 40 minutos.';
@@ -425,9 +426,14 @@
             .toUpperCase()
             .slice(0, 2);
         const avatarUrl = resolveUserAvatarUrl(user.user_metadata || {});
-        const avatarMarkup = avatarUrl
-            ? `<div class="user-avatar user-avatar-image"><img src="${escapeHtmlAttribute(avatarUrl)}" alt="Foto de perfil" loading="lazy" onerror="this.onerror=null;this.src='assets/images/user-placeholder.svg';"></div>`
+        const avatarInnerMarkup = avatarUrl
+            ? `<div class="user-avatar user-avatar-image"><img src="${escapeHtmlAttribute(avatarUrl)}" alt="Foto de perfil" loading="lazy" onerror="this.onerror=null;this.src='${USER_AVATAR_PLACEHOLDER}';"></div>`
             : `<div class="user-avatar">${escapeHtml(initials)}</div>`;
+        const avatarMarkup = `
+            <button class="user-avatar-trigger" id="sidebar-avatar-trigger" title="Alterar foto de perfil" aria-label="Alterar foto de perfil">
+                ${avatarInnerMarkup}
+            </button>
+        `;
         const rawType = String(user.user_metadata?.type || user.user_metadata?.role || '').toLowerCase();
         const roleLabel = ['adm', 'admin', 'administrador'].includes(rawType) ? 'ADM' : 'Usuário comum';
         const setor = user.user_metadata?.setor ? ` • ${user.user_metadata.setor}` : '';
@@ -450,6 +456,7 @@
         `;
 
         widget.querySelector('#sidebar-change-password')?.addEventListener('click', abrirTrocaSenhaPropria);
+        widget.querySelector('#sidebar-avatar-trigger')?.addEventListener('click', abrirModalFotoPerfil);
         widget.querySelector('#sidebar-user-management')?.addEventListener('click', abrirGestaoUsuarios);
         widget.querySelector('#sidebar-logout')?.addEventListener('click', handleLogout);
 
@@ -489,6 +496,260 @@
         }
 
         navButton?.click();
+    }
+
+    function abrirModalFotoPerfil() {
+        const user = getCurrentUser();
+        if (!user) return;
+
+        document.getElementById('profile-avatar-modal')?.remove();
+
+        const avatar = resolveUserAvatarData(user.user_metadata || {});
+        const modal = document.createElement('div');
+        modal.className = 'modal-backdrop';
+        modal.id = 'profile-avatar-modal';
+        modal.dataset.currentAvatarPath = avatar.path || '';
+        modal.dataset.currentAvatarUrl = avatar.url || '';
+
+        modal.innerHTML = `
+            <div class="modal" style="max-width:460px" onclick="event.stopPropagation()">
+                <div class="modal-header">
+                    <h3>Foto de perfil</h3>
+                    <button class="modal-close" data-action="close">✕</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Selecionar nova foto</label>
+                        <input type="file" id="profile-avatar-file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--font);font-size:0.74rem;min-height:34px;padding:6px 8px;outline:none;">
+                        <div style="margin-top:6px;font-size:0.64rem;color:var(--text-muted)">Formatos aceitos: PNG, JPG, WEBP, GIF ou SVG (máx. 3 MB).</div>
+                    </div>
+                    <div id="profile-avatar-preview" style="display:flex;margin-top:8px;align-items:center;gap:10px">
+                        <img id="profile-avatar-preview-img" src="${escapeHtmlAttribute(avatar.url || USER_AVATAR_PLACEHOLDER)}" alt="Preview da foto" style="width:42px;height:42px;border-radius:50%;object-fit:cover;border:1px solid var(--border)">
+                        <span id="profile-avatar-preview-name" style="font-size:0.68rem;color:var(--text-soft)">${escapeHtml(avatar.url ? 'Foto atual' : 'Sem foto cadastrada')}</span>
+                    </div>
+                    <label class="cad-checkbox" style="margin-top:10px;margin-bottom:0">
+                        <input type="checkbox" id="profile-avatar-remove"${avatar.url ? '' : ' disabled'}>
+                        <span>Remover foto atual</span>
+                    </label>
+                    <div class="error-msg" id="profile-avatar-error" style="margin-top:8px"></div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn-row" data-action="close">Cancelar</button>
+                    <button class="btn-row primary" data-action="save-avatar">Salvar foto</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        const close = () => modal.remove();
+        modal.addEventListener('click', (event) => {
+            if (event.target === modal) close();
+        });
+        modal.querySelectorAll('[data-action="close"]').forEach((button) => {
+            button.addEventListener('click', close);
+        });
+
+        modal.querySelector('#profile-avatar-file')?.addEventListener('change', () => {
+            syncProfileAvatarPreview(modal);
+        });
+        modal.querySelector('#profile-avatar-remove')?.addEventListener('change', () => {
+            syncProfileAvatarPreview(modal);
+        });
+
+        modal.querySelector('[data-action="save-avatar"]')?.addEventListener('click', async () => {
+            await salvarFotoPerfil(modal);
+        });
+
+        setTimeout(() => {
+            modal.querySelector('#profile-avatar-file')?.focus();
+        }, 60);
+    }
+
+    function resolveUserAvatarData(metadata) {
+        const directPath = String(metadata?.avatar_path || '').trim();
+        const url = resolveUserAvatarUrl(metadata);
+        const pathFromUrl = directPath ? '' : extractStoragePathFromPublicUrl(url);
+        const path = directPath || pathFromUrl;
+        return { path, url };
+    }
+
+    function extractStoragePathFromPublicUrl(url) {
+        const trustedUrl = getTrustedAvatarUrl(url);
+        if (!trustedUrl) return '';
+
+        const baseUrl = String(window.App?.config?.supabaseUrl || window.SUPABASE_URL || '').replace(/\/+$/, '');
+        if (!baseUrl) return '';
+        const prefix = `${baseUrl}/storage/v1/object/public/app-imagens/`;
+        if (!trustedUrl.startsWith(prefix)) return '';
+
+        const encodedPath = trustedUrl.slice(prefix.length);
+        if (!encodedPath) return '';
+
+        return encodedPath
+            .split('/')
+            .map((segment) => {
+                try {
+                    return decodeURIComponent(segment);
+                } catch {
+                    return segment;
+                }
+            })
+            .join('/');
+    }
+
+    function syncProfileAvatarPreview(modal) {
+        if (!modal) return;
+
+        const previewImg = modal.querySelector('#profile-avatar-preview-img');
+        const previewName = modal.querySelector('#profile-avatar-preview-name');
+        const fileInput = modal.querySelector('#profile-avatar-file');
+        const removeToggle = modal.querySelector('#profile-avatar-remove');
+        if (!previewImg || !previewName || !fileInput) return;
+
+        const file = fileInput.files?.[0] || null;
+        const shouldRemove = Boolean(removeToggle?.checked);
+        const currentAvatarUrl = String(modal.dataset.currentAvatarUrl || '');
+
+        if (shouldRemove) {
+            previewImg.src = USER_AVATAR_PLACEHOLDER;
+            previewName.textContent = 'Foto será removida';
+            return;
+        }
+
+        if (file) {
+            previewImg.src = URL.createObjectURL(file);
+            previewName.textContent = `${file.name} (${formatBytes(file.size)})`;
+            return;
+        }
+
+        if (currentAvatarUrl) {
+            previewImg.src = currentAvatarUrl;
+            previewName.textContent = 'Foto atual';
+            return;
+        }
+
+        previewImg.src = USER_AVATAR_PLACEHOLDER;
+        previewName.textContent = 'Sem foto cadastrada';
+    }
+
+    async function salvarFotoPerfil(modal) {
+        const errorBox = modal.querySelector('#profile-avatar-error');
+        hideErrorMessage(errorBox);
+
+        const profileApi = window.App?.api?.profile;
+        if (!profileApi) {
+            showErrorMessage(errorBox, 'API de perfil indisponível.');
+            return;
+        }
+
+        const saveButton = modal.querySelector('[data-action="save-avatar"]');
+        const fileInput = modal.querySelector('#profile-avatar-file');
+        const removeToggle = modal.querySelector('#profile-avatar-remove');
+        const removeAvatar = Boolean(removeToggle?.checked);
+        const currentAvatarPath = String(modal.dataset.currentAvatarPath || '');
+        const currentAvatarUrl = String(modal.dataset.currentAvatarUrl || '');
+
+        let avatarPath = currentAvatarPath;
+        let avatarUrl = currentAvatarUrl;
+        let uploadedAvatarPath = '';
+        let uploadedAvatarUrl = '';
+
+        if (removeAvatar) {
+            avatarPath = '';
+            avatarUrl = '';
+        }
+
+        const avatarFile = fileInput?.files?.[0] || null;
+        if (avatarFile && !removeAvatar) {
+            const uploadResult = await profileApi.uploadAvatar(avatarFile);
+            if (uploadResult.error) {
+                showErrorMessage(errorBox, uploadResult.error.message);
+                return;
+            }
+
+            uploadedAvatarPath = String(uploadResult.data?.path || '');
+            uploadedAvatarUrl = String(uploadResult.data?.url || '');
+            avatarPath = uploadedAvatarPath;
+            avatarUrl = uploadedAvatarUrl;
+        }
+
+        setButtonBusy(saveButton, true, 'Salvando...');
+        const { error } = await profileApi.updateOwnAvatar({
+            avatarPath,
+            avatarUrl,
+            removeAvatar,
+        });
+        setButtonBusy(saveButton, false, 'Salvar foto');
+
+        if (error) {
+            if (uploadedAvatarPath) {
+                await profileApi.removeAvatar(uploadedAvatarPath);
+            }
+            showErrorMessage(errorBox, error.message);
+            return;
+        }
+
+        if (currentAvatarPath && isStoragePath(currentAvatarPath)) {
+            const avatarChanged = removeAvatar || (uploadedAvatarPath && uploadedAvatarPath !== currentAvatarPath);
+            if (avatarChanged) {
+                await profileApi.removeAvatar(currentAvatarPath);
+            }
+        }
+
+        modal.remove();
+        await refreshCurrentUserFromSession();
+        showToast('Foto de perfil atualizada com sucesso.', 'success');
+    }
+
+    async function refreshCurrentUserFromSession() {
+        try {
+            const { data, error } = await _supabase.auth.getUser();
+            if (error || !data?.user) return false;
+            await onSignedIn(data.user);
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
+    function setButtonBusy(button, busy, busyLabel) {
+        if (!button) return;
+        button.disabled = Boolean(busy);
+        button.textContent = busy ? String(busyLabel || 'Processando...') : 'Salvar foto';
+    }
+
+    function showErrorMessage(element, message) {
+        if (!element) return;
+        element.textContent = String(message || '');
+        element.style.display = 'block';
+    }
+
+    function hideErrorMessage(element) {
+        if (!element) return;
+        element.textContent = '';
+        element.style.display = 'none';
+    }
+
+    function showToast(message, type = 'success') {
+        if (typeof window.showToast === 'function') {
+            window.showToast(message, type);
+            return;
+        }
+
+        if (type === 'error') {
+            console.error(message);
+        } else {
+            console.log(message);
+        }
+    }
+
+    function formatBytes(bytes) {
+        const value = Number(bytes);
+        if (!Number.isFinite(value) || value <= 0) return '0 KB';
+        if (value < 1024) return `${value} B`;
+        if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
+        return `${(value / (1024 * 1024)).toFixed(1)} MB`;
     }
 
     function escapeHtml(value) {

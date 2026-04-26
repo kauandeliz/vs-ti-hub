@@ -205,6 +205,25 @@ function parseInvitePayload(body: Body) {
     };
 }
 
+function parseAvatarPayload(body: Body) {
+    const avatarPath = normalizeStoragePath(body.avatarPath);
+    const { value: avatarUrl, error: avatarUrlError } = normalizeOptionalHttpUrl(body.avatarUrl);
+    const removeAvatar = Boolean(body.removeAvatar);
+
+    if (avatarUrlError) {
+        return { data: null, error: avatarUrlError };
+    }
+
+    return {
+        data: {
+            avatarPath,
+            avatarUrl,
+            removeAvatar,
+        },
+        error: null,
+    };
+}
+
 async function handleListUsers(req: Request, adminClient: ReturnType<typeof createClient>, body: Body) {
     const page = Number(body.page) > 0 ? Number(body.page) : 1;
     const perPageRaw = Number(body.perPage);
@@ -371,6 +390,67 @@ async function handleUpdateUserProfile(
     });
 }
 
+async function handleUpdateOwnAvatar(
+    req: Request,
+    adminClient: ReturnType<typeof createClient>,
+    body: Body,
+    callerId: string,
+) {
+    const { data: avatarData, error: avatarError } = parseAvatarPayload(body);
+    if (avatarError || !avatarData) {
+        return jsonResponse(req, 400, { error: avatarError || 'Payload inválido.' });
+    }
+
+    const { data: currentData, error: currentError } = await adminClient.auth.admin.getUserById(callerId);
+    if (currentError || !currentData.user) {
+        return jsonResponse(req, 404, { error: 'Usuário não encontrado.' });
+    }
+
+    const existingMetadata = (currentData.user.user_metadata || {}) as Record<string, unknown>;
+    let nextAvatarPath = normalizeStoragePath(existingMetadata.avatar_path);
+    let nextAvatarUrl = sanitizeText(existingMetadata.avatar_url);
+
+    if (avatarData.removeAvatar) {
+        nextAvatarPath = '';
+        nextAvatarUrl = '';
+    } else {
+        if (avatarData.avatarPath) {
+            nextAvatarPath = avatarData.avatarPath;
+        }
+        if (avatarData.avatarUrl) {
+            nextAvatarUrl = avatarData.avatarUrl;
+        }
+        if (nextAvatarPath && !nextAvatarUrl) {
+            nextAvatarUrl = buildPublicImageUrl(nextAvatarPath);
+        }
+        if (!nextAvatarPath) {
+            nextAvatarUrl = '';
+        }
+    }
+
+    const { data: updated, error } = await adminClient.auth.admin.updateUserById(callerId, {
+        user_metadata: {
+            ...existingMetadata,
+            avatar_path: nextAvatarPath || null,
+            avatar_url: nextAvatarUrl || null,
+            updated_by: callerId,
+            updated_at: new Date().toISOString(),
+        },
+    });
+
+    if (error) {
+        return jsonResponse(req, 400, { error: error.message });
+    }
+
+    return jsonResponse(req, 200, {
+        user: {
+            id: updated.user?.id,
+            email: updated.user?.email,
+            user_metadata: updated.user?.user_metadata,
+        },
+    });
+}
+
 async function handleDeactivateUser(
     req: Request,
     adminClient: ReturnType<typeof createClient>,
@@ -479,16 +559,20 @@ Deno.serve(async (req: Request) => {
         }
 
         const caller = authData.user;
-        const isCallerAdmin = caller.user_metadata?.role === 'admin';
-        if (!isCallerAdmin) {
-            return jsonResponse(req, 403, { error: 'Acesso restrito a administradores.' });
-        }
-
         const body = parseJsonBody(await req.json());
         const action = sanitizeText(body.action);
 
         if (!action) {
             return jsonResponse(req, 400, { error: 'Ação não informada.' });
+        }
+
+        if (action === 'update-own-avatar') {
+            return handleUpdateOwnAvatar(req, adminClient, body, caller.id);
+        }
+
+        const isCallerAdmin = caller.user_metadata?.role === 'admin';
+        if (!isCallerAdmin) {
+            return jsonResponse(req, 403, { error: 'Acesso restrito a administradores.' });
         }
 
         if (action === 'list') {

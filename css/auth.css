@@ -373,6 +373,28 @@
     letter-spacing: 0;
 }
 
+.user-avatar-trigger {
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    outline: none;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.user-avatar-trigger:hover {
+    transform: translateY(-1px);
+}
+
+.user-avatar-trigger:focus-visible {
+    box-shadow: 0 0 0 3px rgba(79, 142, 247, 0.24);
+}
+
 .user-avatar.user-avatar-image {
     background: var(--surface2);
     border-color: var(--border);

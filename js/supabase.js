@@ -259,6 +259,26 @@
         return removeAppImage(path);
     }
 
+    async function uploadOwnAvatar(file) {
+        const { data: userData, error: userError } = await client.auth.getUser();
+        if (userError || !userData?.user?.id) {
+            return {
+                data: null,
+                error: normalizeError('Sessão inválida. Faça login novamente.', 'NO_SESSION', userError),
+            };
+        }
+
+        return uploadAppImage(file, {
+            folder: `avatars/${userData.user.id}`,
+            maxBytes: MAX_AVATAR_IMAGE_BYTES,
+            label: 'a foto de perfil',
+        });
+    }
+
+    async function removeOwnAvatar(path) {
+        return removeAppImage(path);
+    }
+
     async function getSessionOrError() {
         const { data, error } = await client.auth.getSession();
         if (error) {
@@ -513,6 +533,19 @@
             type,
             setor,
             cargo,
+            avatarPath,
+            avatarUrl,
+            removeAvatar,
+        }, { requiresAuth: true });
+    }
+
+    async function updateOwnAvatar({
+        avatarPath = '',
+        avatarUrl = '',
+        removeAvatar = false,
+    } = {}) {
+        return invokeFunction('invite-user', {
+            action: 'update-own-avatar',
             avatarPath,
             avatarUrl,
             removeAvatar,
@@ -2143,6 +2176,11 @@
             changeUserPassword,
             uploadUserAvatar,
             removeUserAvatar,
+        },
+        profile: {
+            uploadAvatar: uploadOwnAvatar,
+            removeAvatar: removeOwnAvatar,
+            updateOwnAvatar,
         },
         catalog: {
             listarSetores,

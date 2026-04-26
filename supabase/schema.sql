@@ -902,7 +902,13 @@ FOR INSERT
 TO authenticated
 WITH CHECK (
     bucket_id = 'app-imagens'
-    AND public.is_admin()
+    AND (
+        public.is_admin()
+        OR (
+            (storage.foldername(name))[1] = 'avatars'
+            AND (storage.foldername(name))[2] = auth.uid()::text
+        )
+    )
 );
 
 CREATE POLICY storage_app_imagens_update_admin
@@ -911,11 +917,23 @@ FOR UPDATE
 TO authenticated
 USING (
     bucket_id = 'app-imagens'
-    AND public.is_admin()
+    AND (
+        public.is_admin()
+        OR (
+            (storage.foldername(name))[1] = 'avatars'
+            AND (storage.foldername(name))[2] = auth.uid()::text
+        )
+    )
 )
 WITH CHECK (
     bucket_id = 'app-imagens'
-    AND public.is_admin()
+    AND (
+        public.is_admin()
+        OR (
+            (storage.foldername(name))[1] = 'avatars'
+            AND (storage.foldername(name))[2] = auth.uid()::text
+        )
+    )
 );
 
 CREATE POLICY storage_app_imagens_delete_admin
@@ -924,7 +942,13 @@ FOR DELETE
 TO authenticated
 USING (
     bucket_id = 'app-imagens'
-    AND public.is_admin()
+    AND (
+        public.is_admin()
+        OR (
+            (storage.foldername(name))[1] = 'avatars'
+            AND (storage.foldername(name))[2] = auth.uid()::text
+        )
+    )
 );
 
 -- Sem policy de DELETE por padrão.
