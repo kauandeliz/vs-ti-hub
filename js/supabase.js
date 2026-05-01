@@ -1096,6 +1096,462 @@
         return { data: { id }, error: null };
     }
 
+    const REDE_USUARIO_PERMISSION_FIELDS = Object.freeze([
+        'assinaturas',
+        'bancos',
+        'contab',
+        'comercial',
+        'dir',
+        'dsk',
+        'filiais',
+        'fisc',
+        'ger',
+        'importacao_trading',
+        'logistica',
+        'm_fat',
+        'mkt',
+        'oper',
+        'rh',
+        'rh_filiais',
+        'salesforce',
+        'sistemas',
+    ]);
+
+    const REDE_POLITICA_CATEGORIAS = new Set([
+        'OBJETIVO',
+        'ESCOPO',
+        'TOPOLOGIA',
+        'RESPONSABILIDADE',
+        'ACESSO_SEGURANCA',
+        'SISTEMA_CRITICO',
+        'MANUTENCAO',
+        'LGPD',
+        'VIGENCIA',
+    ]);
+
+    const REDE_TOPOLOGIA_TIPOS = new Set(['MATRIZ', 'FILIAL']);
+
+    function normalizeRedeUsuarioStatus(value) {
+        const normalized = sanitizeText(value).toUpperCase();
+        if (normalized === 'ATIVO' || normalized === 'INATIVO') {
+            return normalized;
+        }
+        return null;
+    }
+
+    function normalizeRedeUsuarioPayload(fields = {}, { partial = false } = {}) {
+        const payload = {};
+
+        if (Object.prototype.hasOwnProperty.call(fields, 'nome_completo')) {
+            const nome = sanitizeText(fields.nome_completo);
+            if (!nome) {
+                return { payload: null, error: normalizeError('Informe o nome completo.', 'VALIDATION_ERROR') };
+            }
+            payload.nome_completo = nome;
+        }
+
+        if (Object.prototype.hasOwnProperty.call(fields, 'unidade')) {
+            const unidade = sanitizeText(fields.unidade).toUpperCase();
+            if (!unidade) {
+                return { payload: null, error: normalizeError('Informe a unidade.', 'VALIDATION_ERROR') };
+            }
+            payload.unidade = unidade;
+        }
+
+        if (Object.prototype.hasOwnProperty.call(fields, 'usuario')) {
+            const usuario = sanitizeText(fields.usuario);
+            if (!usuario) {
+                return { payload: null, error: normalizeError('Informe o usuario de rede.', 'VALIDATION_ERROR') };
+            }
+            if (!/^[a-zA-Z0-9._-]+$/.test(usuario)) {
+                return { payload: null, error: normalizeError('Usuario de rede invalido.', 'VALIDATION_ERROR') };
+            }
+            payload.usuario = usuario;
+        }
+
+        if (Object.prototype.hasOwnProperty.call(fields, 'status')) {
+            const status = normalizeRedeUsuarioStatus(fields.status);
+            if (!status) {
+                return { payload: null, error: normalizeError('Status invalido. Use ATIVO ou INATIVO.', 'VALIDATION_ERROR') };
+            }
+            payload.status = status;
+        }
+
+        REDE_USUARIO_PERMISSION_FIELDS.forEach((field) => {
+            if (Object.prototype.hasOwnProperty.call(fields, field)) {
+                payload[field] = Boolean(fields[field]);
+            }
+        });
+
+        if (!partial) {
+            const required = ['nome_completo', 'unidade', 'usuario', 'status'];
+            for (const field of required) {
+                if (!payload[field]) {
+                    return { payload: null, error: normalizeError(`Campo obrigatório: ${field}.`, 'VALIDATION_ERROR') };
+                }
+            }
+        }
+
+        return { payload, error: null };
+    }
+
+    async function listarRedeUsuarios({ search = '' } = {}) {
+        let query = client
+            .from('catalog_rede_usuarios')
+            .select('*')
+            .order('unidade', { ascending: true })
+            .order('nome_completo', { ascending: true });
+
+        const term = sanitizeSearchTerm(search);
+        if (term) {
+            query = query.or(`nome_completo.ilike.%${term}%,unidade.ilike.%${term}%,usuario.ilike.%${term}%,status.ilike.%${term}%`);
+        }
+
+        const { data, error } = await query;
+        if (error) {
+            return {
+                data: null,
+                error: normalizeError(error.message, error.code || 'DB_REDE_USUARIO_LIST_ERROR', error),
+            };
+        }
+
+        return { data: data || [], error: null };
+    }
+
+    async function criarRedeUsuario(fields = {}) {
+        const { payload, error: payloadError } = normalizeRedeUsuarioPayload(fields, { partial: false });
+        if (payloadError) {
+            return { data: null, error: payloadError };
+        }
+
+        const { data, error } = await client
+            .from('catalog_rede_usuarios')
+            .insert([payload])
+            .select()
+            .single();
+
+        if (error) {
+            return {
+                data: null,
+                error: normalizeError(error.message, error.code || 'DB_REDE_USUARIO_CREATE_ERROR', error),
+            };
+        }
+
+        return { data, error: null };
+    }
+
+    async function atualizarRedeUsuario(id, fields = {}) {
+        const { payload, error: payloadError } = normalizeRedeUsuarioPayload(fields, { partial: true });
+        if (payloadError) {
+            return { data: null, error: payloadError };
+        }
+
+        if (!Object.keys(payload).length) {
+            return { data: null, error: normalizeError('Nenhuma alteração foi informada.', 'VALIDATION_ERROR') };
+        }
+
+        const { data, error } = await client
+            .from('catalog_rede_usuarios')
+            .update(payload)
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (error) {
+            return {
+                data: null,
+                error: normalizeError(error.message, error.code || 'DB_REDE_USUARIO_UPDATE_ERROR', error),
+            };
+        }
+
+        return { data, error: null };
+    }
+
+    async function removerRedeUsuario(id) {
+        const { error } = await client
+            .from('catalog_rede_usuarios')
+            .delete()
+            .eq('id', id);
+
+        if (error) {
+            return {
+                data: null,
+                error: normalizeError(error.message, error.code || 'DB_REDE_USUARIO_DELETE_ERROR', error),
+            };
+        }
+
+        return { data: { id }, error: null };
+    }
+
+    function normalizeRedeTopologiaPayload(fields = {}, { partial = false } = {}) {
+        const payload = {};
+
+        const textFields = ['codigo', 'localidade', 'hardware_critico', 'modelo_firewall'];
+        textFields.forEach((field) => {
+            if (!Object.prototype.hasOwnProperty.call(fields, field)) return;
+            const value = sanitizeText(fields[field]);
+            if (!value) {
+                payload[field] = null;
+                return;
+            }
+            payload[field] = value;
+        });
+
+        if (Object.prototype.hasOwnProperty.call(fields, 'tipo_unidade')) {
+            const tipo = sanitizeText(fields.tipo_unidade).toUpperCase();
+            if (!REDE_TOPOLOGIA_TIPOS.has(tipo)) {
+                return { payload: null, error: normalizeError('Tipo de unidade invalido. Use MATRIZ ou FILIAL.', 'VALIDATION_ERROR') };
+            }
+            payload.tipo_unidade = tipo;
+        }
+
+        if (Object.prototype.hasOwnProperty.call(fields, 'conecta_vpn')) {
+            payload.conecta_vpn = Boolean(fields.conecta_vpn);
+        }
+
+        if (Object.prototype.hasOwnProperty.call(fields, 'ativo')) {
+            payload.ativo = Boolean(fields.ativo);
+        }
+
+        if (Object.prototype.hasOwnProperty.call(fields, 'ordem')) {
+            const ordem = Number(fields.ordem);
+            if (!Number.isFinite(ordem) || ordem < 0 || !Number.isInteger(ordem)) {
+                return { payload: null, error: normalizeError('Ordem invalida. Use um inteiro >= 0.', 'VALIDATION_ERROR') };
+            }
+            payload.ordem = ordem;
+        }
+
+        if (!partial) {
+            const required = ['codigo', 'localidade', 'tipo_unidade', 'hardware_critico', 'modelo_firewall'];
+            for (const field of required) {
+                if (!payload[field]) {
+                    return { payload: null, error: normalizeError(`Campo obrigatório: ${field}.`, 'VALIDATION_ERROR') };
+                }
+            }
+        }
+
+        return { payload, error: null };
+    }
+
+    async function listarRedeTopologia({ search = '' } = {}) {
+        let query = client
+            .from('catalog_rede_topologia')
+            .select('*')
+            .order('ordem', { ascending: true })
+            .order('codigo', { ascending: true });
+
+        const term = sanitizeSearchTerm(search);
+        if (term) {
+            query = query.or(`codigo.ilike.%${term}%,localidade.ilike.%${term}%,tipo_unidade.ilike.%${term}%,hardware_critico.ilike.%${term}%,modelo_firewall.ilike.%${term}%`);
+        }
+
+        const { data, error } = await query;
+        if (error) {
+            return {
+                data: null,
+                error: normalizeError(error.message, error.code || 'DB_REDE_TOPOLOGIA_LIST_ERROR', error),
+            };
+        }
+
+        return { data: data || [], error: null };
+    }
+
+    async function criarRedeTopologia(fields = {}) {
+        const { payload, error: payloadError } = normalizeRedeTopologiaPayload(fields, { partial: false });
+        if (payloadError) {
+            return { data: null, error: payloadError };
+        }
+
+        const { data, error } = await client
+            .from('catalog_rede_topologia')
+            .insert([payload])
+            .select()
+            .single();
+
+        if (error) {
+            return {
+                data: null,
+                error: normalizeError(error.message, error.code || 'DB_REDE_TOPOLOGIA_CREATE_ERROR', error),
+            };
+        }
+
+        return { data, error: null };
+    }
+
+    async function atualizarRedeTopologia(id, fields = {}) {
+        const { payload, error: payloadError } = normalizeRedeTopologiaPayload(fields, { partial: true });
+        if (payloadError) {
+            return { data: null, error: payloadError };
+        }
+
+        if (!Object.keys(payload).length) {
+            return { data: null, error: normalizeError('Nenhuma alteração foi informada.', 'VALIDATION_ERROR') };
+        }
+
+        const { data, error } = await client
+            .from('catalog_rede_topologia')
+            .update(payload)
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (error) {
+            return {
+                data: null,
+                error: normalizeError(error.message, error.code || 'DB_REDE_TOPOLOGIA_UPDATE_ERROR', error),
+            };
+        }
+
+        return { data, error: null };
+    }
+
+    async function removerRedeTopologia(id) {
+        const { error } = await client
+            .from('catalog_rede_topologia')
+            .delete()
+            .eq('id', id);
+
+        if (error) {
+            return {
+                data: null,
+                error: normalizeError(error.message, error.code || 'DB_REDE_TOPOLOGIA_DELETE_ERROR', error),
+            };
+        }
+
+        return { data: { id }, error: null };
+    }
+
+    function normalizeRedePoliticaPayload(fields = {}, { partial = false } = {}) {
+        const payload = {};
+
+        if (Object.prototype.hasOwnProperty.call(fields, 'categoria')) {
+            const categoria = sanitizeText(fields.categoria).toUpperCase();
+            if (!REDE_POLITICA_CATEGORIAS.has(categoria)) {
+                return { payload: null, error: normalizeError('Categoria invalida para politica de rede.', 'VALIDATION_ERROR') };
+            }
+            payload.categoria = categoria;
+        }
+
+        const textFields = ['topico', 'descricao', 'responsavel', 'periodicidade'];
+        textFields.forEach((field) => {
+            if (!Object.prototype.hasOwnProperty.call(fields, field)) return;
+            const value = sanitizeText(fields[field]);
+            payload[field] = value || null;
+        });
+
+        if (Object.prototype.hasOwnProperty.call(fields, 'ordem')) {
+            const ordem = Number(fields.ordem);
+            if (!Number.isFinite(ordem) || ordem < 0 || !Number.isInteger(ordem)) {
+                return { payload: null, error: normalizeError('Ordem invalida. Use um inteiro >= 0.', 'VALIDATION_ERROR') };
+            }
+            payload.ordem = ordem;
+        }
+
+        if (Object.prototype.hasOwnProperty.call(fields, 'ativo')) {
+            payload.ativo = Boolean(fields.ativo);
+        }
+
+        if (!partial) {
+            const required = ['categoria', 'topico', 'descricao'];
+            for (const field of required) {
+                if (!payload[field]) {
+                    return { payload: null, error: normalizeError(`Campo obrigatório: ${field}.`, 'VALIDATION_ERROR') };
+                }
+            }
+        }
+
+        return { payload, error: null };
+    }
+
+    async function listarRedePoliticas({ search = '' } = {}) {
+        let query = client
+            .from('catalog_rede_politicas')
+            .select('*')
+            .order('categoria', { ascending: true })
+            .order('ordem', { ascending: true })
+            .order('topico', { ascending: true });
+
+        const term = sanitizeSearchTerm(search);
+        if (term) {
+            query = query.or(`categoria.ilike.%${term}%,topico.ilike.%${term}%,descricao.ilike.%${term}%,responsavel.ilike.%${term}%,periodicidade.ilike.%${term}%`);
+        }
+
+        const { data, error } = await query;
+        if (error) {
+            return {
+                data: null,
+                error: normalizeError(error.message, error.code || 'DB_REDE_POLITICA_LIST_ERROR', error),
+            };
+        }
+
+        return { data: data || [], error: null };
+    }
+
+    async function criarRedePolitica(fields = {}) {
+        const { payload, error: payloadError } = normalizeRedePoliticaPayload(fields, { partial: false });
+        if (payloadError) {
+            return { data: null, error: payloadError };
+        }
+
+        const { data, error } = await client
+            .from('catalog_rede_politicas')
+            .insert([payload])
+            .select()
+            .single();
+
+        if (error) {
+            return {
+                data: null,
+                error: normalizeError(error.message, error.code || 'DB_REDE_POLITICA_CREATE_ERROR', error),
+            };
+        }
+
+        return { data, error: null };
+    }
+
+    async function atualizarRedePolitica(id, fields = {}) {
+        const { payload, error: payloadError } = normalizeRedePoliticaPayload(fields, { partial: true });
+        if (payloadError) {
+            return { data: null, error: payloadError };
+        }
+
+        if (!Object.keys(payload).length) {
+            return { data: null, error: normalizeError('Nenhuma alteração foi informada.', 'VALIDATION_ERROR') };
+        }
+
+        const { data, error } = await client
+            .from('catalog_rede_politicas')
+            .update(payload)
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (error) {
+            return {
+                data: null,
+                error: normalizeError(error.message, error.code || 'DB_REDE_POLITICA_UPDATE_ERROR', error),
+            };
+        }
+
+        return { data, error: null };
+    }
+
+    async function removerRedePolitica(id) {
+        const { error } = await client
+            .from('catalog_rede_politicas')
+            .delete()
+            .eq('id', id);
+
+        if (error) {
+            return {
+                data: null,
+                error: normalizeError(error.message, error.code || 'DB_REDE_POLITICA_DELETE_ERROR', error),
+            };
+        }
+
+        return { data: { id }, error: null };
+    }
+
     function normalizeDashboardReportOrigin(value) {
         const normalized = sanitizeText(value).toLowerCase();
         if (!Object.prototype.hasOwnProperty.call(DASHBOARD_REPORT_ORIGIN_DIMENSIONS, normalized)) {
@@ -2160,6 +2616,20 @@
             criar: criarLinha,
             atualizar: atualizarLinha,
             remover: removerLinha,
+        },
+        rede: {
+            listarUsuarios: listarRedeUsuarios,
+            criarUsuario: criarRedeUsuario,
+            atualizarUsuario: atualizarRedeUsuario,
+            removerUsuario: removerRedeUsuario,
+            listarTopologia: listarRedeTopologia,
+            criarTopologia: criarRedeTopologia,
+            atualizarTopologia: atualizarRedeTopologia,
+            removerTopologia: removerRedeTopologia,
+            listarPoliticas: listarRedePoliticas,
+            criarPolitica: criarRedePolitica,
+            atualizarPolitica: atualizarRedePolitica,
+            removerPolitica: removerRedePolitica,
         },
         dashboards: {
             listarRelatorios: listarDashboardRelatorios,

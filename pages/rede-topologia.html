@@ -1,0 +1,134 @@
+﻿        <div class="page" id="page-rede-topologia">
+            <div class="page-header">
+                <h1>Rede: Topologia</h1>
+                <p>Cadastro das unidades conectadas a arquitetura centralizada com VPN.</p>
+            </div>
+
+            <div class="cad-page-actions">
+                <button class="btn-icon" data-nav="redes">← Voltar para Infraestrutura de Rede</button>
+            </div>
+
+            <div class="cad-toolbar">
+                <div class="cad-summary" id="rede-topologia-summary">Carregue a topologia para ver os indicadores.</div>
+                <button class="btn-icon" id="rede-topologia-refresh-btn">↻ Atualizar</button>
+            </div>
+
+            <div class="cad-kpi-grid cad-kpi-grid-2">
+                <div class="cad-kpi-card">
+                    <span>Unidades ativas</span>
+                    <strong id="rede-topologia-kpi-unidades">—</strong>
+                </div>
+                <div class="cad-kpi-card">
+                    <span>VPN IPSec ativa</span>
+                    <strong id="rede-topologia-kpi-vpn">—</strong>
+                </div>
+            </div>
+
+            <div class="linhas-toolbar" style="margin-bottom:8px">
+                <div class="search-wrap">
+                    <span class="search-icon"></span>
+                    <input
+                        type="text"
+                        id="rede-topologia-search"
+                        placeholder="Buscar por codigo, localidade, tipo ou hardware..."
+                        style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px 8px 32px;color:var(--text);font-family:var(--font);font-size:0.8rem;outline:none;"
+                    >
+                </div>
+                <div class="linhas-header-actions">
+                    <button class="btn-icon" id="rede-topologia-new-btn" style="display:none">Cadastrar</button>
+                </div>
+            </div>
+
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>CODIGO</th>
+                            <th>LOCALIDADE</th>
+                            <th>TIPO</th>
+                            <th>HARDWARE CRITICO</th>
+                            <th>VPN</th>
+                            <th>FIREWALL</th>
+                            <th>STATUS</th>
+                            <th>ACOES</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rede-topologia-tbody">
+                        <tr>
+                            <td colspan="8">
+                                <div class="table-state">
+                                    <div class="icon">🌐</div>
+                                    <div>Navegue ate esta pagina para carregar a topologia.</div>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="modal-backdrop rede-crud-modal" id="rede-topologia-modal" hidden>
+                <div class="modal rede-modal" style="max-width:860px" onclick="event.stopPropagation()">
+                    <div class="modal-header">
+                        <h3 id="rede-topologia-modal-title">Cadastro de Unidade de Rede</h3>
+                        <button class="modal-close" data-action="close-rede-topologia-modal" aria-label="Fechar">✕</button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="rede-topologia-form" class="cad-modal-form">
+                            <input type="hidden" id="rede-topologia-id">
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Codigo</label>
+                                    <input type="text" id="rede-topologia-form-codigo" placeholder="Ex: 100-PR/BRIG" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Localidade</label>
+                                    <input type="text" id="rede-topologia-form-localidade" placeholder="Ex: Curitiba/PR (Matriz)" required>
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Tipo de unidade</label>
+                                    <select id="rede-topologia-form-tipo" required>
+                                        <option value="FILIAL">FILIAL</option>
+                                        <option value="MATRIZ">MATRIZ</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Modelo de firewall</label>
+                                    <input type="text" id="rede-topologia-form-firewall" placeholder="Ex: pfSense" required>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Hardware critico</label>
+                                <input type="text" id="rede-topologia-form-hardware" placeholder="Ex: Servidores + Firewall" required>
+                            </div>
+
+                            <div class="cad-checkbox-row">
+                                <label class="cad-checkbox">
+                                    <input type="checkbox" id="rede-topologia-form-vpn" checked>
+                                    <span>Conexao VPN IPSec ativa</span>
+                                </label>
+                                <label class="cad-checkbox">
+                                    <input type="checkbox" id="rede-topologia-form-ativo" checked>
+                                    <span>Unidade ativa</span>
+                                </label>
+                            </div>
+
+                            <div class="form-group" style="max-width:220px">
+                                <label>Ordem</label>
+                                <input type="number" id="rede-topologia-form-ordem" min="0" value="100">
+                            </div>
+
+                            <div class="cad-actions">
+                                <button type="button" class="btn-row" data-action="close-rede-topologia-modal">Fechar</button>
+                                <button type="button" class="btn-row" id="rede-topologia-cancel-btn" style="display:none">Cancelar edicao</button>
+                                <button type="submit" class="btn-primary" id="rede-topologia-submit-btn">Salvar Unidade</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>

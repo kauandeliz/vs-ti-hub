@@ -1,0 +1,131 @@
+﻿        <div class="page" id="page-rede-usuarios">
+            <div class="page-header">
+                <h1>Rede: Usuarios</h1>
+                <p>Gestao de usuarios de rede com status e acessos por sistema.</p>
+            </div>
+
+            <div class="cad-page-actions">
+                <button class="btn-icon" data-nav="redes">← Voltar para Infraestrutura de Rede</button>
+            </div>
+
+            <div class="linhas-layout">
+                <div class="linhas-table-card">
+                    <div class="linhas-table-header">
+                        <h3>Usuarios de rede</h3>
+                        <div class="linhas-header-actions">
+                            <button class="btn-icon" id="rede-usuarios-new-btn" style="display:none">Cadastrar</button>
+                            <button class="btn-icon" id="rede-usuarios-refresh-btn">↻ Atualizar</button>
+                        </div>
+                    </div>
+
+                    <div class="linhas-toolbar">
+                        <div class="search-wrap">
+                            <span class="search-icon"></span>
+                            <input
+                                type="text"
+                                id="rede-usuarios-search"
+                                placeholder="Buscar por nome, unidade, usuario ou status..."
+                                style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px 8px 32px;color:var(--text);font-family:var(--font);font-size:0.8rem;outline:none;"
+                            >
+                        </div>
+                        <div class="linhas-summary" id="rede-usuarios-summary">Carregue os usuarios para ver os indicadores.</div>
+                    </div>
+
+                    <div class="table-wrap" style="border:none;border-radius:0;margin-bottom:0">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>UNID</th>
+                                    <th>USUARIO</th>
+                                    <th>NOME COMPLETO</th>
+                                    <th>STATUS</th>
+                                    <th>PERFIS</th>
+                                    <th>ACOES</th>
+                                </tr>
+                            </thead>
+                            <tbody id="rede-usuarios-tbody">
+                                <tr>
+                                    <td colspan="6">
+                                        <div class="table-state">
+                                            <div class="icon">👥</div>
+                                            <div>Navegue ate esta pagina para carregar os usuarios de rede.</div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div id="rede-usuarios-pagination" class="pagination"></div>
+                </div>
+            </div>
+
+            <div class="modal-backdrop rede-crud-modal" id="rede-usuarios-modal" hidden>
+                <div class="modal rede-modal" style="max-width:980px" onclick="event.stopPropagation()">
+                    <div class="modal-header">
+                        <h3 id="rede-usuarios-modal-title">Cadastro de Usuario de Rede</h3>
+                        <button class="modal-close" data-action="close-rede-usuarios-modal" aria-label="Fechar">✕</button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="rede-usuarios-form" class="cad-modal-form">
+                            <input type="hidden" id="rede-usuarios-id">
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Nome completo</label>
+                                    <input type="text" id="rede-usuarios-form-nome" placeholder="Ex: Joao da Silva" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Unidade</label>
+                                    <input type="text" id="rede-usuarios-form-unidade" placeholder="Ex: PR" maxlength="12" required>
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Usuario</label>
+                                    <input type="text" id="rede-usuarios-form-usuario" placeholder="Ex: pr-joao.silva" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Status</label>
+                                    <select id="rede-usuarios-form-status" required>
+                                        <option value="ATIVO">ATIVO</option>
+                                        <option value="INATIVO">INATIVO</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="rede-perms-section">
+                                <div class="rede-perms-title">Permissoes de acesso</div>
+                                <div class="rede-perms-grid">
+                                    <label class="rede-perm-item"><input type="checkbox" id="rede-usuarios-perm-assinaturas"><span>Assinaturas</span></label>
+                                    <label class="rede-perm-item"><input type="checkbox" id="rede-usuarios-perm-bancos"><span>Bancos</span></label>
+                                    <label class="rede-perm-item"><input type="checkbox" id="rede-usuarios-perm-contab"><span>Contab</span></label>
+                                    <label class="rede-perm-item"><input type="checkbox" id="rede-usuarios-perm-comercial"><span>Comercial</span></label>
+                                    <label class="rede-perm-item"><input type="checkbox" id="rede-usuarios-perm-dir"><span>Dir</span></label>
+                                    <label class="rede-perm-item"><input type="checkbox" id="rede-usuarios-perm-dsk"><span>Dsk</span></label>
+                                    <label class="rede-perm-item"><input type="checkbox" id="rede-usuarios-perm-filiais"><span>Filiais</span></label>
+                                    <label class="rede-perm-item"><input type="checkbox" id="rede-usuarios-perm-fisc"><span>Fisc</span></label>
+                                    <label class="rede-perm-item"><input type="checkbox" id="rede-usuarios-perm-ger"><span>Ger</span></label>
+                                    <label class="rede-perm-item"><input type="checkbox" id="rede-usuarios-perm-importacao-trading"><span>Importacao-Trading</span></label>
+                                    <label class="rede-perm-item"><input type="checkbox" id="rede-usuarios-perm-logistica"><span>Logistica</span></label>
+                                    <label class="rede-perm-item"><input type="checkbox" id="rede-usuarios-perm-m-fat"><span>M_FAT</span></label>
+                                    <label class="rede-perm-item"><input type="checkbox" id="rede-usuarios-perm-mkt"><span>Mkt</span></label>
+                                    <label class="rede-perm-item"><input type="checkbox" id="rede-usuarios-perm-oper"><span>Oper</span></label>
+                                    <label class="rede-perm-item"><input type="checkbox" id="rede-usuarios-perm-rh"><span>RH</span></label>
+                                    <label class="rede-perm-item"><input type="checkbox" id="rede-usuarios-perm-rh-filiais"><span>RH_FILIAIS</span></label>
+                                    <label class="rede-perm-item"><input type="checkbox" id="rede-usuarios-perm-salesforce"><span>SalesForce</span></label>
+                                    <label class="rede-perm-item"><input type="checkbox" id="rede-usuarios-perm-sistemas"><span>Sistemas</span></label>
+                                </div>
+                            </div>
+
+                            <div class="cad-actions" style="margin-top:14px">
+                                <button type="button" class="btn-row" data-action="close-rede-usuarios-modal">Fechar</button>
+                                <button type="button" class="btn-row" id="rede-usuarios-cancel-btn" style="display:none">Cancelar edicao</button>
+                                <button type="submit" class="btn-primary" id="rede-usuarios-submit-btn">Salvar Usuario</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>

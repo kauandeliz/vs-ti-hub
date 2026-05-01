@@ -18,6 +18,10 @@
         'pages/telecom.html',
         'pages/unidades.html',
         'pages/linhas.html',
+        'pages/redes.html',
+        'pages/rede-usuarios.html',
+        'pages/rede-topologia.html',
+        'pages/rede-politicas.html',
         'pages/colaboradores.html',
         'pages/usuarios.html',
         'pages/cadastros.html',
@@ -57,6 +61,23 @@
         `;
     }
 
+    function renderFileProtocolHint(container) {
+        container.innerHTML = `
+            <div class="table-state">
+                <div class="icon">🌐</div>
+                <div>O app foi aberto via <code>file://</code> e o navegador bloqueou o carregamento modular.</div>
+                <div style="font-size:0.68rem;color:var(--text-muted);max-width:620px;line-height:1.6;">
+                    Inicie um servidor local nesta pasta e abra por HTTP:<br>
+                    <code>py -m http.server 5500</code><br>
+                    ou<br>
+                    <code>python -m http.server 5500</code><br><br>
+                    Depois acesse:<br>
+                    <code>http://localhost:5500/</code>
+                </div>
+            </div>
+        `;
+    }
+
     function escapeHtml(value) {
         return String(value || '')
             .replace(/&/g, '&amp;')
@@ -68,6 +89,11 @@
 
     const container = document.getElementById('pages-container');
     if (!container) return;
+
+    if (window.location.protocol === 'file:') {
+        renderFileProtocolHint(container);
+        return;
+    }
 
     const fragments = [];
     const errors = [];

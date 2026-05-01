@@ -1,0 +1,136 @@
+﻿        <div class="page" id="page-rede-politicas">
+            <div class="page-header">
+                <h1>Rede: Politicas de Infraestrutura</h1>
+                <p>Diretrizes da Politica de Infraestrutura de Rede e Comunicacao (Fev/2026).</p>
+            </div>
+
+            <div class="cad-page-actions">
+                <button class="btn-icon" data-nav="redes">← Voltar para Infraestrutura de Rede</button>
+            </div>
+
+            <div class="cad-toolbar">
+                <div class="cad-summary" id="rede-politicas-summary">Carregue as politicas para ver os indicadores.</div>
+                <button class="btn-icon" id="rede-politicas-refresh-btn">↻ Atualizar</button>
+            </div>
+
+            <div class="cad-kpi-grid cad-kpi-grid-2">
+                <div class="cad-kpi-card">
+                    <span>Itens ativos</span>
+                    <strong id="rede-politicas-kpi-ativos">—</strong>
+                </div>
+                <div class="cad-kpi-card">
+                    <span>Planos de manutencao</span>
+                    <strong id="rede-politicas-kpi-manutencao">—</strong>
+                </div>
+            </div>
+
+            <div class="linhas-toolbar" style="margin-bottom:8px">
+                <div class="search-wrap">
+                    <span class="search-icon"></span>
+                    <input
+                        type="text"
+                        id="rede-politicas-search"
+                        placeholder="Buscar por categoria, topico, descricao, responsavel ou periodicidade..."
+                        style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px 8px 32px;color:var(--text);font-family:var(--font);font-size:0.8rem;outline:none;"
+                    >
+                </div>
+                <div class="linhas-header-actions">
+                    <button class="btn-icon" id="rede-politicas-new-btn" style="display:none">Cadastrar</button>
+                </div>
+            </div>
+
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>CATEGORIA</th>
+                            <th>TOPICO</th>
+                            <th>DESCRICAO</th>
+                            <th>RESPONSAVEL</th>
+                            <th>PERIODICIDADE</th>
+                            <th>STATUS</th>
+                            <th>ACOES</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rede-politicas-tbody">
+                        <tr>
+                            <td colspan="7">
+                                <div class="table-state">
+                                    <div class="icon">📘</div>
+                                    <div>Navegue ate esta pagina para carregar as politicas.</div>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="modal-backdrop rede-crud-modal" id="rede-politicas-modal" hidden>
+                <div class="modal rede-modal" style="max-width:920px" onclick="event.stopPropagation()">
+                    <div class="modal-header">
+                        <h3 id="rede-politicas-modal-title">Cadastro de Politica</h3>
+                        <button class="modal-close" data-action="close-rede-politicas-modal" aria-label="Fechar">✕</button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="rede-politicas-form" class="cad-modal-form">
+                            <input type="hidden" id="rede-politicas-id">
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Categoria</label>
+                                    <select id="rede-politicas-form-categoria" required>
+                                        <option value="OBJETIVO">OBJETIVO</option>
+                                        <option value="ESCOPO">ESCOPO</option>
+                                        <option value="TOPOLOGIA">TOPOLOGIA</option>
+                                        <option value="RESPONSABILIDADE">RESPONSABILIDADE</option>
+                                        <option value="ACESSO_SEGURANCA">ACESSO_SEGURANCA</option>
+                                        <option value="SISTEMA_CRITICO">SISTEMA_CRITICO</option>
+                                        <option value="MANUTENCAO">MANUTENCAO</option>
+                                        <option value="LGPD">LGPD</option>
+                                        <option value="VIGENCIA">VIGENCIA</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Topico</label>
+                                    <input type="text" id="rede-politicas-form-topico" placeholder="Ex: Atualizacao de firewall" required>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Descricao</label>
+                                <textarea id="rede-politicas-form-descricao" placeholder="Descreva a diretriz ou politica." required></textarea>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Responsavel</label>
+                                    <input type="text" id="rede-politicas-form-responsavel" placeholder="Ex: Sekur Informatica">
+                                </div>
+                                <div class="form-group">
+                                    <label>Periodicidade</label>
+                                    <input type="text" id="rede-politicas-form-periodicidade" placeholder="Ex: Mensal">
+                                </div>
+                            </div>
+
+                            <div class="cad-checkbox-row">
+                                <label class="cad-checkbox">
+                                    <input type="checkbox" id="rede-politicas-form-ativo" checked>
+                                    <span>Item ativo</span>
+                                </label>
+                            </div>
+
+                            <div class="form-group" style="max-width:220px">
+                                <label>Ordem</label>
+                                <input type="number" id="rede-politicas-form-ordem" min="0" value="100">
+                            </div>
+
+                            <div class="cad-actions">
+                                <button type="button" class="btn-row" data-action="close-rede-politicas-modal">Fechar</button>
+                                <button type="button" class="btn-row" id="rede-politicas-cancel-btn" style="display:none">Cancelar edicao</button>
+                                <button type="submit" class="btn-primary" id="rede-politicas-submit-btn">Salvar Politica</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>

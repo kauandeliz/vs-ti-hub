@@ -16,6 +16,10 @@
         telecom: 'Módulo TI • Telecom',
         unidades: 'Módulo TI • Unidades',
         linhas: 'Módulo TI • Linhas',
+        redes: 'Módulo TI • Infraestrutura de Rede',
+        'rede-usuarios': 'Módulo TI • Rede • Usuários',
+        'rede-topologia': 'Módulo TI • Rede • Topologia',
+        'rede-politicas': 'Módulo TI • Rede • Políticas',
         colaboradores: 'Módulo TI • Colaboradores Internos',
         usuarios: 'Contas de Acesso',
         cadastros: 'Cadastros',
@@ -141,6 +145,22 @@
         if (page === 'linhas' && typeof window.onLinhasActivate === 'function') {
             window.onLinhasActivate();
         }
+
+        if (page === 'redes' && typeof window.onRedesActivate === 'function') {
+            window.onRedesActivate();
+        }
+
+        if (page === 'rede-usuarios' && typeof window.onRedeUsuariosActivate === 'function') {
+            window.onRedeUsuariosActivate();
+        }
+
+        if (page === 'rede-topologia' && typeof window.onRedeTopologiaActivate === 'function') {
+            window.onRedeTopologiaActivate();
+        }
+
+        if (page === 'rede-politicas' && typeof window.onRedePoliticasActivate === 'function') {
+            window.onRedePoliticasActivate();
+        }
     }
 
     function toggleSidebar() {
@@ -153,7 +173,7 @@
         const activePage = document.querySelector('.page.active');
         if (!activePage) return;
 
-        const cards = activePage.querySelectorAll('.tool-card, .external-card, .shortcut-card, .dash-chart-card, .dash-report-card, .dash-kpi-card');
+        const cards = activePage.querySelectorAll('.tool-card, .external-card, .shortcut-card, .dash-chart-card, .dash-report-card, .dash-kpi-card, .cad-hub-card, .rede-hub-card');
         const rows = activePage.querySelectorAll('tbody tr');
 
         if (!term) {
